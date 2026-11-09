@@ -9,6 +9,19 @@ before it overflows.
 > Version 0.3.0, tested with bb 0.49.0 and Plugin SDK 0.6.132. Limits appear
 > only for providers that report them to bb (Claude Code and Codex today).
 
+## Screenshots
+
+The collapsed band above the composer: the headline with the forecast, the
+auto-compact switch, the Compact button and one bar per limit window plus the
+context bar.
+
+![The collapsed Usage Forecast band above the composer](docs/screenshots/band.png)
+
+The expanded band: every window of the thread's provider with its pace note,
+the context breakdown and one line per other provider.
+
+![The expanded Usage Forecast band with limit windows and the context breakdown](docs/screenshots/expanded.png)
+
 ## What it does
 
 - **Band above the composer.** Its design follows the band of
