@@ -135,7 +135,8 @@ UI surfaces:
 
 - Repository: public `ponomr/bb-plugin-usage-forecast`, MIT. Submitted to the
   BB Community marketplace as `usage-forecast` with a Git source that tracks
-  `^0.3.0`; a compatible release needs no new marketplace PR.
+  `^0.4.0` (get-bb/marketplace#928); a compatible release needs no new
+  marketplace PR, a contract change needs a PR that moves the range.
 - Checks: the command above; there is no CI yet.
 - Release: bump `version` in `package.json` and `package-lock.json` in the PR,
   merge it, tag the merge commit `vX.Y.Z` and push the tag.
