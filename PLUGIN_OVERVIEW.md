@@ -12,11 +12,11 @@ The server polls bb for limits every 2 minutes (1–10, configurable), with ever
 
 ## Auto-compact
 
-Off by default. When it is on, the server compacts a thread when the thread goes idle with its context at or above the threshold (80 % by default, 50–95). It never interrupts a turn and waits 10 minutes between attempts on one thread. The threshold is a percent of a working context limit in tokens (150 000 by default), which the model window caps, so a large-window model is compacted at the same fill as a small one. Claude Code compacts on its own at 78 % of its window, so for Claude Code threads the plugin acts a little below that point. A per-thread mode (as in settings, off, or on with its own threshold) and a per-thread limit override the global settings.
+Off by default. When it is on, the server compacts a thread when the thread goes idle with its context at or above the threshold (80 % by default, 50–95). It never interrupts a turn and waits 10 minutes between attempts on one thread. The threshold is a percent of the thread's working context limit in tokens, which the model window caps. The limit follows the provider: a per-thread limit, else a per-provider limit for Claude Code or Codex, else the point where the provider compacts on its own when bb reports it (Claude Code does, Codex does not), else a global limit (150 000 by default). When a limit lies above the point where the provider compacts on its own, the plugin acts a little below that point. A per-thread mode (as in settings, off, or on with its own threshold) and a per-thread limit override the settings.
 
 ## Settings and CLI
 
-Settings: the context limit, auto-compact and its threshold, the poll interval, the UI language (English or Russian) and whether limits show the percent used or the percent left.
+Settings: the global context limit and one for each of Claude Code and Codex, auto-compact and its threshold, the poll interval, the UI language (English or Russian) and whether limits show the percent used or the percent left.
 
 The `bb usage-forecast` command prints the status of every provider and a thread's context, compacts a thread and sets a thread's auto-compact mode. Agents in bb threads get the same reference as a skill.
 

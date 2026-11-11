@@ -23,6 +23,16 @@ export const POLL_DEFAULT_MINUTES = 2;
 export const CONTEXT_LIMIT_MIN_TOKENS = 10_000;
 export const CONTEXT_LIMIT_MAX_TOKENS = 2_000_000;
 export const CONTEXT_LIMIT_DEFAULT_TOKENS = 150_000;
+/**
+ * Providers with their own working-limit setting. `0` (the default) means
+ * auto: the provider's own compaction point when bb reports it, else the
+ * global `contextLimitTokens`.
+ */
+export const PROVIDER_LIMIT_SETTINGS = {
+  "claude-code": "claudeCodeContextLimitTokens",
+  codex: "codexContextLimitTokens",
+} as const;
+export const PROVIDER_LIMIT_AUTO = 0;
 /** Auto-compact entries shown in the banner and in `status`. */
 export const RECENT_COMPACTIONS = 5;
 
@@ -30,6 +40,8 @@ export const threadIdSchema = z.string().min(1).max(128);
 export const thresholdSchema = z.number().int().min(THRESHOLD_MIN_PERCENT).max(THRESHOLD_MAX_PERCENT);
 export const pollIntervalSchema = z.number().int().min(POLL_MIN_MINUTES).max(POLL_MAX_MINUTES);
 export const contextLimitSchema = z.number().int().min(CONTEXT_LIMIT_MIN_TOKENS).max(CONTEXT_LIMIT_MAX_TOKENS);
+/** A per-provider limit: `0` for auto, else a working limit in tokens. */
+export const providerLimitSchema = z.union([z.literal(PROVIDER_LIMIT_AUTO), contextLimitSchema]);
 
 // --- Limits -----------------------------------------------------------------
 
@@ -139,20 +151,31 @@ export const contextCategorySchema = z.object({
   kind: z.enum(["used", "free", "reserved", "deferred"]),
 });
 
-export const CONTEXT_LIMIT_SOURCES = ["settings", "thread", "window"] as const;
+/**
+ * Where the working limit comes from, in order of precedence: `thread` (the
+ * thread's override), `provider` (the per-provider setting), `reported` (the
+ * provider's own compaction point as bb reports it), `settings` (the global
+ * limit). `window` replaces any of them when the model window is smaller.
+ */
+export const CONTEXT_LIMIT_SOURCES = ["settings", "thread", "window", "provider", "reported"] as const;
+export type ContextLimitSource = (typeof CONTEXT_LIMIT_SOURCES)[number];
 
 export const threadContextSchema = z.object({
   usedTokens: z.number(),
   /** The model's context window. */
   windowTokens: z.number(),
-  /** The working limit: the settings' or the thread's, capped by the window. */
+  /** The working limit, capped by the window; see CONTEXT_LIMIT_SOURCES. */
   limitTokens: z.number(),
-  /** Where `limitTokens` comes from; `window` when the window is smaller than the configured limit. */
+  /** Where `limitTokens` comes from; `window` when the window is smaller than the chosen limit. */
   limitSource: z.enum(CONTEXT_LIMIT_SOURCES),
   /** Used tokens as a percent of `limitTokens`; above 100 past the limit. */
   percent: z.number(),
   estimated: z.boolean(),
-  /** Where the provider compacts on its own (Claude Code), when it says. */
+  /**
+   * Where the provider compacts on its own, in tokens: from this thread's
+   * snapshot, or the last value bb reported for the same provider and
+   * window. Null when unknown (Codex reports none).
+   */
   autoCompactAtTokens: z.number().nullable(),
   /** Empty when the provider gives no breakdown (Codex). */
   categories: z.array(contextCategorySchema),
@@ -175,7 +198,7 @@ export const threadStateSchema = z.object({
     /**
      * What auto-compact acts on, in percent of the working limit:
      * `thresholdPercent`, capped below the point where the provider compacts
-     * on its own (Claude Code, 78 % of its window).
+     * on its own when that point is known.
      */
     effectiveThresholdPercent: z.number(),
     /** The same point in tokens, or null while the context is not measured. */

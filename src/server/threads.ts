@@ -11,29 +11,48 @@ import {
   contextCategorySchema,
   normalizeOverride,
   overrideSchema,
+  PROVIDER_LIMIT_AUTO,
+  PROVIDER_LIMIT_SETTINGS,
   POLL_DEFAULT_MINUTES,
   POLL_MAX_MINUTES,
   POLL_MIN_MINUTES,
   THRESHOLD_DEFAULT_PERCENT,
   THRESHOLD_MAX_PERCENT,
   THRESHOLD_MIN_PERCENT,
+  type ContextLimitSource,
   type ThreadContext,
   type ThreadOverride,
   type ThreadState,
 } from "../shared/contract";
 import type { Storage } from "./storage";
 
+export type LimitProvider = keyof typeof PROVIDER_LIMIT_SETTINGS;
+
 export interface PluginSettings {
   autoCompactEnabled: boolean;
   autoCompactThresholdPercent: number;
   pollIntervalMinutes: number;
-  /** The working context limit in tokens; the thread's window caps it. */
+  /** The global working context limit in tokens; the thread's window caps it. */
   contextLimitTokens: number;
+  /** Per-provider working limit in tokens; PROVIDER_LIMIT_AUTO (0) is auto. */
+  providerLimitTokens: Record<LimitProvider, number>;
 }
 
 function clampInt(value: unknown, min: number, max: number, fallback: number): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
   return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+/** A per-provider limit: zero, negative or not a number is auto; otherwise clamped to the range. */
+function parseProviderLimit(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value) || Math.round(value) <= 0) return PROVIDER_LIMIT_AUTO;
+  return clampInt(value, CONTEXT_LIMIT_MIN_TOKENS, CONTEXT_LIMIT_MAX_TOKENS, PROVIDER_LIMIT_AUTO);
+}
+
+const LIMIT_PROVIDERS = Object.keys(PROVIDER_LIMIT_SETTINGS) as LimitProvider[];
+
+export function isLimitProvider(providerId: string | null): providerId is LimitProvider {
+  return providerId !== null && Object.hasOwn(PROVIDER_LIMIT_SETTINGS, providerId);
 }
 
 /** Settings values are untrusted: out-of-range numbers are clamped, wrong types fall back. */
@@ -53,19 +72,34 @@ export function parseSettings(raw: Record<string, unknown> | null | undefined): 
       CONTEXT_LIMIT_MAX_TOKENS,
       CONTEXT_LIMIT_DEFAULT_TOKENS,
     ),
+    providerLimitTokens: Object.fromEntries(
+      LIMIT_PROVIDERS.map((id) => [id, parseProviderLimit(raw?.[PROVIDER_LIMIT_SETTINGS[id]])]),
+    ) as Record<LimitProvider, number>,
   };
 }
 
-/** The configured working limit before the window caps it. */
+/** The chosen working limit before the window caps it. */
 export interface ContextLimit {
   tokens: number;
-  source: "settings" | "thread";
+  source: Exclude<ContextLimitSource, "window">;
 }
 
-export function contextLimitOf(override: ThreadOverride, settings: PluginSettings): ContextLimit {
-  return override.limitTokens === undefined
-    ? { tokens: settings.contextLimitTokens, source: "settings" }
-    : { tokens: override.limitTokens, source: "thread" };
+/**
+ * The working limit, in order of precedence: the thread's override, the
+ * per-provider setting, the provider's own compaction point (`compactAtTokens`,
+ * when known), then the global setting. The window caps it later.
+ */
+export function contextLimitOf(
+  override: ThreadOverride,
+  settings: PluginSettings,
+  providerId: string | null,
+  compactAtTokens: number | null,
+): ContextLimit {
+  if (override.limitTokens !== undefined) return { tokens: override.limitTokens, source: "thread" };
+  const own = isLimitProvider(providerId) ? settings.providerLimitTokens[providerId] : PROVIDER_LIMIT_AUTO;
+  if (own > 0) return { tokens: own, source: "provider" };
+  if (compactAtTokens !== null && compactAtTokens > 0) return { tokens: compactAtTokens, source: "reported" };
+  return { tokens: settings.contextLimitTokens, source: "settings" };
 }
 
 export const INHERIT: ThreadOverride = { autoCompact: "inherit" };
@@ -110,43 +144,120 @@ const usageInput = z.object({
     .nullish(),
 });
 
+/** A `threads.context` answer before a limit is applied. */
+export interface Usage {
+  usedTokens: number;
+  windowTokens: number;
+  estimated: boolean;
+  /** Where the provider compacts on its own, from this answer's snapshot. */
+  autoCompactAtTokens: number | null;
+  categories: ThreadContext["categories"];
+}
+
 /**
- * Context fill from a `threads.context` answer, or null when the host has no
- * measurement. Claude Code gives a snapshot with the window and a breakdown;
- * Codex gives only `usedTokens` and `modelContextWindow`. The percent is of
- * the working limit, which the window caps.
+ * The usage in a `threads.context` answer, or null when the host has no
+ * measurement. Claude Code gives a snapshot (after a turn ends) with the
+ * window, its own compaction point and a breakdown; Codex gives only
+ * `usedTokens` and `modelContextWindow`.
  */
-export function readContext(answer: unknown, limit: ContextLimit): ThreadContext | null {
+export function readUsage(answer: unknown): Usage | null {
   const parsed = usageInput.safeParse((answer as { usage?: unknown } | null)?.usage);
   if (!parsed.success) return null;
   const usage = parsed.data;
   const snapshot = usage.snapshot ?? null;
   const windowTokens = snapshot?.contextWindowTokens ?? usage.modelContextWindow ?? 0;
   if (!(windowTokens > 0)) return null;
-  const usedTokens = snapshot?.usedTokens ?? usage.usedTokens;
   const categories = (snapshot?.categories ?? []).flatMap((c) => {
     const one = contextCategorySchema.safeParse(c);
     return one.success ? [one.data] : [];
   });
-  const limitTokens = Math.min(limit.tokens, windowTokens);
+  const compactAt = snapshot?.autoCompactAtTokens ?? null;
   return {
-    usedTokens,
+    usedTokens: snapshot?.usedTokens ?? usage.usedTokens,
     windowTokens,
-    limitTokens,
-    limitSource: limitTokens < limit.tokens ? "window" : limit.source,
-    percent: (usedTokens / limitTokens) * 100,
     estimated: usage.estimated ?? false,
-    autoCompactAtTokens: snapshot?.autoCompactAtTokens ?? null,
+    autoCompactAtTokens: compactAt !== null && compactAt > 0 ? compactAt : null,
     categories,
   };
 }
 
-// Claude Code compacts on its own at `autoCompactAtTokens` (78 % of its
-// window on bb 0.49). A threshold at or above that never fires, so the
-// effective threshold is capped PROVIDER_MARGIN_PERCENT of the window below
-// it: the plugin then compacts between turns, before the provider does it in
-// the middle of one. The threshold is a percent of the working limit; with a
-// limit well below the window the cap never applies.
+/**
+ * The context fill against a working limit, which the window caps.
+ * `autoCompactAtTokens` is the provider's own compaction point when known.
+ */
+export function measure(usage: Usage, limit: ContextLimit, autoCompactAtTokens: number | null = usage.autoCompactAtTokens): ThreadContext {
+  const limitTokens = Math.min(limit.tokens, usage.windowTokens);
+  return {
+    usedTokens: usage.usedTokens,
+    windowTokens: usage.windowTokens,
+    limitTokens,
+    limitSource: limitTokens < limit.tokens ? "window" : limit.source,
+    percent: (usage.usedTokens / limitTokens) * 100,
+    estimated: usage.estimated,
+    autoCompactAtTokens,
+    categories: usage.categories,
+  };
+}
+
+/**
+ * Context fill from a `threads.context` answer with the limit chosen by
+ * `contextLimitOf`; `rememberedCompactAt` stands in when the answer has no
+ * snapshot. Null when the host has no measurement.
+ */
+export function readContext(
+  answer: unknown,
+  override: ThreadOverride,
+  settings: PluginSettings,
+  providerId: string | null,
+  rememberedCompactAt: number | null = null,
+): ThreadContext | null {
+  const usage = readUsage(answer);
+  if (usage === null) return null;
+  const compactAt = usage.autoCompactAtTokens ?? rememberedCompactAt;
+  return measure(usage, contextLimitOf(override, settings, providerId, compactAt), compactAt);
+}
+
+/**
+ * Context fill from a `threads.context` answer with the thread's limit. A
+ * compaction point in the answer is remembered per provider and window; an
+ * answer without one (an answering Claude Code thread, or one whose snapshot
+ * is gone) uses the remembered point, so the limit does not jump between
+ * turns. Null when the host has no measurement.
+ */
+export async function measureThread(
+  storage: Storage,
+  answer: unknown,
+  providerId: string | null,
+  override: ThreadOverride,
+  settings: PluginSettings,
+  now: number,
+): Promise<ThreadContext | null> {
+  const usage = readUsage(answer);
+  if (usage === null) return null;
+  let compactAt = usage.autoCompactAtTokens;
+  if (providerId !== null) {
+    if (compactAt !== null) {
+      try {
+        await storage.rememberCompactPoint(providerId, usage.windowTokens, compactAt, now);
+      } catch {
+        // Remembering only steadies later reads; this reading stands.
+      }
+    } else {
+      compactAt = await storage.compactPoint(providerId, usage.windowTokens);
+    }
+  }
+  return measure(usage, contextLimitOf(override, settings, providerId, compactAt), compactAt);
+}
+
+// A provider compacts on its own at `autoCompactAtTokens` when it reports one
+// (Claude Code on bb 0.49: its window minus a 33 000-token buffer, 167 000 of
+// a 200 000 window, 117 000 of a 150 000 one; Codex reports none). A
+// threshold at or above that never fires, so the effective threshold is
+// capped PROVIDER_MARGIN_PERCENT of the window below it: the plugin then
+// compacts between turns, before the provider does it in the middle of one.
+// When the limit is that point itself, the cap sits above the highest
+// threshold (95 %) and never applies; it matters for a thread or
+// per-provider limit above the provider's point.
 export const PROVIDER_MARGIN_PERCENT = 2;
 
 /** Where the provider compacts on its own, as a percent of its window. */
@@ -213,7 +324,7 @@ export async function readThreadState(deps: ThreadReaderDeps, threadId: string):
   ]);
   const { providerId, active } = readThreadInfo(info);
   const override = parseOverride(metadata);
-  const ctx = readContext(context, contextLimitOf(override, settings));
+  const ctx = await measureThread(deps.storage, context, providerId, override, settings, now);
   const policy = effectivePolicy(override, settings);
   return {
     threadId,

@@ -38,7 +38,8 @@ afterEach(() => {
 
 describe("auto-compact on idle", () => {
   it("compacts a Claude Code thread above the capped threshold and logs before and after", async () => {
-    const t = setup();
+    // A Claude Code limit of 150 000 lies above its own compaction point (117 000).
+    const t = setup({ providerLimitTokens: { "claude-code": 150_000, codex: 0 } });
     // 77 % of 150 000: under the 80 % setting, but over the effective 76 %.
     t.threads.thread(T, "claude-code", claudeContext(115_500));
     await t.compactor.onIdle(T);
@@ -51,7 +52,7 @@ describe("auto-compact on idle", () => {
   });
 
   it("does nothing below the effective threshold", async () => {
-    const t = setup();
+    const t = setup({ providerLimitTokens: { "claude-code": 150_000, codex: 0 } });
     t.threads.thread(T, "claude-code", claudeContext(112_500)); // 75 %
     await t.compactor.onIdle(T);
     expect(t.threads.compactCalls).toEqual([]);
@@ -270,7 +271,8 @@ describe("after-fill timing", () => {
 describe("manual compact", () => {
   it("compacts an idle thread regardless of the threshold and settings", async () => {
     const t = setup({ autoCompactEnabled: false });
-    t.threads.thread(T, "claude-code", claudeContext(30_000));
+    // 20 % of the 117 000 point where Claude Code compacts on its own.
+    t.threads.thread(T, "claude-code", claudeContext(23_400));
     const result = await t.compactor.manual(T);
     expect(result).toMatchObject({ ok: true, message: null, entry: { trigger: "manual", beforePercent: 20 } });
   });

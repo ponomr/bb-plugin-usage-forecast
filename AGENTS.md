@@ -88,8 +88,15 @@ Context window:
 - `modelContextWindow` can disagree with the snapshot (200 000 vs 150 000 in
   an idle thread); use `snapshot.contextWindowTokens` when present.
 - An idle thread gets `compactionOfferAt`, one hour after it went idle.
-- Claude Code compacts on its own at `autoCompactAtTokens` (78 % of the
-  window), so an auto-compact threshold above that never fires for it.
+- Claude Code compacts on its own at `autoCompactAtTokens`: the window minus
+  the 33 000 buffer (117 000 of 150 000, 167 000 of 200 000; checked
+  2026-11-11), not a fixed percent. An auto-compact threshold above that never
+  fires for it. Some idle Claude Code threads have no snapshot at all, so the
+  plugin remembers the last point per provider and window.
+- Codex reports no compaction point and no `model_auto_compact_token_limit`;
+  a 500K model shows `modelContextWindow: 475000` (bb reports the usable
+  95 %). Its compaction point reaches the plugin only through the
+  per-provider setting.
 - `providers.list()` capabilities have no `supportsManualCompaction` (A5):
   the plugin tries `threads.compact` and marks the provider unsupported on
   failure.

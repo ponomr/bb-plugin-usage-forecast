@@ -11,6 +11,8 @@ export const MAX_CLOSED_WINDOWS = 30;
 export const MAX_LOG_ENTRIES = 100;
 /** An unsupported mark expires so a provider that gains compact, or a misread error, recovers on its own. */
 export const UNSUPPORTED_TTL_MS = 24 * 60 * 60_000;
+/** Remembered compaction points (one per provider and window size). */
+export const MAX_COMPACT_POINTS = 20;
 
 export const keys = {
   latest: "limits:latest",
@@ -19,7 +21,17 @@ export const keys = {
   log: "autocompact:log",
   cooldown: (threadId: string) => `autocompact:cooldown:${threadId}`,
   unsupported: "autocompact:unsupported",
+  compactPoints: "context:compact-points",
 } as const;
+
+/** The last compaction point bb reported for one provider and window size. */
+export interface CompactPoint {
+  tokens: number;
+  /** Epoch ms of the last read that reported it. */
+  seenAt: number;
+}
+
+export const compactPointKey = (providerId: string, windowTokens: number) => `${providerId}|${windowTokens}`;
 
 export interface Sample {
   at: number;
@@ -157,5 +169,37 @@ export class Storage {
     if (!(providerId in marks)) return;
     delete marks[providerId];
     await this.kv.set(keys.unsupported, marks);
+  }
+
+  /** Keyed by `compactPointKey`. A value in another shape reads as empty. */
+  async compactPoints(): Promise<Record<string, CompactPoint>> {
+    const value = await this.kv.get<unknown>(keys.compactPoints);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+    return Object.fromEntries(
+      Object.entries(value).filter(
+        (entry): entry is [string, CompactPoint] =>
+          typeof (entry[1] as CompactPoint | null)?.tokens === "number" && typeof (entry[1] as CompactPoint).seenAt === "number",
+      ),
+    );
+  }
+
+  async compactPoint(providerId: string, windowTokens: number): Promise<number | null> {
+    return (await this.compactPoints())[compactPointKey(providerId, windowTokens)]?.tokens ?? null;
+  }
+
+  /**
+   * Stores the point when it changed, or when the stored one is older than an
+   * hour; keeps the MAX_COMPACT_POINTS most recently seen.
+   */
+  async rememberCompactPoint(providerId: string, windowTokens: number, tokens: number, at: number): Promise<void> {
+    const points = await this.compactPoints();
+    const key = compactPointKey(providerId, windowTokens);
+    const old = points[key];
+    if (old !== undefined && old.tokens === tokens && at - old.seenAt < 60 * 60_000) return;
+    points[key] = { tokens, seenAt: at };
+    const kept = Object.entries(points)
+      .sort((a, b) => b[1].seenAt - a[1].seenAt)
+      .slice(0, MAX_COMPACT_POINTS);
+    await this.kv.set(keys.compactPoints, Object.fromEntries(kept));
   }
 }

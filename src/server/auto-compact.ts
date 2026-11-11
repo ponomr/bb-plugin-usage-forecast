@@ -14,11 +14,10 @@
 import { type CompactLogEntry, type CompactResult, type ThreadContext } from "../shared/contract";
 import type { Storage } from "./storage";
 import {
-  contextLimitOf,
   effectivePolicy,
   effectiveThreshold,
+  measureThread,
   parseOverride,
-  readContext,
   readThreadInfo,
   type PluginSettings,
   type ThreadsSdk,
@@ -89,7 +88,6 @@ export class AutoCompactor {
     const override = parseOverride(metadata);
     const policy = effectivePolicy(override, settings);
     if (!policy.enabled) return;
-    const limit = contextLimitOf(override, settings);
 
     const cooldown = await storage.cooldownUntil(threadId);
     if (cooldown !== null && cooldown > this.now()) return;
@@ -99,7 +97,7 @@ export class AutoCompactor {
     if (info.active) return;
     if (info.providerId !== null && (await storage.unsupportedProviders(this.now())).includes(info.providerId)) return;
 
-    const context = readContext(await threads.context({ threadId }), limit);
+    const context = await measureThread(storage, await threads.context({ threadId }), info.providerId, override, settings, this.now());
     if (context === null) return;
     if (context.percent < effectiveThreshold(policy.thresholdPercent, context)) return;
 
@@ -121,7 +119,7 @@ export class AutoCompactor {
       const { threads } = this.deps;
       const info = readThreadInfo(await threads.get({ threadId }));
       if (info.active) return { ok: false, message: "The agent is answering; try again when it is idle", entry: null };
-      const context = readContext(await threads.context({ threadId }), await this.limitOf(threadId));
+      const context = await this.measure(threadId, info.providerId);
       const entry = await this.compactNow(threadId, info.providerId, context, "manual");
       return { ok: entry.result === "compacted", message: entry.message, entry };
     } finally {
@@ -157,10 +155,15 @@ export class AutoCompactor {
     return entry;
   }
 
-  /** The thread's working limit: its override or the settings. */
-  private async limitOf(threadId: string) {
-    const [settings, metadata] = await Promise.all([this.deps.settings(), this.deps.threads.getPluginMetadata({ threadId })]);
-    return contextLimitOf(parseOverride(metadata), settings);
+  /** The thread's context against its working limit (override, settings, provider). */
+  private async measure(threadId: string, providerId: string | null): Promise<ThreadContext | null> {
+    const { threads, storage } = this.deps;
+    const [settings, metadata, answer] = await Promise.all([
+      this.deps.settings(),
+      threads.getPluginMetadata({ threadId }),
+      threads.context({ threadId }),
+    ]);
+    return measureThread(storage, answer, providerId, parseOverride(metadata), settings, this.now());
   }
 
   /** Reads the after-fill once the compact turn is over and updates the log and cooldown. */
@@ -169,12 +172,11 @@ export class AutoCompactor {
     try {
       await idle;
       if (this.disposed) return;
-      const limit = await this.limitOf(entry.threadId);
-      let after = readContext(await threads.context({ threadId: entry.threadId }), limit);
+      let after = await this.measure(entry.threadId, entry.providerId);
       if (after === null) {
         await this.sleep(AFTER_RETRY_MS);
         if (this.disposed) return;
-        after = readContext(await threads.context({ threadId: entry.threadId }), limit);
+        after = await this.measure(entry.threadId, entry.providerId);
       }
       if (after === null) return; // Unknown: the entry keeps a null after-fill, the cooldown stays.
       await storage.updateLog(entry.threadId, entry.at, { afterPercent: after.percent });

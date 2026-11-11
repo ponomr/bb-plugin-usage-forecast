@@ -15,7 +15,7 @@ import {
   type ThreadState,
 } from "../shared/contract";
 import { formatPercent } from "../shared/thresholds";
-import { contextPercent, formatSpan, formatTokens, shortTokens } from "./format";
+import { contextPercent, formatSpan, formatTokens, providerName, shortTokens } from "./format";
 import { useCompact, useNow, useSetOverride, useThreadState, type CompactState } from "./hooks";
 import { useStrings, type Strings } from "./i18n";
 import { contextView } from "./model";
@@ -207,13 +207,14 @@ export function ContextPanel({ state }: { state: ThreadState }) {
               {s.freeOf(shortTokens(view.freeTokens), shortTokens(view.limitTokens))}
             </span>
           </div>
-          {ctx.limitTokens < ctx.windowTokens || ctx.limitSource === "thread" ? (
-            <div className="text-muted-foreground" data-testid="context-limit">
-              {ctx.limitTokens < ctx.windowTokens
-                ? s.limitOfWindow(shortTokens(ctx.limitTokens), shortTokens(ctx.windowTokens), ctx.limitSource === "thread")
-                : s.limitForThread(shortTokens(ctx.limitTokens))}
-            </div>
-          ) : null}
+          <div className="text-muted-foreground" data-testid="context-limit">
+            {s.limitLine(
+              shortTokens(ctx.limitTokens),
+              ctx.limitSource,
+              providerName(s, state.providerId),
+              ctx.limitTokens < ctx.windowTokens ? shortTokens(ctx.windowTokens) : null,
+            )}
+          </div>
           {view.segments[0]?.key === "used" ? null : (
             <ul className="flex flex-col gap-0.5" aria-label={s.contextBreakdown}>
               {view.segments.map((seg) =>
@@ -227,7 +228,7 @@ export function ContextPanel({ state }: { state: ThreadState }) {
               )}
             </ul>
           )}
-          {ctx.autoCompactAtTokens ? (
+          {ctx.autoCompactAtTokens && ctx.limitSource !== "reported" ? (
             <div className="text-muted-foreground">
               {s.providerCompactsAt(shortTokens(ctx.autoCompactAtTokens), formatPercent((ctx.autoCompactAtTokens / ctx.windowTokens) * 100))}
             </div>

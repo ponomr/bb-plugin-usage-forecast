@@ -7,6 +7,7 @@ import { useRpc, useSettings } from "@get-bb/plugin-sdk/app";
 import {
   CONTEXT_LIMIT_DEFAULT_TOKENS,
   POLL_DEFAULT_MINUTES,
+  PROVIDER_LIMIT_SETTINGS,
   THRESHOLD_DEFAULT_PERCENT,
   type CompactLogEntry,
   type UsageForecastContract,
@@ -57,6 +58,11 @@ export function SettingsSection() {
   const threshold = Number(values.autoCompactThresholdPercent ?? THRESHOLD_DEFAULT_PERCENT);
   const interval = Number(values.pollIntervalMinutes ?? POLL_DEFAULT_MINUTES);
   const limit = Number(values.contextLimitTokens ?? CONTEXT_LIMIT_DEFAULT_TOKENS);
+  /** A per-provider limit in short form, or null for auto (0 or unset). */
+  const providerLimit = (key: string) => {
+    const value = Number(values[key] ?? 0);
+    return Number.isFinite(value) && value > 0 ? shortTokens(value) : null;
+  };
   const data = snapshot.data;
 
   const refresh = () => {
@@ -72,7 +78,14 @@ export function SettingsSection() {
   return (
     <div className="flex flex-col gap-3 text-sm" data-testid="usage-settings">
       <div className="flex flex-col gap-1">
-        <div>{s.settingsSummary(enabled, threshold, interval, shortTokens(limit))}</div>
+        <div>{s.settingsSummary(
+            enabled,
+            threshold,
+            interval,
+            shortTokens(limit),
+            providerLimit(PROVIDER_LIMIT_SETTINGS["claude-code"]),
+            providerLimit(PROVIDER_LIMIT_SETTINGS.codex),
+          )}</div>
         <div className="text-muted-foreground">{s.settingsHint}</div>
       </div>
 

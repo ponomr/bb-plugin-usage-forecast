@@ -11,11 +11,11 @@ import { claudeContext, claudeLimits, Clock, codexContext, FakeThreads, makeStor
 
 const T = "thr_a";
 
-function setup() {
+function setup(over: Parameters<typeof settingsOf>[0] = {}) {
   const clock = new Clock();
   const threads = new FakeThreads();
   const storage = makeStorage();
-  const settings = settingsOf();
+  const settings = settingsOf(over);
   const poller = new Poller({
     usageLimits: async () => claudeLimits(40, 20),
     storage,
@@ -124,23 +124,39 @@ describe("bb usage-forecast", () => {
     expect(JSON.parse(json.stdout).providers[0].providerId).toBe("claude-code");
   });
 
-  it("thread shows the context, the cap and the cooldown", async () => {
+  it("thread shows the context, the limit source and the cooldown", async () => {
     const t = setup();
-    t.threads.thread(T, "claude-code", claudeContext(90_000));
+    // A 200 000 window where Claude Code compacts on its own at 167 000.
+    t.threads.thread(T, "claude-code", claudeContext(100_200, 200_000));
     await t.storage.setCooldownUntil(T, NOW + 4 * MIN);
     const out = await t.run("thread", T);
     expect(out.stdout).toBe(
       [
         "Thread thr_a (claude-code): idle",
-        "Context: 60% (90,000 of 150,000 tokens)",
-        "Limit: 150,000 tokens (from settings), window 150,000",
-        "Provider compacts on its own at 117,000 tokens (78% of the window)",
-        "  Messages: 90,000",
-        "Auto-compact: on at 80%, acts at 76% = 114,000 tokens (from settings)",
+        "Context: 60% (100,200 of 167,000 tokens)",
+        "Limit: 167,000 tokens (where claude-code compacts on its own), window 200,000",
+        "Provider compacts on its own at 167,000 tokens (84% of the window)",
+        "  Messages: 100,200",
+        "Auto-compact: on at 80% = 133,600 tokens (from settings)",
         "Override: inherit",
         "Cooldown: 4m left",
       ].join("\n"),
     );
+  });
+
+  it("thread names a per-provider limit and caps the threshold below the provider's own point", async () => {
+    const t = setup({ providerLimitTokens: { "claude-code": 150_000, codex: 250_000 } });
+    t.threads.thread(T, "claude-code", claudeContext(90_000));
+    const claude = (await t.run("thread", T)).stdout;
+    expect(claude).toContain("Limit: 150,000 tokens (from the claude-code setting), window 150,000");
+    expect(claude).toContain("Auto-compact: on at 80%, acts at 76% = 114,000 tokens (from settings)");
+
+    t.threads.thread(T, "codex", codexContext(100_000, 475_000));
+    const codex = (await t.run("thread", T)).stdout;
+    expect(codex).toContain("Context: 40% (100,000 of 250,000 tokens)");
+    expect(codex).toContain("Limit: 250,000 tokens (from the codex setting), window 475,000");
+    expect(codex).toContain("Auto-compact: on at 80% = 200,000 tokens (from settings)");
+    expect(codex).not.toContain("Provider compacts");
   });
 
   it("thread reports an unknown context and an unsupported provider", async () => {
