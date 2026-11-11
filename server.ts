@@ -25,6 +25,17 @@ import { DEFAULT_LIMITS_SHOW, LIMITS_SHOW } from "./src/shared/limits-show";
 
 export const POLL_SCHEDULE = "poll-limits";
 
+/** Thread events after which the context fill is re-read. */
+export const CONTEXT_EVENT_TYPES: ReadonlySet<string> = new Set([
+  "thread/contextWindowUsage/updated",
+  "thread/tokenUsage/updated",
+  "thread/compacted",
+  "thread/context/cleared",
+]);
+
+/** Shortest gap between two invalidations of one thread from context events. */
+export const CONTEXT_INVALIDATE_MIN_MS = 2_000;
+
 export default async function plugin(bb: BbPluginApi) {
   const settingsHandle = bb.settings.define({
     autoCompactEnabled: {
@@ -97,6 +108,41 @@ export default async function plugin(bb: BbPluginApi) {
   bb.background.schedule(POLL_SCHEDULE, TICK_CRON, () => poller.tick());
 
   bb.events.on("thread.active", ({ thread }) => compactor.onActive(thread.id));
+  // A turn that moved the context number, or a compaction, invalidates the
+  // thread's RPC cache so an open app re-reads at once instead of on its
+  // backstop poll (after bb-plugin-context-meter). The host reports a usage
+  // event on every tool call of a turn, so invalidations of one thread are
+  // coalesced to one per CONTEXT_INVALIDATE_MIN_MS.
+  const contextTimers = new Map<string, { timer: ReturnType<typeof setTimeout> | null; lastAt: number }>();
+  const invalidateThreadSoon = (threadId: string) => {
+    const now = Date.now();
+    const entry = contextTimers.get(threadId) ?? { timer: null, lastAt: 0 };
+    if (entry.timer !== null) return;
+    entry.timer = setTimeout(
+      () => {
+        entry.timer = null;
+        entry.lastAt = Date.now();
+        invalidateThread(threadId);
+      },
+      Math.max(0, entry.lastAt + CONTEXT_INVALIDATE_MIN_MS - now),
+    );
+    contextTimers.set(threadId, entry);
+    for (const [id, e] of contextTimers) if (e.timer === null && e.lastAt + CONTEXT_INVALIDATE_MIN_MS <= now) contextTimers.delete(id);
+  };
+  const unsubscribe = bb.sdk.subscribe({
+    event: "thread:changed",
+    callback: (event) => {
+      if (typeof event.id !== "string" || event.id === "") return;
+      const types = event.metadata?.eventTypes;
+      if (!Array.isArray(types) || !types.some((t) => CONTEXT_EVENT_TYPES.has(t))) return;
+      invalidateThreadSoon(event.id);
+    },
+  });
+  bb.onDispose(() => {
+    unsubscribe();
+    for (const e of contextTimers.values()) if (e.timer !== null) clearTimeout(e.timer);
+    contextTimers.clear();
+  });
   // Not awaited: a check reads the thread several times and must not hold up
   // other listeners. `onIdle` never throws.
   bb.events.on("thread.idle", ({ thread }) => {
