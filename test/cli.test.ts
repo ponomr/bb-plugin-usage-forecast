@@ -146,7 +146,7 @@ describe("bb usage-forecast", () => {
     const t = setup();
     t.threads.thread(T, "acp-x", { usage: null }, "running");
     await t.storage.markUnsupported("acp-x", NOW);
-    const state = await readThreadState({ threads: t.threads, storage: t.storage, settings: settingsOf() }, T);
+    const state = await readThreadState({ threads: t.threads, storage: t.storage, settings: settingsOf(), now: () => NOW }, T);
     const text = formatThread(state, NOW);
     expect(text).toContain("Thread thr_a (acp-x): answering");
     expect(text).toContain("Context: no measurement yet");

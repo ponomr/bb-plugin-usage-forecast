@@ -2,19 +2,26 @@
 // invalidation tags.
 
 import { createFakePluginHost, makeThreadResponse } from "@get-bb/plugin-sdk/testing";
-import { describe, expect, it } from "vitest";
-import plugin, { POLL_SCHEDULE } from "../server";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import plugin, { CONTEXT_INVALIDATE_MIN_MS, POLL_SCHEDULE } from "../server";
 import { LIMITS_TAG, threadTag, type LimitsSnapshot, type ThreadState } from "../src/shared/contract";
 import { claudeContext, claudeLimits, codexContext, FakeThreads } from "./helpers";
 
 const T = "thr_a";
 
+type ThreadChanged = { entity: "thread"; id?: string; metadata?: { eventTypes?: readonly string[] } };
+
 async function load(settings: Record<string, boolean | number> = {}, limits: () => unknown = () => claudeLimits(40, 20)) {
   const threads = new FakeThreads();
+  const subscriptions: { event: string; callback: (event: ThreadChanged) => void }[] = [];
   const { bb, harness } = createFakePluginHost({
     pluginId: "usage-forecast",
     settings,
     sdk: {
+      subscribe: ((args: { event: string; callback: (event: ThreadChanged) => void }) => {
+        subscriptions.push(args);
+        return () => subscriptions.splice(subscriptions.indexOf(args), 1);
+      }) as never,
       system: { usageLimits: () => limits() },
       threads: {
         get: (args) => threads.get(args),
@@ -27,10 +34,12 @@ async function load(settings: Record<string, boolean | number> = {}, limits: () 
   });
   await plugin(bb);
   const invalidations = () => harness.inspection.experimental_rpcInvalidations;
-  return { harness, threads, invalidations };
+  return { harness, threads, invalidations, subscriptions };
 }
 
 describe("plugin wiring", () => {
+  afterEach(() => vi.useRealTimers());
+
   it("polls on the schedule and serves the snapshot without account identifiers", async () => {
     const { harness, invalidations } = await load();
     const empty = (await harness.callRpc("snapshot", null)) as LimitsSnapshot;
@@ -107,6 +116,43 @@ describe("plugin wiring", () => {
     await harness.callRpc("setThreadOverride", { threadId: T, override: { autoCompact: "inherit" } });
     expect(threads.metadata.get(T)).toEqual({});
     expect(harness.sdk.callsTo("threads.updatePluginMetadata").at(-1)).toEqual([{ pluginId: "usage-forecast", threadId: T, remove: ["override"] }]);
+  });
+
+  it("invalidates a thread on its context events, coalesced, and unsubscribes on dispose", async () => {
+    const { harness, invalidations, subscriptions } = await load();
+    expect(subscriptions.map((s) => s.event)).toEqual(["thread:changed"]);
+    const emit = (event: ThreadChanged) => subscriptions[0]!.callback(event);
+    const since = invalidations().length;
+    const fresh = () => invalidations().slice(since);
+    vi.useFakeTimers();
+
+    emit({ entity: "thread", id: T, metadata: { eventTypes: ["item/completed", "turn/completed"] } });
+    emit({ entity: "thread", metadata: { eventTypes: ["thread/contextWindowUsage/updated"] } });
+    emit({ entity: "thread", id: T });
+    await vi.advanceTimersByTimeAsync(CONTEXT_INVALIDATE_MIN_MS);
+    expect(fresh()).toEqual([]);
+
+    // The first event invalidates at once; the rest of a burst waits for the gap.
+    emit({ entity: "thread", id: T, metadata: { eventTypes: ["thread/contextWindowUsage/updated", "item/started"] } });
+    emit({ entity: "thread", id: "thr_b", metadata: { eventTypes: ["thread/compacted"] } });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(fresh()).toEqual([
+      [LIMITS_TAG, threadTag(T)],
+      [LIMITS_TAG, threadTag("thr_b")],
+    ]);
+    emit({ entity: "thread", id: T, metadata: { eventTypes: ["thread/tokenUsage/updated"] } });
+    emit({ entity: "thread", id: T, metadata: { eventTypes: ["thread/tokenUsage/updated"] } });
+    await vi.advanceTimersByTimeAsync(CONTEXT_INVALIDATE_MIN_MS - 1);
+    expect(fresh()).toHaveLength(2);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fresh()).toHaveLength(3);
+
+    // A pending invalidation is dropped on dispose.
+    emit({ entity: "thread", id: T, metadata: { eventTypes: ["thread/context/cleared"] } });
+    await harness.lifecycle.dispose();
+    await vi.advanceTimersByTimeAsync(CONTEXT_INVALIDATE_MIN_MS);
+    expect(fresh()).toHaveLength(3);
+    expect(subscriptions).toEqual([]);
   });
 
   it("validates RPC input", async () => {

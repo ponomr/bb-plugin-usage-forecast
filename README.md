@@ -54,6 +54,9 @@ the context breakdown and one line per other provider.
   panel is in the expanded band.
 - **Server-side work.** Limits are polled on the server, so history and
   auto-compact work with every client closed.
+- **Live context.** The server listens to the thread's context events
+  (usage updated, compacted, cleared) and refreshes the open band at once;
+  a poll every 30 s while the agent answers is only a backstop.
 
 ## Install
 

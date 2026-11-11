@@ -1,6 +1,7 @@
-// Data hooks for the app. Reads refresh on server invalidation; the intervals
-// below are a fallback for hosts where realtime does not reach the client
-// (the phone on bb 0.49).
+// Data hooks for the app. Reads refresh on server invalidation: the server
+// invalidates a thread on every context event (see CONTEXT_EVENT_TYPES in
+// server.ts). The intervals below are a backstop for hosts where realtime
+// does not reach the client (the phone on bb 0.49).
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -15,7 +16,7 @@ import { parseLimitsShow, type LimitsShow } from "../shared/limits-show";
 import { normalizeOverride, usageForecastContract, type CompactResult, type ThreadOverride } from "../shared/contract";
 
 export const SNAPSHOT_REFETCH_MS = 60_000;
-export const THREAD_ACTIVE_REFETCH_MS = 5_000;
+export const THREAD_ACTIVE_REFETCH_MS = 30_000;
 export const THREAD_IDLE_REFETCH_MS = 60_000;
 
 function useInterval(callback: () => void, ms: number | null) {
