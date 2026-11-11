@@ -133,9 +133,10 @@ describe("bb usage-forecast", () => {
       [
         "Thread thr_a (claude-code): idle",
         "Context: 60% (90,000 of 150,000 tokens)",
-        "Provider compacts on its own at 78%",
+        "Limit: 150,000 tokens (from settings), window 150,000",
+        "Provider compacts on its own at 117,000 tokens (78% of the window)",
         "  Messages: 90,000",
-        "Auto-compact: on at 80%, acts at 76% (from settings)",
+        "Auto-compact: on at 80%, acts at 76% = 114,000 tokens (from settings)",
         "Override: inherit",
         "Cooldown: 4m left",
       ].join("\n"),
@@ -155,7 +156,7 @@ describe("bb usage-forecast", () => {
 
   it("compact starts a compact, and fails with a message when the agent is answering", async () => {
     const t = setup();
-    t.threads.thread(T, "codex", codexContext(0.5 * 258_400));
+    t.threads.thread(T, "codex", codexContext(75_000)); // 50 % of the 150 000 limit
     expect(await t.run("compact", T)).toMatchObject({ exitCode: 0, stdout: "Compact of thr_a started at 50%." });
     t.threads.status.set(T, "running");
     const busy = await t.run("compact", T);
@@ -178,6 +179,27 @@ describe("bb usage-forecast", () => {
     expect(bad.stderr).toContain("Mode must be inherit, off or on");
     const misplaced = await t.run("override", T, "off", "--threshold", "70");
     expect(misplaced.stderr).toContain("--threshold applies only to on");
+  });
+
+  it("override sets, keeps and clears the thread's context limit", async () => {
+    const t = setup();
+    t.threads.thread(T, "codex", codexContext(50_000));
+    expect((await t.run("override", T, "inherit", "--limit", "100000")).stdout).toBe(
+      "Auto-compact for thr_a: inherit. Context limit: 100,000 tokens.",
+    );
+    expect(t.threads.metadata.get(T)).toEqual({ override: { autoCompact: "inherit", limitTokens: 100_000 } });
+    // Without --limit the stored limit stays.
+    expect((await t.run("override", T, "on", "--threshold", "70")).stdout).toBe("Auto-compact for thr_a: on at 70%. Context limit: 100,000 tokens.");
+    expect(t.threads.metadata.get(T)).toEqual({ override: { autoCompact: "on", thresholdPercent: 70, limitTokens: 100_000 } });
+    const shown = await t.run("thread", T);
+    expect(shown.stdout).toContain("Context: 50% (50,000 of 100,000 tokens)");
+    expect(shown.stdout).toContain("Limit: 100,000 tokens (from this thread), window 258,400");
+    expect(shown.stdout).toContain("Override: on 70%, limit 100,000 tokens");
+    const small = await t.run("override", T, "on", "--limit", "5000");
+    expect(small.exitCode).not.toBe(0);
+    expect(small.stderr).toContain("--limit must be 0 or 10000-2000000");
+    expect((await t.run("override", T, "inherit", "--limit", "0")).stdout).toBe("Auto-compact for thr_a: inherit.");
+    expect(t.threads.metadata.get(T)).toEqual({});
     const outOfRange = await t.run("override", T, "on", "--threshold", "99");
     expect(outOfRange.exitCode).not.toBe(0);
   });

@@ -82,9 +82,9 @@ export function Bar({
   );
 }
 
-/** The context bar: used parts from the left, Claude Code's reserved buffer at the right end. */
+/** The context bar, full at the working limit: used parts from the left, Claude Code's reserved buffer at the right end. */
 export function SegmentBar({ view, className }: { view: ContextView; className?: string }) {
-  const width = (tokens: number) => `${clampPercent((tokens / Math.max(1, view.windowTokens)) * 100)}%`;
+  const width = (tokens: number) => `${clampPercent((tokens / Math.max(1, view.limitTokens)) * 100)}%`;
   return (
     <span className={cn(TRACK_CLASS, "gap-px", className)} aria-hidden>
       {view.segments.map((seg) => (

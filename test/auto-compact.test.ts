@@ -16,7 +16,8 @@ function setup(over: Partial<PluginSettings> = {}) {
   const compactor = new AutoCompactor({
     threads,
     storage,
-    settings: settingsOf(over),
+    // The Codex fixtures are percentages of its 258 400 window: the limit matches it.
+    settings: settingsOf({ contextLimitTokens: 258_400, ...over }),
     invalidate: (id) => invalidated.push(id),
     log: { info: () => {}, warn: (m) => warnings.push(m) },
     now: clock.now,

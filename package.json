@@ -1,6 +1,6 @@
 {
   "name": "bb-plugin-usage-forecast",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "Provider usage limits with a reset forecast, the thread context-window fill and auto-compact.",
   "private": true,
   "type": "module",

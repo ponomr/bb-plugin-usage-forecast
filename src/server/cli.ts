@@ -2,6 +2,8 @@
 
 import { cliCommand, defineCli, PluginCliError, type PluginCliRegistration } from "@get-bb/plugin-sdk";
 import {
+  CONTEXT_LIMIT_MAX_TOKENS,
+  CONTEXT_LIMIT_MIN_TOKENS,
   overrideSchema,
   threadIdSchema,
   THRESHOLD_MAX_PERCENT,
@@ -91,10 +93,15 @@ export function formatThread(t: ThreadState, now: number): string {
   const lines = [`Thread ${t.threadId}${t.providerId ? ` (${t.providerId})` : ""}: ${t.active ? "answering" : "idle"}`];
   const c = t.context;
   if (c) {
-    const tokens = `${c.usedTokens.toLocaleString("en-US")} of ${c.windowTokens.toLocaleString("en-US")} tokens`;
+    const n = (v: number) => v.toLocaleString("en-US");
+    const tokens = `${c.estimated ? "~" : ""}${n(c.usedTokens)} of ${n(c.limitTokens)} tokens`;
     lines.push(`Context: ${formatPercent(c.percent)} (${tokens}${c.estimated ? ", estimated" : ""})`);
+    const limitFrom = { settings: "from settings", thread: "from this thread", window: "the model window" }[c.limitSource];
+    lines.push(`Limit: ${n(c.limitTokens)} tokens (${limitFrom}), window ${n(c.windowTokens)}`);
     const providerAt = providerCompactsAtPercent(c);
-    if (providerAt !== null) lines.push(`Provider compacts on its own at ${formatPercent(providerAt)}`);
+    if (providerAt !== null && c.autoCompactAtTokens !== null) {
+      lines.push(`Provider compacts on its own at ${n(c.autoCompactAtTokens)} tokens (${formatPercent(providerAt)} of the window)`);
+    }
     for (const cat of c.categories.filter((x) => x.kind === "used" && x.tokens > 0)) {
       lines.push(`  ${cat.label}: ${cat.tokens.toLocaleString("en-US")}`);
     }
@@ -105,12 +112,14 @@ export function formatThread(t: ThreadState, now: number): string {
   const source = a.source === "thread" ? "this thread" : "settings";
   const capped =
     a.effectiveThresholdPercent !== a.thresholdPercent ? `, acts at ${formatPercent(a.effectiveThresholdPercent)}` : "";
+  const atTokens = a.effectiveThresholdTokens === null ? "" : ` = ${a.effectiveThresholdTokens.toLocaleString("en-US")} tokens`;
   lines.push(
     a.enabled
-      ? `Auto-compact: on at ${formatPercent(a.thresholdPercent)}${capped} (from ${source})`
+      ? `Auto-compact: on at ${formatPercent(a.thresholdPercent)}${capped}${atTokens} (from ${source})`
       : `Auto-compact: off (from ${source})`,
   );
-  lines.push(`Override: ${t.override.autoCompact}${t.override.thresholdPercent ? ` ${t.override.thresholdPercent}%` : ""}`);
+  const limitOverride = t.override.limitTokens === undefined ? "" : `, limit ${t.override.limitTokens.toLocaleString("en-US")} tokens`;
+  lines.push(`Override: ${t.override.autoCompact}${t.override.thresholdPercent ? ` ${t.override.thresholdPercent}%` : ""}${limitOverride}`);
   if (t.cooldownUntil !== null) lines.push(`Cooldown: ${formatDuration(t.cooldownUntil - now)} left`);
   if (!t.compactSupported) lines.push("Compact: not supported by this provider");
   return lines.join("\n");
@@ -165,7 +174,9 @@ export function createCli(service: Service, now: () => number = Date.now): Plugi
         },
       }),
       override: cliCommand({
-        summary: "Set auto-compact for one thread: inherit the settings, off, or on",
+        summary: "Set auto-compact and the context limit for one thread",
+        description:
+          "Mode inherit, off or on sets auto-compact for the thread. --limit sets the thread's working context limit in tokens (0 returns to the settings); without --limit the stored limit is kept.",
         positionals: [
           { name: "threadId", description: "thread id", required: true },
           { name: "mode", description: "inherit, off or on", required: true },
@@ -177,17 +188,30 @@ export function createCli(service: Service, now: () => number = Date.now): Plugi
             max: THRESHOLD_MAX_PERCENT,
             description: `Threshold in percent for "on" (${THRESHOLD_MIN_PERCENT}-${THRESHOLD_MAX_PERCENT})`,
           },
+          limit: {
+            type: "integer",
+            min: 0,
+            max: CONTEXT_LIMIT_MAX_TOKENS,
+            description: `Working context limit in tokens for this thread (${CONTEXT_LIMIT_MIN_TOKENS}-${CONTEXT_LIMIT_MAX_TOKENS}); 0 returns to the settings`,
+          },
         },
         async run({ positionals, options }) {
           const threadId = parseThreadId(positionals.threadId);
-          const parsed = overrideSchema.safeParse({ autoCompact: positionals.mode, thresholdPercent: options.threshold });
+          if (options.limit !== undefined && options.limit !== 0 && options.limit < CONTEXT_LIMIT_MIN_TOKENS) {
+            throw new PluginCliError(`--limit must be 0 or ${CONTEXT_LIMIT_MIN_TOKENS}-${CONTEXT_LIMIT_MAX_TOKENS}`, { code: "invalid" });
+          }
+          // Without --limit the thread keeps its stored limit.
+          const stored = options.limit === undefined ? (await service.thread(threadId)).override.limitTokens : undefined;
+          const limitTokens = options.limit === undefined ? stored : options.limit === 0 ? undefined : options.limit;
+          const parsed = overrideSchema.safeParse({ autoCompact: positionals.mode, thresholdPercent: options.threshold, limitTokens });
           if (!parsed.success) throw new PluginCliError("Mode must be inherit, off or on", { code: "invalid" });
           if (parsed.data.autoCompact !== "on" && options.threshold !== undefined) {
             throw new PluginCliError("--threshold applies only to on", { code: "invalid" });
           }
           const { override } = await service.setThreadOverride(threadId, parsed.data);
           const detail = override.thresholdPercent ? ` at ${override.thresholdPercent}%` : "";
-          return { exitCode: 0, stdout: `Auto-compact for ${threadId}: ${override.autoCompact}${detail}.` };
+          const limit = override.limitTokens === undefined ? "" : ` Context limit: ${override.limitTokens.toLocaleString("en-US")} tokens.`;
+          return { exitCode: 0, stdout: `Auto-compact for ${threadId}: ${override.autoCompact}${detail}.${limit}` };
         },
       }),
     },

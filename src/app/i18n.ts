@@ -64,12 +64,20 @@ export interface Strings {
   context: string;
   /** The context label in the collapsed row. */
   contextShort: string;
+  /** The tooltip of the collapsed row's context item. */
+  contextTitle(limitTokens: number, windowTokens: number): string;
   contextUsed(percent: string): string;
-  freeOf(free: string, total: string): string;
+  freeOf(free: string, limit: string): string;
   notMeasured: string;
   categories: { messages: string; tools: string; other: string };
   contextBreakdown: string;
-  providerCompactsAt(percent: string): string;
+  /** The working limit when it is below the model window. */
+  limitOfWindow(limit: string, window: string, forThread: boolean): string;
+  /** A per-thread limit equal to the window. */
+  limitForThread(limit: string): string;
+  limitLabel: string;
+  limitRange(minK: number, maxK: number): string;
+  providerCompactsAt(tokens: string, percentOfWindow: string): string;
   compactUnsupported: string;
 
   // Compact and auto compact
@@ -86,7 +94,7 @@ export interface Strings {
   apply: string;
   mode: Record<ThreadOverride["autoCompact"], string>;
   autoOff(forThread: boolean): string;
-  autoOn(at: string, actsAt: string | null, forThread: boolean, pausedFor: string | null): string;
+  autoOn(at: string, actsAt: string | null, atTokens: string | null, forThread: boolean, pausedFor: string | null): string;
   askPast(percent: string, threshold: string): string;
   now: string;
   afterNextReply: string;
@@ -97,7 +105,7 @@ export interface Strings {
   result: Record<CompactLogEntry["result"], string>;
 
   // Settings section
-  settingsSummary(enabled: boolean, threshold: number, interval: number): string;
+  settingsSummary(enabled: boolean, threshold: number, interval: number, limit: string): string;
   settingsHint: string;
   notPolledYet: string;
   lastPoll(ago: string): string;
@@ -161,12 +169,18 @@ export const en: Strings = {
 
   context: "Context",
   contextShort: "Ctx",
+  contextTitle: (limit, window) =>
+    limit < window ? `Context: used of the ${limit.toLocaleString("en-US")} limit (window ${window.toLocaleString("en-US")})` : "Context",
   contextUsed: (p) => `${p} used`,
-  freeOf: (free, total) => `${free} free of ${total}`,
+  freeOf: (free, limit) => `${free} free of ${limit}`,
   notMeasured: "not measured yet",
   categories: { messages: "Messages", tools: "Tools", other: "Other" },
   contextBreakdown: "Context breakdown",
-  providerCompactsAt: (p) => `The provider compacts on its own at ${p}`,
+  limitOfWindow: (limit, window, thread) => `Limit ${limit}${thread ? " (this thread)" : ""} of the ${window} window`,
+  limitForThread: (limit) => `Limit ${limit} (this thread)`,
+  limitLabel: "Thread limit, k tokens",
+  limitRange: (min, max) => `Limit ${min}–${max}k tokens, blank for the settings' limit`,
+  providerCompactsAt: (t, p) => `The provider compacts on its own at ${t} (${p} of the window)`,
   compactUnsupported: "The provider does not support compacting",
 
   compact: "Compact",
@@ -182,10 +196,10 @@ export const en: Strings = {
   apply: "Apply",
   mode: { inherit: "as in settings", off: "off", on: "on" },
   autoOff: (thread) => `Auto compact: off${thread ? " (this thread)" : ""}`,
-  autoOn: (at, actsAt, thread, paused) =>
-    `Auto compact: on at ${at}${actsAt === null ? "" : `, acts at ${actsAt}`}${thread ? " (this thread)" : ""}${
-      paused === null ? "" : `, paused for ${paused}`
-    }`,
+  autoOn: (at, actsAt, atTokens, thread, paused) =>
+    `Auto compact: on at ${at}${actsAt === null ? "" : `, acts at ${actsAt}`}${atTokens === null ? "" : ` (${atTokens})`}${
+      thread ? " (this thread)" : ""
+    }${paused === null ? "" : `, paused for ${paused}`}`,
   askPast: (p, t) => `Context is already at ${p}, past ${t}. Auto compact:`,
   now: "Now",
   afterNextReply: "After the next reply",
@@ -194,9 +208,10 @@ export const en: Strings = {
   trigger: { auto: "auto", manual: "manual" },
   result: { compacted: "compacted", failed: "failed", unsupported: "unsupported", cancelled: "cancelled" },
 
-  settingsSummary: (on, t, i) => `Auto compact: ${on ? `on, threshold ${t}%` : "off"}. Limits polled every ${i} min.`,
+  settingsSummary: (on, t, i, limit) =>
+    `Context limit ${limit} tokens. Auto compact: ${on ? `on, threshold ${t}% of the limit` : "off"}. Limits polled every ${i} min.`,
   settingsHint:
-    "Change the settings in the form above. Claude Code compacts on its own at 78%, so for it the plugin acts at 76% at most. A single thread is set in its context card or in the band.",
+    "Change the settings in the form above. The context bar and the threshold are measured against the limit; a smaller model window caps it. Claude Code compacts on its own at 78% of its window, so for it the plugin acts a little below that. A single thread's limit and auto compact are set in its context card or in the band.",
   notPolledYet: "Limits not polled yet",
   lastPoll: (ago) => `Last poll: ${ago}`,
   refresh: "Refresh now",
@@ -261,12 +276,18 @@ export const ru: Strings = {
 
   context: "Контекст",
   contextShort: "Конт",
+  contextTitle: (limit, window) =>
+    limit < window ? `Контекст: занято из лимита ${limit.toLocaleString("ru-RU")} (окно ${window.toLocaleString("ru-RU")})` : "Контекст",
   contextUsed: (p) => `занято ${p}`,
-  freeOf: (free, total) => `свободно ${free} из ${total}`,
+  freeOf: (free, limit) => `свободно ${free} из ${limit}`,
   notMeasured: "ещё не измерен",
   categories: { messages: "Сообщения", tools: "Инструменты", other: "Прочее" },
   contextBreakdown: "Состав контекста",
-  providerCompactsAt: (p) => `Провайдер сжимает сам на ${p}`,
+  limitOfWindow: (limit, window, thread) => `Лимит ${limit}${thread ? " (для треда)" : ""} из окна ${window}`,
+  limitForThread: (limit) => `Лимит ${limit} (для треда)`,
+  limitLabel: "Лимит треда, тыс. токенов",
+  limitRange: (min, max) => `Лимит от ${min} до ${max} тыс. токенов, пусто — как в настройках`,
+  providerCompactsAt: (t, p) => `Провайдер сжимает сам на ${t} (${p} окна)`,
   compactUnsupported: "Провайдер не поддерживает сжатие",
 
   compact: "Сжать",
@@ -282,10 +303,10 @@ export const ru: Strings = {
   apply: "Применить",
   mode: { inherit: "как в настройках", off: "выкл", on: "вкл" },
   autoOff: (thread) => `Авто-компакт: выкл${thread ? " (для треда)" : ""}`,
-  autoOn: (at, actsAt, thread, paused) =>
-    `Авто-компакт: вкл на ${at}${actsAt === null ? "" : `, срабатывает на ${actsAt}`}${thread ? " (для треда)" : ""}${
-      paused === null ? "" : `, пауза ещё ${paused}`
-    }`,
+  autoOn: (at, actsAt, atTokens, thread, paused) =>
+    `Авто-компакт: вкл на ${at}${actsAt === null ? "" : `, срабатывает на ${actsAt}`}${atTokens === null ? "" : ` (${atTokens})`}${
+      thread ? " (для треда)" : ""
+    }${paused === null ? "" : `, пауза ещё ${paused}`}`,
   askPast: (p, t) => `Контекст уже ${p}, выше порога ${t}. Авто-компакт:`,
   now: "Сейчас",
   afterNextReply: "После следующего ответа",
@@ -294,9 +315,10 @@ export const ru: Strings = {
   trigger: { auto: "авто", manual: "вручную" },
   result: { compacted: "сжат", failed: "ошибка", unsupported: "не поддерживается", cancelled: "отменён" },
 
-  settingsSummary: (on, t, i) => `Авто-компакт: ${on ? `вкл, порог ${t}%` : "выкл"}. Опрос лимитов каждые ${i} мин.`,
+  settingsSummary: (on, t, i, limit) =>
+    `Лимит контекста ${limit} токенов. Авто-компакт: ${on ? `вкл, порог ${t}% от лимита` : "выкл"}. Опрос лимитов каждые ${i} мин.`,
   settingsHint:
-    "Настройки меняются в форме выше. Claude Code сжимает сам на 78%, поэтому для него плагин срабатывает не позже 76%. Отдельный тред настраивается в его карточке контекста или в полосе над полем ввода.",
+    "Настройки меняются в форме выше. Полоса контекста и порог считаются от лимита; окно модели меньше лимита ограничивает его. Claude Code сжимает сам на 78% окна, поэтому для него плагин срабатывает чуть раньше. Лимит и авто-компакт отдельного треда настраиваются в его карточке контекста или в полосе над полем ввода.",
   notPolledYet: "Лимиты ещё не опрошены",
   lastPoll: (ago) => `Последний опрос: ${ago}`,
   refresh: "Обновить сейчас",

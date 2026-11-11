@@ -16,14 +16,15 @@ import {
 import { formatPercent } from "../shared/thresholds";
 import { CompactButton, ContextPanel, parseThreshold } from "./context-row";
 import {
+  contextPercent,
   formatAgo,
   formatClock,
   formatCost,
   formatSpan,
   providerName,
-  shortTokens,
   shortWindowLabel,
   statusText,
+  usedOfLimit,
   windowLabel,
 } from "./format";
 import {
@@ -100,12 +101,14 @@ function AutoCompactControls({
   const current = state.override.thresholdPercent ?? state.autoCompact.thresholdPercent;
   const [draft, setDraft] = useState(String(current));
   useEffect(() => setDraft(String(current)), [current]);
+  // The thread's own limit survives a mode change.
+  const keep = state.override.limitTokens === undefined ? {} : { limitTokens: state.override.limitTokens };
 
   const commit = () => {
     const parsed = parseThreshold(draft);
     if (parsed === null) return setDraft(String(current));
     if (parsed === current && mode === "on") return;
-    set({ autoCompact: "on", thresholdPercent: parsed });
+    set({ ...keep, autoCompact: "on", thresholdPercent: parsed });
     onArm(parsed);
   };
 
@@ -118,10 +121,10 @@ function AutoCompactControls({
           disabled={pending}
           onChange={(on) => {
             if (on) {
-              set({ autoCompact: "on", thresholdPercent: current });
+              set({ ...keep, autoCompact: "on", thresholdPercent: current });
               onArm(current);
             } else {
-              set({ autoCompact: "off" });
+              set({ ...keep, autoCompact: "off" });
               onDisarm();
             }
           }}
@@ -212,12 +215,14 @@ function CollapsedRow({ provider, state, now }: { provider: ProviderLimits | nul
         );
       })}
       {ctx === null ? null : (
-        <span className={ITEM_CLASS} data-window="context" title={s.context}>
+        <span className={ITEM_CLASS} data-window="context" title={s.contextTitle(ctx.limitTokens, ctx.windowTokens)}>
           <span className="shrink-0 font-semibold">{s.contextShort}</span>
-          <span className={`${NARROW_HIDDEN} text-muted-foreground tabular-nums`}>{shortTokens(ctx.windowTokens)}</span>
+          <span className={`${NARROW_HIDDEN} text-muted-foreground tabular-nums`}>
+            {usedOfLimit(ctx.usedTokens, ctx.limitTokens, ctx.estimated)}
+          </span>
           <SegmentBar view={ctx} className={BAR_FIT} />
           <Ink tone={ctx.tone} className="shrink-0 font-medium tabular-nums">
-            {formatPercent(ctx.percent)}
+            {contextPercent(ctx.percent, ctx.estimated)}
           </Ink>
         </span>
       )}
@@ -376,7 +381,7 @@ export function Banner() {
 
       {asking && ctx !== null && askAt !== null ? (
         <div className="flex flex-wrap items-center gap-2" role="alert">
-          <Toned tone="amber">{s.askPast(formatPercent(ctx.percent), formatPercent(askAt))}</Toned>
+          <Toned tone="amber">{s.askPast(contextPercent(ctx.percent, ctx.estimated), formatPercent(askAt))}</Toned>
           <Button
             size="sm"
             variant="outline"

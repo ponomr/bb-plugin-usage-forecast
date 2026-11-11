@@ -5,14 +5,17 @@
 import { useEffect, useState } from "react";
 import { useSettings } from "@get-bb/plugin-sdk/app";
 import {
+  CONTEXT_LIMIT_MAX_TOKENS,
+  CONTEXT_LIMIT_MIN_TOKENS,
   THRESHOLD_DEFAULT_PERCENT,
   THRESHOLD_MAX_PERCENT,
   THRESHOLD_MIN_PERCENT,
+  normalizeOverride,
   type ThreadOverride,
   type ThreadState,
 } from "../shared/contract";
 import { formatPercent } from "../shared/thresholds";
-import { formatSpan, formatTokens, shortTokens } from "./format";
+import { contextPercent, formatSpan, formatTokens, shortTokens } from "./format";
 import { useCompact, useNow, useSetOverride, useThreadState, type CompactState } from "./hooks";
 import { useStrings, type Strings } from "./i18n";
 import { contextView } from "./model";
@@ -50,6 +53,59 @@ export function parseThreshold(text: string): number | null {
   return n >= THRESHOLD_MIN_PERCENT && n <= THRESHOLD_MAX_PERCENT ? n : null;
 }
 
+/**
+ * A per-thread limit typed in thousands of tokens: "" means the settings'
+ * limit (undefined), a number in range means that many thousand tokens, and
+ * anything else is invalid (null).
+ */
+export function parseLimit(text: string): number | undefined | null {
+  const t = text.trim();
+  if (t === "") return undefined;
+  if (!/^\d{1,4}$/.test(t)) return null;
+  const tokens = Number(t) * 1000;
+  return tokens >= CONTEXT_LIMIT_MIN_TOKENS && tokens <= CONTEXT_LIMIT_MAX_TOKENS ? tokens : null;
+}
+
+/** The thread's working limit in thousands of tokens; blank returns to the settings. */
+function LimitControl({ state }: { state: ThreadState }) {
+  const s = useStrings();
+  const { set, pending, error } = useSetOverride(state.threadId);
+  const current = state.override.limitTokens === undefined ? "" : String(Math.round(state.override.limitTokens / 1000));
+  const [draft, setDraft] = useState(current);
+  useEffect(() => setDraft(current), [current]);
+  const parsed = parseLimit(draft);
+  const commit = () => {
+    if (parsed === null) return setDraft(current);
+    if (draft.trim() === current) return;
+    const { limitTokens: _dropped, ...rest } = state.override;
+    set(normalizeOverride(parsed === undefined ? rest : { ...rest, limitTokens: parsed }));
+  };
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <span className="text-muted-foreground">{s.limitLabel}</span>
+      <Input
+        aria-label={s.limitLabel}
+        title={s.limitRange(CONTEXT_LIMIT_MIN_TOKENS / 1000, CONTEXT_LIMIT_MAX_TOKENS / 1000)}
+        placeholder={s.mode.inherit}
+        inputMode="numeric"
+        className="h-6 w-20 px-1 text-xs tabular-nums"
+        value={draft}
+        disabled={pending}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+        }}
+      />
+      <span className="text-muted-foreground">k</span>
+      {parsed === null ? (
+        <Toned tone="amber">{s.limitRange(CONTEXT_LIMIT_MIN_TOKENS / 1000, CONTEXT_LIMIT_MAX_TOKENS / 1000)}</Toned>
+      ) : null}
+      {error === null ? null : <Toned tone="red">{error}</Toned>}
+    </span>
+  );
+}
+
 const MODES: readonly ThreadOverride["autoCompact"][] = ["inherit", "off", "on"];
 
 function OverrideControl({ state }: { state: ThreadState }) {
@@ -62,6 +118,8 @@ function OverrideControl({ state }: { state: ThreadState }) {
   useEffect(() => setDraft(String(current)), [current]);
   const parsed = parseThreshold(draft);
   const mode = state.override.autoCompact;
+  // The thread's own limit survives a mode change.
+  const keep = state.override.limitTokens === undefined ? {} : { limitTokens: state.override.limitTokens };
 
   return (
     <div className="flex flex-col gap-1">
@@ -72,7 +130,7 @@ function OverrideControl({ state }: { state: ThreadState }) {
           className="rounded border border-input bg-transparent px-1 py-0.5"
           value={mode}
           disabled={pending}
-          onChange={(e) => set({ autoCompact: e.target.value as ThreadOverride["autoCompact"] })}
+          onChange={(e) => set({ ...keep, autoCompact: e.target.value as ThreadOverride["autoCompact"] })}
         >
           {MODES.map((m) => (
             <option key={m} value={m}>
@@ -86,7 +144,7 @@ function OverrideControl({ state }: { state: ThreadState }) {
           className="flex items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            if (parsed !== null) set({ autoCompact: "on", thresholdPercent: parsed });
+            if (parsed !== null) set({ ...keep, autoCompact: "on", thresholdPercent: parsed });
           }}
         >
           <span>{s.thresholdShort}</span>
@@ -115,11 +173,12 @@ export function autoCompactLine(s: Strings, state: ThreadState, now: number): st
   const forThread = a.source === "thread";
   if (!a.enabled) return s.autoOff(forThread);
   const actsAt = a.effectiveThresholdPercent === a.thresholdPercent ? null : formatPercent(a.effectiveThresholdPercent);
+  const atTokens = a.effectiveThresholdTokens === null ? null : shortTokens(a.effectiveThresholdTokens);
   const paused = state.cooldownUntil !== null && state.cooldownUntil > now ? formatSpan(s, state.cooldownUntil - now) : null;
-  return s.autoOn(formatPercent(a.thresholdPercent), actsAt, forThread, paused);
+  return s.autoOn(formatPercent(a.thresholdPercent), actsAt, atTokens, forThread, paused);
 }
 
-/** The context bar, fill, free space and breakdown, then the compact notes. */
+/** The context bar, fill, free space and breakdown, the limit, then the compact notes. */
 export function ContextPanel({ state }: { state: ThreadState }) {
   const s = useStrings();
   const now = useNow();
@@ -138,16 +197,23 @@ export function ContextPanel({ state }: { state: ThreadState }) {
             <span>
               <span className="font-medium">{s.context}</span>{" "}
               <Ink tone={view.tone} className="font-medium tabular-nums">
-                {s.contextUsed(formatPercent(view.percent))}
+                {s.contextUsed(contextPercent(view.percent, view.estimated))}
               </Ink>
             </span>
             <span
               className="text-muted-foreground tabular-nums"
-              title={`${ctx.estimated ? "≈" : ""}${formatTokens(ctx.usedTokens)} / ${formatTokens(ctx.windowTokens)}`}
+              title={`${ctx.estimated ? "~" : ""}${formatTokens(ctx.usedTokens)} / ${formatTokens(ctx.limitTokens)}`}
             >
-              {s.freeOf(shortTokens(view.freeTokens), shortTokens(view.windowTokens))}
+              {s.freeOf(shortTokens(view.freeTokens), shortTokens(view.limitTokens))}
             </span>
           </div>
+          {ctx.limitTokens < ctx.windowTokens || ctx.limitSource === "thread" ? (
+            <div className="text-muted-foreground" data-testid="context-limit">
+              {ctx.limitTokens < ctx.windowTokens
+                ? s.limitOfWindow(shortTokens(ctx.limitTokens), shortTokens(ctx.windowTokens), ctx.limitSource === "thread")
+                : s.limitForThread(shortTokens(ctx.limitTokens))}
+            </div>
+          ) : null}
           {view.segments[0]?.key === "used" ? null : (
             <ul className="flex flex-col gap-0.5" aria-label={s.contextBreakdown}>
               {view.segments.map((seg) =>
@@ -163,13 +229,14 @@ export function ContextPanel({ state }: { state: ThreadState }) {
           )}
           {ctx.autoCompactAtTokens ? (
             <div className="text-muted-foreground">
-              {s.providerCompactsAt(formatPercent((ctx.autoCompactAtTokens / ctx.windowTokens) * 100))}
+              {s.providerCompactsAt(shortTokens(ctx.autoCompactAtTokens), formatPercent((ctx.autoCompactAtTokens / ctx.windowTokens) * 100))}
             </div>
           ) : null}
         </>
       )}
       {state.compactSupported ? null : <div className="text-muted-foreground">{s.compactUnsupported}</div>}
       <div className="text-muted-foreground">{autoCompactLine(s, state, now)}</div>
+      <LimitControl state={state} />
     </div>
   );
 }

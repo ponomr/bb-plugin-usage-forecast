@@ -15,13 +15,15 @@ identified by provider and label (`claude-code` / `Current session`).
   percent used, time to reset, forecast at reset from the current pace and,
   after enough history, from past windows (`learned pace N% (K windows)`). `[over 100%]` means
   the window runs out before it resets. `--refresh` polls now.
-- `bb usage-forecast thread <threadId> [--json]` — context fill (tokens and %),
+- `bb usage-forecast thread <threadId> [--json]` — context fill (tokens and % of the working limit), the limit and its source,
   whether the agent is answering, the effective auto-compact policy and its
   source (settings or this thread), the cooldown.
 - `bb usage-forecast compact <threadId>` — compact now. It queues a `/compact`
   turn, so it refuses while the thread is answering.
-- `bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95]` —
-  per-thread auto-compact. `inherit` follows the settings.
+- `bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95] [--limit <tokens>]` —
+  per-thread auto-compact. `inherit` follows the settings. `--limit` sets the
+  thread's working context limit in tokens (10 000–2 000 000; `0` returns to
+  the settings' limit); without it the stored limit is kept.
 
 The current thread id is in `bb status` or `$BB_THREAD_ID`.
 
@@ -32,6 +34,7 @@ Usage Forecast.
 
 | Setting | Default | Range |
 | --- | --- | --- |
+| `contextLimitTokens` | 150 000 | 10 000–2 000 000 (the fill percent and the threshold are of this limit; a smaller model window caps it) |
 | `autoCompactEnabled` | `false` | — |
 | `autoCompactThresholdPercent` | 80 | 50–95 |
 | `pollIntervalMinutes` | 2 | 1–10 |
@@ -44,8 +47,9 @@ Do not turn `autoCompactEnabled` on unless the user asks for it.
 
 - It runs only on `thread.idle`, when the context is at or above the
   threshold, and never for an answering thread.
-- Claude Code compacts on its own at 78 %; for it the plugin's threshold is
-  capped at 76 % so the compact happens between turns.
+- Claude Code compacts on its own at 78 % of its window; for it the plugin's
+  threshold is capped a little below that point (76 % when the limit equals
+  the window) so the compact happens between turns.
 - After a compact, or a failed attempt, the thread waits 10 minutes.
 - Every attempt is logged with the fill before and after; `status` shows the
   last five.

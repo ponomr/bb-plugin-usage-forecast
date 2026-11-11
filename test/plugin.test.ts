@@ -97,9 +97,9 @@ describe("plugin wiring", () => {
       threadId: T,
       providerId: "claude-code",
       active: false,
-      context: { percent: 60, autoCompactAtTokens: 117_000 },
+      context: { percent: 60, limitTokens: 150_000, limitSource: "settings", autoCompactAtTokens: 117_000 },
       override: { autoCompact: "inherit" },
-      autoCompact: { enabled: true, thresholdPercent: 80, effectiveThresholdPercent: 76, source: "settings" },
+      autoCompact: { enabled: true, thresholdPercent: 80, effectiveThresholdPercent: 76, effectiveThresholdTokens: 114_000, source: "settings" },
       compactSupported: true,
       cooldownUntil: null,
     });
@@ -108,7 +108,7 @@ describe("plugin wiring", () => {
     expect(threads.metadata.get(T)).toEqual({ override: { autoCompact: "on", thresholdPercent: 60 } });
     expect(invalidations()).toContainEqual([LIMITS_TAG, threadTag(T)]);
     const on = (await harness.callRpc("thread", { threadId: T })) as ThreadState;
-    expect(on.autoCompact).toEqual({ enabled: true, thresholdPercent: 60, effectiveThresholdPercent: 60, source: "thread" });
+    expect(on.autoCompact).toEqual({ enabled: true, thresholdPercent: 60, effectiveThresholdPercent: 60, effectiveThresholdTokens: 90_000, source: "thread" });
 
     // A threshold with off is dropped; inherit removes the key.
     const off = await harness.callRpc("setThreadOverride", { threadId: T, override: { autoCompact: "off", thresholdPercent: 60 } });
@@ -116,6 +116,13 @@ describe("plugin wiring", () => {
     await harness.callRpc("setThreadOverride", { threadId: T, override: { autoCompact: "inherit" } });
     expect(threads.metadata.get(T)).toEqual({});
     expect(harness.sdk.callsTo("threads.updatePluginMetadata").at(-1)).toEqual([{ pluginId: "usage-forecast", threadId: T, remove: ["override"] }]);
+
+    // A per-thread limit is kept with inherit; the fill is measured against it.
+    await harness.callRpc("setThreadOverride", { threadId: T, override: { autoCompact: "inherit", limitTokens: 100_000 } });
+    expect(threads.metadata.get(T)).toEqual({ override: { autoCompact: "inherit", limitTokens: 100_000 } });
+    const limited = (await harness.callRpc("thread", { threadId: T })) as ThreadState;
+    expect(limited.context).toMatchObject({ limitTokens: 100_000, limitSource: "thread", percent: 90 });
+    expect(limited.autoCompact).toMatchObject({ thresholdPercent: 80, effectiveThresholdPercent: 80, effectiveThresholdTokens: 80_000 });
   });
 
   it("invalidates a thread on its context events, coalesced, and unsubscribes on dispose", async () => {

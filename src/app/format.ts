@@ -23,6 +23,16 @@ export function statusText(s: Strings, status: ProviderStatus, message: string |
   return s.status[status];
 }
 
+/** "60%", or "~60%" for an estimated fill. */
+export function contextPercent(percent: number, estimated: boolean): string {
+  return `${estimated ? "~" : ""}${formatPercent(percent)}`;
+}
+
+/** "~90k / 150k": the fill against the working limit. */
+export function usedOfLimit(usedTokens: number, limitTokens: number, estimated: boolean): string {
+  return `${estimated ? "~" : ""}${shortTokens(usedTokens)} / ${shortTokens(limitTokens)}`;
+}
+
 /** 90000 → "90 000" with a plain space, so the text is the same in every locale build. */
 export function formatTokens(tokens: number): string {
   return String(Math.round(tokens)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
