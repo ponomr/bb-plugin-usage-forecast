@@ -76,7 +76,7 @@ From this repository, tracking compatible releases (`bb plugin update` picks
 them up):
 
 ```sh
-bb plugin install git:https://github.com/ponomr/bb-plugin-usage-forecast.git@^0.3.0
+bb plugin install git:https://github.com/ponomr/bb-plugin-usage-forecast.git@^0.4.0
 ```
 
 From a checkout, on the machine that runs the bb server:
