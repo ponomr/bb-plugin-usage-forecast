@@ -6,7 +6,7 @@ how full the current thread's context window is and can compact a thread
 before it overflows.
 
 > [!NOTE]
-> Version 0.3.0, tested with bb 0.49.0 and Plugin SDK 0.6.132. Limits appear
+> Version 0.4.1, tested with bb 0.49.0 and Plugin SDK 0.6.132. Limits appear
 > only for providers that report them to bb (Claude Code and Codex today).
 
 ## Screenshots
@@ -46,11 +46,13 @@ the context breakdown and one line per other provider.
   the pace of past windows of the same kind once the server has seen enough of
   them.
 - **Context against a working limit.** The context bar, its percent and the
-  auto-compact threshold are measured against a limit in tokens (150 000 by
-  default), not against the model window: a 1M-window model fills the bar at
-  the same point as a 200k one. A model window smaller than the limit caps
-  it. One thread can have its own limit. An estimated fill (Codex between
-  turns) is shown with `~`.
+  auto-compact threshold are measured against a limit in tokens, not against
+  the model window. The limit follows the provider: a thread's own limit,
+  else a per-provider limit (Claude Code, Codex), else the point where the
+  provider compacts on its own when bb reports it, else a global limit
+  (150 000 by default). A model window smaller than the limit caps it. The
+  context card and `bb usage-forecast thread` name which of these applied.
+  An estimated fill (Codex between turns) is shown with `~`.
 - **Context and auto-compact.** On the Mac a section «Context & auto
   compact» in the thread context card shows the fill in tokens, its
   breakdown, the limit, the compact button, the per-thread auto-compact mode
@@ -97,7 +99,9 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 
 | Setting | Default | Range | Meaning |
 | --- | --- | --- | --- |
-| Context limit, tokens | 150 000 | 10 000–2 000 000 | The working limit the context bar and the threshold are measured against; a smaller model window caps it |
+| Context limit, tokens | 150 000 | 10 000–2 000 000 | The global working limit: used when neither a provider limit nor the provider's own compaction point applies; a smaller model window caps it |
+| Claude Code context limit, tokens | 0 (auto) | 0, 10 000–2 000 000 | Working limit for Claude Code threads; auto uses the point where Claude Code compacts on its own, as bb reports it |
+| Codex context limit, tokens | 0 (auto) | 0, 10 000–2 000 000 | Working limit for Codex threads; bb reports no compaction point for Codex, so auto uses the global limit. Set it to your `model_auto_compact_token_limit` to measure against where Codex compacts |
 | Auto-compact | off | — | Compact a thread when it goes idle with its context at or above the threshold |
 | Auto-compact threshold, % | 80 | 50–95 | Fill of the context limit that triggers it |
 | Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
@@ -107,16 +111,20 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 Auto-compact rules:
 
 - It runs only between turns, on `thread.idle`.
-- Claude Code compacts on its own at 78 % of its window, so for Claude Code
-  threads the plugin acts a little below that point (76 % when the limit
-  equals the window).
+- With the limit at the provider's own compaction point, every threshold
+  (at most 95 %) lands below that point. When a thread or provider limit lies
+  above the point where the provider compacts on its own, the plugin acts
+  2 % of the window below that point (for Claude Code with a 200 000 window,
+  which compacts at 167 000, a 200 000 limit acts at 81 % = 162 000 tokens).
+  Codex reports no such point, so for Codex keep its limit at or below its
+  `model_auto_compact_token_limit`.
 - After a compact, or a failed attempt, a thread waits 10 minutes before the
   next one.
 - A per-thread override («Thread auto compact» in the context block, or the
   band's switch) wins over
   the global setting in both directions. The per-thread limit («Thread
-  limit» in the context block, or `--limit` in the CLI) replaces the
-  settings' limit for that thread.
+  limit» in the context block, or `--limit` in the CLI) wins over the
+  provider and global limits for that thread.
 
 ## CLI
 

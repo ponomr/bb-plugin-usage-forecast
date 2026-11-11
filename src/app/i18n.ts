@@ -2,7 +2,7 @@
 // Every user-visible string of the app lives here; formatters take the table.
 
 import { useSettings } from "@get-bb/plugin-sdk/app";
-import type { CompactLogEntry, ProviderStatus, ThreadOverride } from "../shared/contract";
+import type { CompactLogEntry, ContextLimitSource, ProviderStatus, ThreadOverride } from "../shared/contract";
 import { parseLang, type Lang } from "../shared/language";
 
 export interface Strings {
@@ -71,10 +71,8 @@ export interface Strings {
   notMeasured: string;
   categories: { messages: string; tools: string; other: string };
   contextBreakdown: string;
-  /** The working limit when it is below the model window. */
-  limitOfWindow(limit: string, window: string, forThread: boolean): string;
-  /** A per-thread limit equal to the window. */
-  limitForThread(limit: string): string;
+  /** The working limit and where it comes from; `window` only when the limit is below the model window. */
+  limitLine(limit: string, source: ContextLimitSource, provider: string, window: string | null): string;
   limitLabel: string;
   limitRange(minK: number, maxK: number): string;
   providerCompactsAt(tokens: string, percentOfWindow: string): string;
@@ -105,7 +103,8 @@ export interface Strings {
   result: Record<CompactLogEntry["result"], string>;
 
   // Settings section
-  settingsSummary(enabled: boolean, threshold: number, interval: number, limit: string): string;
+  /** `claude` and `codex` are null when their limit is auto. */
+  settingsSummary(enabled: boolean, threshold: number, interval: number, limit: string, claude: string | null, codex: string | null): string;
   settingsHint: string;
   notPolledYet: string;
   lastPoll(ago: string): string;
@@ -176,10 +175,18 @@ export const en: Strings = {
   notMeasured: "not measured yet",
   categories: { messages: "Messages", tools: "Tools", other: "Other" },
   contextBreakdown: "Context breakdown",
-  limitOfWindow: (limit, window, thread) => `Limit ${limit}${thread ? " (this thread)" : ""} of the ${window} window`,
-  limitForThread: (limit) => `Limit ${limit} (this thread)`,
+  limitLine: (limit, source, provider, window) =>
+    `${
+      {
+        thread: `Limit ${limit} (this thread)`,
+        provider: `Limit ${limit} (${provider} setting)`,
+        reported: `Limit ${limit}: where ${provider} compacts on its own`,
+        settings: `Limit ${limit} (global setting)`,
+        window: `Limit ${limit}: the model window`,
+      }[source]
+    }${window === null ? "" : `, window ${window}`}`,
   limitLabel: "Thread limit, k tokens",
-  limitRange: (min, max) => `Limit ${min}–${max}k tokens, blank for the settings' limit`,
+  limitRange: (min, max) => `Limit ${min}–${max}k tokens, blank for the provider's or global limit`,
   providerCompactsAt: (t, p) => `The provider compacts on its own at ${t} (${p} of the window)`,
   compactUnsupported: "The provider does not support compacting",
 
@@ -208,10 +215,12 @@ export const en: Strings = {
   trigger: { auto: "auto", manual: "manual" },
   result: { compacted: "compacted", failed: "failed", unsupported: "unsupported", cancelled: "cancelled" },
 
-  settingsSummary: (on, t, i, limit) =>
-    `Context limit ${limit} tokens. Auto compact: ${on ? `on, threshold ${t}% of the limit` : "off"}. Limits polled every ${i} min.`,
+  settingsSummary: (on, t, i, limit, claude, codex) =>
+    `Context limit: Claude Code ${claude ?? "auto"}, Codex ${codex ?? "auto"}, otherwise ${limit} tokens. Auto compact: ${
+      on ? `on, threshold ${t}% of the limit` : "off"
+    }. Limits polled every ${i} min.`,
   settingsHint:
-    "Change the settings in the form above. The context bar and the threshold are measured against the limit; a smaller model window caps it. Claude Code compacts on its own at 78% of its window, so for it the plugin acts a little below that. A single thread's limit and auto compact are set in its context card or in the band.",
+    "Change the settings in the form above. The context bar and the threshold are measured against the thread's limit: the thread's own limit, then the provider's limit, then the point where the provider compacts on its own (when bb reports it; Claude Code does, Codex does not), then the global limit. A smaller model window caps it. When the limit lies above the point where the provider compacts on its own, the plugin acts a little below that point. A single thread's limit and auto compact are set in its context card or in the band.",
   notPolledYet: "Limits not polled yet",
   lastPoll: (ago) => `Last poll: ${ago}`,
   refresh: "Refresh now",
@@ -283,10 +292,18 @@ export const ru: Strings = {
   notMeasured: "ещё не измерен",
   categories: { messages: "Сообщения", tools: "Инструменты", other: "Прочее" },
   contextBreakdown: "Состав контекста",
-  limitOfWindow: (limit, window, thread) => `Лимит ${limit}${thread ? " (для треда)" : ""} из окна ${window}`,
-  limitForThread: (limit) => `Лимит ${limit} (для треда)`,
+  limitLine: (limit, source, provider, window) =>
+    `${
+      {
+        thread: `Лимит ${limit} (для треда)`,
+        provider: `Лимит ${limit} (настройка ${provider})`,
+        reported: `Лимит ${limit}: здесь ${provider} сжимает сам`,
+        settings: `Лимит ${limit} (общая настройка)`,
+        window: `Лимит ${limit}: окно модели`,
+      }[source]
+    }${window === null ? "" : `, окно ${window}`}`,
   limitLabel: "Лимит треда, тыс. токенов",
-  limitRange: (min, max) => `Лимит от ${min} до ${max} тыс. токенов, пусто — как в настройках`,
+  limitRange: (min, max) => `Лимит от ${min} до ${max} тыс. токенов, пусто — лимит провайдера или общий`,
   providerCompactsAt: (t, p) => `Провайдер сжимает сам на ${t} (${p} окна)`,
   compactUnsupported: "Провайдер не поддерживает сжатие",
 
@@ -315,10 +332,12 @@ export const ru: Strings = {
   trigger: { auto: "авто", manual: "вручную" },
   result: { compacted: "сжат", failed: "ошибка", unsupported: "не поддерживается", cancelled: "отменён" },
 
-  settingsSummary: (on, t, i, limit) =>
-    `Лимит контекста ${limit} токенов. Авто-компакт: ${on ? `вкл, порог ${t}% от лимита` : "выкл"}. Опрос лимитов каждые ${i} мин.`,
+  settingsSummary: (on, t, i, limit, claude, codex) =>
+    `Лимит контекста: Claude Code ${claude ?? "авто"}, Codex ${codex ?? "авто"}, остальные ${limit} токенов. Авто-компакт: ${
+      on ? `вкл, порог ${t}% от лимита` : "выкл"
+    }. Опрос лимитов каждые ${i} мин.`,
   settingsHint:
-    "Настройки меняются в форме выше. Полоса контекста и порог считаются от лимита; окно модели меньше лимита ограничивает его. Claude Code сжимает сам на 78% окна, поэтому для него плагин срабатывает чуть раньше. Лимит и авто-компакт отдельного треда настраиваются в его карточке контекста или в полосе над полем ввода.",
+    "Настройки меняются в форме выше. Полоса контекста и порог считаются от лимита треда: лимит треда, затем лимит провайдера, затем точка, где провайдер сжимает сам (если bb её сообщает; Claude Code сообщает, Codex нет), затем общий лимит. Окно модели меньше лимита ограничивает его. Если лимит выше точки, где провайдер сжимает сам, плагин срабатывает чуть раньше неё. Лимит и авто-компакт отдельного треда настраиваются в его карточке контекста или в полосе над полем ввода.",
   notPolledYet: "Лимиты ещё не опрошены",
   lastPoll: (ago) => `Последний опрос: ${ago}`,
   refresh: "Обновить сейчас",

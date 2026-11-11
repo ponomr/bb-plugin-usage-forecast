@@ -37,8 +37,31 @@ describe("context card section", () => {
     expect(within(screen.getByRole("list", { name: "Context breakdown" })).getByRole("listitem").textContent).toBe("Messages90k");
     expect(details.textContent).toContain("The provider compacts on its own at 117k (78% of the window)");
     expect(details.textContent).toContain("Auto compact: on at 80%, acts at 76% (114k)");
-    expect(screen.queryByTestId("context-limit")).toBeNull();
+    expect(screen.getByTestId("context-limit").textContent).toBe("Limit 150k (Claude Code setting)");
     expect(screen.getByRole("button", { name: "Compact" })).toBeTruthy();
+  });
+
+  it("names the provider's own compaction point as the limit, without repeating it", async () => {
+    const context = {
+      usedTokens: 100_200,
+      windowTokens: 200_000,
+      limitTokens: 167_000,
+      limitSource: "reported" as const,
+      percent: 60,
+      estimated: true,
+      autoCompactAtTokens: 167_000,
+      categories: [],
+    };
+    const autoCompact = { enabled: true, thresholdPercent: 80, effectiveThresholdPercent: 80, effectiveThresholdTokens: 133_600, source: "settings" as const };
+    render(Section, props, backend({ thread: threadState({ context, autoCompact }) }));
+    expect((await screen.findByTestId("context-limit")).textContent).toBe("Limit 167k: where Claude Code compacts on its own, window 200k");
+    expect(screen.getByTestId("context-details").textContent).not.toContain("The provider compacts on its own");
+  });
+
+  it("names the limit source in Russian", async () => {
+    const context = { usedTokens: 50_000, windowTokens: 475_000, limitTokens: 150_000, limitSource: "settings" as const, percent: 33, estimated: false, autoCompactAtTokens: null, categories: [] };
+    render(Section, props, backend({ thread: threadState({ providerId: "codex", context }) }), { settings: { language: "ru" } });
+    expect((await screen.findByTestId("context-limit")).textContent).toBe("Лимит 150k (общая настройка), окно 475k");
   });
 
   it("renders nothing until the thread state loads", () => {
@@ -168,7 +191,7 @@ describe("helpers", () => {
     const details = await screen.findByTestId("context-details");
     expect(details.textContent).toContain("Context ~50% used");
     expect(details.textContent).toContain("50k free of 100k");
-    expect((await screen.findByTestId("context-limit")).textContent).toBe("Limit 100k (this thread) of the 258k window");
+    expect((await screen.findByTestId("context-limit")).textContent).toBe("Limit 100k (this thread), window 258k");
     expect((await limitInput()).value).toBe("100");
   });
 
@@ -188,7 +211,7 @@ describe("helpers", () => {
     await waitFor(() => expect(b.overrides.at(-1)).toEqual({ autoCompact: "on", thresholdPercent: 70, limitTokens: 120_000 }));
     await waitFor(() => expect(input.disabled).toBe(false));
     fireEvent.change(input, { target: { value: "5" } });
-    expect(screen.getByText("Limit 10–2000k tokens, blank for the settings' limit")).toBeTruthy();
+    expect(screen.getByText("Limit 10–2000k tokens, blank for the provider's or global limit")).toBeTruthy();
     fireEvent.blur(input);
     expect(b.overrides).toHaveLength(1);
     expect(input.value).toBe("120");

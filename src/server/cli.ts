@@ -96,7 +96,14 @@ export function formatThread(t: ThreadState, now: number): string {
     const n = (v: number) => v.toLocaleString("en-US");
     const tokens = `${c.estimated ? "~" : ""}${n(c.usedTokens)} of ${n(c.limitTokens)} tokens`;
     lines.push(`Context: ${formatPercent(c.percent)} (${tokens}${c.estimated ? ", estimated" : ""})`);
-    const limitFrom = { settings: "from settings", thread: "from this thread", window: "the model window" }[c.limitSource];
+    const providerName = t.providerId ?? "provider";
+    const limitFrom = {
+      thread: "from this thread",
+      provider: `from the ${providerName} setting`,
+      reported: `where ${providerName} compacts on its own`,
+      settings: "from the global setting",
+      window: "the model window",
+    }[c.limitSource];
     lines.push(`Limit: ${n(c.limitTokens)} tokens (${limitFrom}), window ${n(c.windowTokens)}`);
     const providerAt = providerCompactsAtPercent(c);
     if (providerAt !== null && c.autoCompactAtTokens !== null) {
@@ -176,7 +183,7 @@ export function createCli(service: Service, now: () => number = Date.now): Plugi
       override: cliCommand({
         summary: "Set auto-compact and the context limit for one thread",
         description:
-          "Mode inherit, off or on sets auto-compact for the thread. --limit sets the thread's working context limit in tokens (0 returns to the settings); without --limit the stored limit is kept.",
+          "Mode inherit, off or on sets auto-compact for the thread. --limit sets the thread's working context limit in tokens, ahead of the provider and global limits (0 returns to them); without --limit the stored limit is kept.",
         positionals: [
           { name: "threadId", description: "thread id", required: true },
           { name: "mode", description: "inherit, off or on", required: true },
@@ -192,7 +199,7 @@ export function createCli(service: Service, now: () => number = Date.now): Plugi
             type: "integer",
             min: 0,
             max: CONTEXT_LIMIT_MAX_TOKENS,
-            description: `Working context limit in tokens for this thread (${CONTEXT_LIMIT_MIN_TOKENS}-${CONTEXT_LIMIT_MAX_TOKENS}); 0 returns to the settings`,
+            description: `Working context limit in tokens for this thread (${CONTEXT_LIMIT_MIN_TOKENS}-${CONTEXT_LIMIT_MAX_TOKENS}); 0 returns to the provider and global limits`,
           },
         },
         async run({ positionals, options }) {

@@ -19,6 +19,7 @@ export function settingsOf(over: Partial<PluginSettings> = {}): () => Promise<Pl
     autoCompactThresholdPercent: 80,
     pollIntervalMinutes: 2,
     contextLimitTokens: 150_000,
+    providerLimitTokens: { "claude-code": 0, codex: 0 },
     ...over,
   };
   return async () => value;
@@ -32,16 +33,20 @@ export class Clock {
   }
 }
 
-/** A Claude Code `threads.context` answer: 150 000 window, own compact at 117 000 (78 %). */
-export function claudeContext(usedTokens: number) {
+/**
+ * A Claude Code `threads.context` answer after a turn: by default a 150 000
+ * window with its own compact at 117 000 (bb 0.49 reports the window minus
+ * 33 000); a 200 000 window reports 167 000.
+ */
+export function claudeContext(usedTokens: number, windowTokens = 150_000, autoCompactAtTokens = windowTokens - 33_000) {
   return {
     usage: {
       usedTokens,
-      modelContextWindow: 150_000,
+      modelContextWindow: windowTokens,
       estimated: false,
       snapshot: {
-        contextWindowTokens: 150_000,
-        autoCompactAtTokens: 117_000,
+        contextWindowTokens: windowTokens,
+        autoCompactAtTokens,
         usedTokens,
         categories: [{ id: "messages", label: "Messages", tokens: usedTokens, kind: "used" }],
       },
@@ -49,9 +54,14 @@ export function claudeContext(usedTokens: number) {
   };
 }
 
-/** A Codex answer: no snapshot, window 258 400. */
-export function codexContext(usedTokens: number) {
-  return { usage: { usedTokens, modelContextWindow: 258_400, estimated: false } };
+/** A Claude Code answer while a turn runs: no snapshot. */
+export function claudeActiveContext(usedTokens: number, windowTokens = 200_000) {
+  return { usage: { usedTokens, modelContextWindow: windowTokens, estimated: true } };
+}
+
+/** A Codex answer: no snapshot and no compaction point; window 258 400 by default. */
+export function codexContext(usedTokens: number, windowTokens = 258_400) {
+  return { usage: { usedTokens, modelContextWindow: windowTokens, estimated: false } };
 }
 
 type ContextAnswer = unknown | (() => unknown);

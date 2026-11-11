@@ -89,17 +89,24 @@ describe("plugin wiring", () => {
     await expect(harness.setSettings({ autoCompactThresholdPercent: 40 })).rejects.toThrow();
   });
 
-  it("serves the thread state with the 78% cap and the override", async () => {
+  it("rejects a per-provider limit below the range but accepts 0 (auto)", async () => {
+    const { harness } = await load();
+    await expect(harness.setSettings({ codexContextLimitTokens: 5_000 })).rejects.toThrow();
+    await harness.setSettings({ codexContextLimitTokens: 250_000, claudeCodeContextLimitTokens: 0 });
+  });
+
+  it("serves the thread state measured against the provider's own compaction point, and the override", async () => {
     const { harness, threads, invalidations } = await load({ autoCompactEnabled: true });
-    threads.thread(T, "claude-code", claudeContext(90_000));
+    // 80 % of the 117 000 point where Claude Code compacts in a 150 000 window.
+    threads.thread(T, "claude-code", claudeContext(93_600));
     const state = (await harness.callRpc("thread", { threadId: T })) as ThreadState;
     expect(state).toMatchObject({
       threadId: T,
       providerId: "claude-code",
       active: false,
-      context: { percent: 60, limitTokens: 150_000, limitSource: "settings", autoCompactAtTokens: 117_000 },
+      context: { percent: 80, limitTokens: 117_000, limitSource: "reported", autoCompactAtTokens: 117_000 },
       override: { autoCompact: "inherit" },
-      autoCompact: { enabled: true, thresholdPercent: 80, effectiveThresholdPercent: 76, effectiveThresholdTokens: 114_000, source: "settings" },
+      autoCompact: { enabled: true, thresholdPercent: 80, effectiveThresholdPercent: 80, effectiveThresholdTokens: 93_600, source: "settings" },
       compactSupported: true,
       cooldownUntil: null,
     });
@@ -108,7 +115,7 @@ describe("plugin wiring", () => {
     expect(threads.metadata.get(T)).toEqual({ override: { autoCompact: "on", thresholdPercent: 60 } });
     expect(invalidations()).toContainEqual([LIMITS_TAG, threadTag(T)]);
     const on = (await harness.callRpc("thread", { threadId: T })) as ThreadState;
-    expect(on.autoCompact).toEqual({ enabled: true, thresholdPercent: 60, effectiveThresholdPercent: 60, effectiveThresholdTokens: 90_000, source: "thread" });
+    expect(on.autoCompact).toEqual({ enabled: true, thresholdPercent: 60, effectiveThresholdPercent: 60, effectiveThresholdTokens: 70_200, source: "thread" });
 
     // A threshold with off is dropped; inherit removes the key.
     const off = await harness.callRpc("setThreadOverride", { threadId: T, override: { autoCompact: "off", thresholdPercent: 60 } });
@@ -121,7 +128,8 @@ describe("plugin wiring", () => {
     await harness.callRpc("setThreadOverride", { threadId: T, override: { autoCompact: "inherit", limitTokens: 100_000 } });
     expect(threads.metadata.get(T)).toEqual({ override: { autoCompact: "inherit", limitTokens: 100_000 } });
     const limited = (await harness.callRpc("thread", { threadId: T })) as ThreadState;
-    expect(limited.context).toMatchObject({ limitTokens: 100_000, limitSource: "thread", percent: 90 });
+    expect(limited.context).toMatchObject({ limitTokens: 100_000, limitSource: "thread" });
+    expect(limited.context!.percent).toBeCloseTo(93.6);
     expect(limited.autoCompact).toMatchObject({ thresholdPercent: 80, effectiveThresholdPercent: 80, effectiveThresholdTokens: 80_000 });
   });
 
@@ -172,7 +180,8 @@ describe("plugin wiring", () => {
 
   it("compacts manually through the RPC", async () => {
     const { harness, threads } = await load();
-    threads.thread(T, "claude-code", claudeContext(30_000));
+    // 20 % of the 117 000 point where Claude Code compacts on its own.
+    threads.thread(T, "claude-code", claudeContext(23_400));
     const result = await harness.callRpc("compact", { threadId: T });
     expect(result).toMatchObject({ ok: true, entry: { trigger: "manual", beforePercent: 20 } });
     await harness.lifecycle.dispose();

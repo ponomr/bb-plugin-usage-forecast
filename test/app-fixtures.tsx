@@ -80,7 +80,8 @@ export function threadState(over: Partial<ThreadState> = {}): ThreadState {
       usedTokens: 90_000,
       windowTokens: 150_000,
       limitTokens: 150_000,
-      limitSource: "settings",
+      // A Claude Code limit set above the point where it compacts on its own.
+      limitSource: "provider",
       percent: 60,
       estimated: false,
       autoCompactAtTokens: 117_000,
