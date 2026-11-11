@@ -14,12 +14,22 @@ export const THRESHOLD_DEFAULT_PERCENT = 80;
 export const POLL_MIN_MINUTES = 1;
 export const POLL_MAX_MINUTES = 10;
 export const POLL_DEFAULT_MINUTES = 2;
+/**
+ * The working context limit in tokens: the point the context bar and the
+ * auto-compact threshold are measured against, capped by the model window.
+ * Quality drops well before a large window is full, so the default follows
+ * bb-plugin-context-meter: 150 000 tokens.
+ */
+export const CONTEXT_LIMIT_MIN_TOKENS = 10_000;
+export const CONTEXT_LIMIT_MAX_TOKENS = 2_000_000;
+export const CONTEXT_LIMIT_DEFAULT_TOKENS = 150_000;
 /** Auto-compact entries shown in the banner and in `status`. */
 export const RECENT_COMPACTIONS = 5;
 
 export const threadIdSchema = z.string().min(1).max(128);
 export const thresholdSchema = z.number().int().min(THRESHOLD_MIN_PERCENT).max(THRESHOLD_MAX_PERCENT);
 export const pollIntervalSchema = z.number().int().min(POLL_MIN_MINUTES).max(POLL_MAX_MINUTES);
+export const contextLimitSchema = z.number().int().min(CONTEXT_LIMIT_MIN_TOKENS).max(CONTEXT_LIMIT_MAX_TOKENS);
 
 // --- Limits -----------------------------------------------------------------
 
@@ -104,15 +114,22 @@ export const overrideSchema = z.object({
   autoCompact: z.enum(["inherit", "off", "on"]),
   /** Used only with `on`; the server drops it otherwise. */
   thresholdPercent: thresholdSchema.optional(),
+  /** This thread's working context limit in tokens; absent means the settings' limit. */
+  limitTokens: contextLimitSchema.optional(),
 });
 export type ThreadOverride = z.infer<typeof overrideSchema>;
 
-/** The stored shape: `thresholdPercent` only with `on`. */
+/** The stored shape: `thresholdPercent` only with `on`, `limitTokens` only when set. */
 export function normalizeOverride(override: ThreadOverride): ThreadOverride {
-  if (override.autoCompact !== "on") return { autoCompact: override.autoCompact };
-  return override.thresholdPercent === undefined
-    ? { autoCompact: "on" }
-    : { autoCompact: "on", thresholdPercent: override.thresholdPercent };
+  const out: ThreadOverride = { autoCompact: override.autoCompact };
+  if (override.autoCompact === "on" && override.thresholdPercent !== undefined) out.thresholdPercent = override.thresholdPercent;
+  if (override.limitTokens !== undefined) out.limitTokens = override.limitTokens;
+  return out;
+}
+
+/** True when the override changes nothing and need not be stored. */
+export function isInheritOverride(override: ThreadOverride): boolean {
+  return override.autoCompact === "inherit" && override.limitTokens === undefined;
 }
 
 export const contextCategorySchema = z.object({
@@ -122,9 +139,17 @@ export const contextCategorySchema = z.object({
   kind: z.enum(["used", "free", "reserved", "deferred"]),
 });
 
+export const CONTEXT_LIMIT_SOURCES = ["settings", "thread", "window"] as const;
+
 export const threadContextSchema = z.object({
   usedTokens: z.number(),
+  /** The model's context window. */
   windowTokens: z.number(),
+  /** The working limit: the settings' or the thread's, capped by the window. */
+  limitTokens: z.number(),
+  /** Where `limitTokens` comes from; `window` when the window is smaller than the configured limit. */
+  limitSource: z.enum(CONTEXT_LIMIT_SOURCES),
+  /** Used tokens as a percent of `limitTokens`; above 100 past the limit. */
   percent: z.number(),
   estimated: z.boolean(),
   /** Where the provider compacts on its own (Claude Code), when it says. */
@@ -148,10 +173,13 @@ export const threadStateSchema = z.object({
     /** From the settings or the override. */
     thresholdPercent: z.number(),
     /**
-     * What auto-compact acts on: `thresholdPercent`, capped below the point
-     * where the provider compacts on its own (Claude Code, 78 %).
+     * What auto-compact acts on, in percent of the working limit:
+     * `thresholdPercent`, capped below the point where the provider compacts
+     * on its own (Claude Code, 78 % of its window).
      */
     effectiveThresholdPercent: z.number(),
+    /** The same point in tokens, or null while the context is not measured. */
+    effectiveThresholdTokens: z.number().nullable(),
     source: z.enum(["settings", "thread"]),
   }),
   /** False once a compact of this provider failed as unsupported. */

@@ -5,12 +5,13 @@
 import { useState } from "react";
 import { useRpc, useSettings } from "@get-bb/plugin-sdk/app";
 import {
+  CONTEXT_LIMIT_DEFAULT_TOKENS,
   POLL_DEFAULT_MINUTES,
   THRESHOLD_DEFAULT_PERCENT,
   type CompactLogEntry,
   type UsageForecastContract,
 } from "../shared/contract";
-import { compactEntryText, formatAgo, providerName, statusText } from "./format";
+import { compactEntryText, formatAgo, providerName, shortTokens, statusText } from "./format";
 import { errorText, useNow, useSnapshot } from "./hooks";
 import { useStrings } from "./i18n";
 import { Toned } from "./ui";
@@ -55,6 +56,7 @@ export function SettingsSection() {
   const enabled = values.autoCompactEnabled === true;
   const threshold = Number(values.autoCompactThresholdPercent ?? THRESHOLD_DEFAULT_PERCENT);
   const interval = Number(values.pollIntervalMinutes ?? POLL_DEFAULT_MINUTES);
+  const limit = Number(values.contextLimitTokens ?? CONTEXT_LIMIT_DEFAULT_TOKENS);
   const data = snapshot.data;
 
   const refresh = () => {
@@ -70,7 +72,7 @@ export function SettingsSection() {
   return (
     <div className="flex flex-col gap-3 text-sm" data-testid="usage-settings">
       <div className="flex flex-col gap-1">
-        <div>{s.settingsSummary(enabled, threshold, interval)}</div>
+        <div>{s.settingsSummary(enabled, threshold, interval, shortTokens(limit))}</div>
         <div className="text-muted-foreground">{s.settingsHint}</div>
       </div>
 

@@ -18,6 +18,7 @@ export function settingsOf(over: Partial<PluginSettings> = {}): () => Promise<Pl
     autoCompactEnabled: true,
     autoCompactThresholdPercent: 80,
     pollIntervalMinutes: 2,
+    contextLimitTokens: 150_000,
     ...over,
   };
   return async () => value;

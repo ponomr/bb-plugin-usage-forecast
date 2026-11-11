@@ -1,7 +1,7 @@
 // The server functions behind RPC `usage-forecast.v1.*` and the CLI. Both call
 // the same service, so a change made from the CLI invalidates open pages too.
 
-import { normalizeOverride, type LimitsSnapshot, type ThreadOverride, type ThreadState, type CompactResult } from "../shared/contract";
+import { isInheritOverride, normalizeOverride, type LimitsSnapshot, type ThreadOverride, type ThreadState, type CompactResult } from "../shared/contract";
 import type { AutoCompactor } from "./auto-compact";
 import { toSnapshot, type Poller } from "./poller";
 import type { Storage } from "./storage";
@@ -38,7 +38,7 @@ export function createService(deps: ServiceDeps): Service {
     compact: (threadId) => deps.compactor.manual(threadId),
     async setThreadOverride(threadId, input) {
       const override = normalizeOverride(input);
-      if (override.autoCompact === "inherit") {
+      if (isInheritOverride(override)) {
         await deps.threads.updatePluginMetadata({ threadId, remove: ["override"] });
       } else {
         await deps.threads.updatePluginMetadata({ threadId, set: { override } });

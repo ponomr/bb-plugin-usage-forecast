@@ -180,13 +180,20 @@ export function headline(s: Strings, views: readonly WindowView[], now: number):
 export type SegmentKey = "messages" | "tools" | "other" | "used";
 
 export interface ContextView {
+  /** Of the working limit. */
   percent: number;
   tone: Tone;
+  estimated: boolean;
+  usedTokens: number;
+  /** The working limit: the bar's full width. */
+  limitTokens: number;
+  /** The model window, shown when it is larger than the limit. */
   windowTokens: number;
+  /** Free tokens below the limit (and the buffer). */
   freeTokens: number;
   /** Used parts left to right; one `used` part when the provider gives no breakdown. */
   segments: { key: SegmentKey; tokens: number }[];
-  /** Reserved tokens (Claude Code's auto-compact buffer), drawn at the right end. */
+  /** The part of the reserved tokens (Claude Code's auto-compact buffer) that falls inside the limit, drawn at the right end. */
   bufferTokens: number;
 }
 
@@ -210,12 +217,18 @@ export function contextView(ctx: ThreadContext): ContextView {
   const grouped = (["messages", "tools", "other"] as const)
     .filter((key) => sums[key] > 0)
     .map((key) => ({ key, tokens: sums[key] }));
+  // The buffer sits at the top of the window; only its part below the limit is shown.
+  const shownBuffer = Math.max(0, ctx.limitTokens - (ctx.windowTokens - bufferTokens));
+  const freeInLimit = Math.max(0, ctx.limitTokens - ctx.usedTokens - shownBuffer);
   return {
     percent: ctx.percent,
     tone: contextTone(ctx.percent),
+    estimated: ctx.estimated,
+    usedTokens: ctx.usedTokens,
+    limitTokens: ctx.limitTokens,
     windowTokens: ctx.windowTokens,
-    freeTokens: free ?? Math.max(0, ctx.windowTokens - ctx.usedTokens - bufferTokens),
+    freeTokens: free === null ? freeInLimit : Math.min(free, freeInLimit),
     segments: grouped.length > 0 ? grouped : [{ key: "used", tokens: ctx.usedTokens }],
-    bufferTokens,
+    bufferTokens: shownBuffer,
   };
 }

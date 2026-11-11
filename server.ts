@@ -2,6 +2,10 @@
 // `usage-forecast.v1` and the `bb usage-forecast` CLI.
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import {
+  CONTEXT_LIMIT_DEFAULT_TOKENS,
+  CONTEXT_LIMIT_MAX_TOKENS,
+  CONTEXT_LIMIT_MIN_TOKENS,
+  contextLimitSchema,
   LIMITS_TAG,
   pollIntervalSchema,
   POLL_DEFAULT_MINUTES,
@@ -44,10 +48,17 @@ export default async function plugin(bb: BbPluginApi) {
       description: "Compact a thread when it goes idle with its context at or above the threshold.",
       default: false,
     },
+    contextLimitTokens: {
+      type: "number",
+      label: "Context limit, tokens",
+      description: `The working context size the bar and the auto-compact threshold are measured against, ${CONTEXT_LIMIT_MIN_TOKENS.toLocaleString("en-US")}-${CONTEXT_LIMIT_MAX_TOKENS.toLocaleString("en-US")}. A smaller model window caps it. Answer quality drops well before a large window is full, so the default is 150 000.`,
+      default: CONTEXT_LIMIT_DEFAULT_TOKENS,
+      experimental_schema: contextLimitSchema,
+    },
     autoCompactThresholdPercent: {
       type: "number",
       label: "Auto-compact threshold, %",
-      description: `Context fill that triggers auto-compact, ${THRESHOLD_MIN_PERCENT}-${THRESHOLD_MAX_PERCENT}. Claude Code compacts on its own at 78 %, so for it the plugin acts a little below that.`,
+      description: `Fill of the context limit that triggers auto-compact, ${THRESHOLD_MIN_PERCENT}-${THRESHOLD_MAX_PERCENT}. Claude Code compacts on its own at 78 % of its window, so for it the plugin acts a little below that.`,
       default: THRESHOLD_DEFAULT_PERCENT,
       experimental_schema: thresholdSchema,
     },

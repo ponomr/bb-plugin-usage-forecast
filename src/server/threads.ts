@@ -5,6 +5,9 @@
 
 import { z } from "zod";
 import {
+  CONTEXT_LIMIT_DEFAULT_TOKENS,
+  CONTEXT_LIMIT_MAX_TOKENS,
+  CONTEXT_LIMIT_MIN_TOKENS,
   contextCategorySchema,
   normalizeOverride,
   overrideSchema,
@@ -24,6 +27,8 @@ export interface PluginSettings {
   autoCompactEnabled: boolean;
   autoCompactThresholdPercent: number;
   pollIntervalMinutes: number;
+  /** The working context limit in tokens; the thread's window caps it. */
+  contextLimitTokens: number;
 }
 
 function clampInt(value: unknown, min: number, max: number, fallback: number): number {
@@ -42,7 +47,25 @@ export function parseSettings(raw: Record<string, unknown> | null | undefined): 
       THRESHOLD_DEFAULT_PERCENT,
     ),
     pollIntervalMinutes: clampInt(raw?.pollIntervalMinutes, POLL_MIN_MINUTES, POLL_MAX_MINUTES, POLL_DEFAULT_MINUTES),
+    contextLimitTokens: clampInt(
+      raw?.contextLimitTokens,
+      CONTEXT_LIMIT_MIN_TOKENS,
+      CONTEXT_LIMIT_MAX_TOKENS,
+      CONTEXT_LIMIT_DEFAULT_TOKENS,
+    ),
   };
+}
+
+/** The configured working limit before the window caps it. */
+export interface ContextLimit {
+  tokens: number;
+  source: "settings" | "thread";
+}
+
+export function contextLimitOf(override: ThreadOverride, settings: PluginSettings): ContextLimit {
+  return override.limitTokens === undefined
+    ? { tokens: settings.contextLimitTokens, source: "settings" }
+    : { tokens: override.limitTokens, source: "thread" };
 }
 
 export const INHERIT: ThreadOverride = { autoCompact: "inherit" };
@@ -58,7 +81,7 @@ export function parseOverride(metadata: unknown): ThreadOverride {
 export function effectivePolicy(
   override: ThreadOverride,
   settings: PluginSettings,
-): Omit<ThreadState["autoCompact"], "effectiveThresholdPercent"> {
+): Omit<ThreadState["autoCompact"], "effectiveThresholdPercent" | "effectiveThresholdTokens"> {
   if (override.autoCompact === "inherit") {
     return {
       enabled: settings.autoCompactEnabled,
@@ -90,9 +113,10 @@ const usageInput = z.object({
 /**
  * Context fill from a `threads.context` answer, or null when the host has no
  * measurement. Claude Code gives a snapshot with the window and a breakdown;
- * Codex gives only `usedTokens` and `modelContextWindow`.
+ * Codex gives only `usedTokens` and `modelContextWindow`. The percent is of
+ * the working limit, which the window caps.
  */
-export function readContext(answer: unknown): ThreadContext | null {
+export function readContext(answer: unknown, limit: ContextLimit): ThreadContext | null {
   const parsed = usageInput.safeParse((answer as { usage?: unknown } | null)?.usage);
   if (!parsed.success) return null;
   const usage = parsed.data;
@@ -104,31 +128,46 @@ export function readContext(answer: unknown): ThreadContext | null {
     const one = contextCategorySchema.safeParse(c);
     return one.success ? [one.data] : [];
   });
+  const limitTokens = Math.min(limit.tokens, windowTokens);
   return {
     usedTokens,
     windowTokens,
-    percent: (usedTokens / windowTokens) * 100,
+    limitTokens,
+    limitSource: limitTokens < limit.tokens ? "window" : limit.source,
+    percent: (usedTokens / limitTokens) * 100,
     estimated: usage.estimated ?? false,
     autoCompactAtTokens: snapshot?.autoCompactAtTokens ?? null,
     categories,
   };
 }
 
-// Claude Code compacts on its own at `autoCompactAtTokens` (78 % on bb 0.49).
-// A threshold at or above that never fires, so the effective threshold is
-// capped PROVIDER_MARGIN_PERCENT below it: the plugin then compacts between
-// turns, before the provider does it in the middle of one.
+// Claude Code compacts on its own at `autoCompactAtTokens` (78 % of its
+// window on bb 0.49). A threshold at or above that never fires, so the
+// effective threshold is capped PROVIDER_MARGIN_PERCENT of the window below
+// it: the plugin then compacts between turns, before the provider does it in
+// the middle of one. The threshold is a percent of the working limit; with a
+// limit well below the window the cap never applies.
 export const PROVIDER_MARGIN_PERCENT = 2;
 
+/** Where the provider compacts on its own, as a percent of its window. */
 export function providerCompactsAtPercent(context: ThreadContext | null): number | null {
   if (!context?.autoCompactAtTokens || context.windowTokens <= 0) return null;
   return (context.autoCompactAtTokens / context.windowTokens) * 100;
 }
 
+/** The threshold the plugin acts on, as a percent of the working limit. */
 export function effectiveThreshold(thresholdPercent: number, context: ThreadContext | null): number {
-  const providerAt = providerCompactsAtPercent(context);
-  if (providerAt === null || thresholdPercent < providerAt - PROVIDER_MARGIN_PERCENT) return thresholdPercent;
-  return Math.max(THRESHOLD_MIN_PERCENT, Math.floor(providerAt - PROVIDER_MARGIN_PERCENT));
+  if (!context?.autoCompactAtTokens || context.limitTokens <= 0) return thresholdPercent;
+  const capTokens = context.autoCompactAtTokens - (PROVIDER_MARGIN_PERCENT / 100) * context.windowTokens;
+  const capPercent = (capTokens / context.limitTokens) * 100;
+  if (thresholdPercent < capPercent) return thresholdPercent;
+  return Math.max(THRESHOLD_MIN_PERCENT, Math.floor(capPercent));
+}
+
+/** The same threshold in tokens, or null without a measurement. */
+export function effectiveThresholdTokens(thresholdPercent: number, context: ThreadContext | null): number | null {
+  if (context === null) return null;
+  return Math.round((effectiveThreshold(thresholdPercent, context) / 100) * context.limitTokens);
 }
 
 const IDLE_STATUSES = new Set(["idle", "error"]);
@@ -174,7 +213,7 @@ export async function readThreadState(deps: ThreadReaderDeps, threadId: string):
   ]);
   const { providerId, active } = readThreadInfo(info);
   const override = parseOverride(metadata);
-  const ctx = readContext(context);
+  const ctx = readContext(context, contextLimitOf(override, settings));
   const policy = effectivePolicy(override, settings);
   return {
     threadId,
@@ -182,7 +221,11 @@ export async function readThreadState(deps: ThreadReaderDeps, threadId: string):
     active,
     context: ctx,
     override,
-    autoCompact: { ...policy, effectiveThresholdPercent: effectiveThreshold(policy.thresholdPercent, ctx) },
+    autoCompact: {
+      ...policy,
+      effectiveThresholdPercent: effectiveThreshold(policy.thresholdPercent, ctx),
+      effectiveThresholdTokens: effectiveThresholdTokens(policy.thresholdPercent, ctx),
+    },
     compactSupported: providerId === null || !unsupported.includes(providerId),
     cooldownUntil: cooldown !== null && cooldown > now ? cooldown : null,
   };

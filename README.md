@@ -45,13 +45,19 @@ the context breakdown and one line per other provider.
 - **Forecast to the reset.** From the current pace of the window, and from
   the pace of past windows of the same kind once the server has seen enough of
   them.
+- **Context against a working limit.** The context bar, its percent and the
+  auto-compact threshold are measured against a limit in tokens (150 000 by
+  default), not against the model window: a 1M-window model fills the bar at
+  the same point as a 200k one. A model window smaller than the limit caps
+  it. One thread can have its own limit. An estimated fill (Codex between
+  turns) is shown with `~`.
 - **Context and auto-compact.** On the Mac a section «Context & auto
   compact» in the thread context card shows the fill in tokens, its
-  breakdown, the compact button and the per-thread auto-compact mode
-  (as in settings / off / on with its own threshold). The band's switch sets
-  the same per-thread mode; when the new threshold is already passed it asks
-  whether to compact now or after the next reply. On the phone the context
-  panel is in the expanded band.
+  breakdown, the limit, the compact button, the per-thread auto-compact mode
+  (as in settings / off / on with its own threshold) and the per-thread
+  limit. The band's switch sets the same per-thread mode; when the new
+  threshold is already passed it asks whether to compact now or after the
+  next reply. On the phone the context panel is in the expanded band.
 - **Server-side work.** Limits are polled on the server, so history and
   auto-compact work with every client closed.
 - **Live context.** The server listens to the thread's context events
@@ -91,8 +97,9 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 
 | Setting | Default | Range | Meaning |
 | --- | --- | --- | --- |
+| Context limit, tokens | 150 000 | 10 000–2 000 000 | The working limit the context bar and the threshold are measured against; a smaller model window caps it |
 | Auto-compact | off | — | Compact a thread when it goes idle with its context at or above the threshold |
-| Auto-compact threshold, % | 80 | 50–95 | Context fill that triggers it |
+| Auto-compact threshold, % | 80 | 50–95 | Fill of the context limit that triggers it |
 | Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
 | Language | English | English, Русский | Language of the plugin UI |
 | Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used |
@@ -101,12 +108,15 @@ Auto-compact rules:
 
 - It runs only between turns, on `thread.idle`.
 - Claude Code compacts on its own at 78 % of its window, so for Claude Code
-  threads the plugin acts at 76 % at most.
+  threads the plugin acts a little below that point (76 % when the limit
+  equals the window).
 - After a compact, or a failed attempt, a thread waits 10 minutes before the
   next one.
 - A per-thread override («Thread auto compact» in the context block, or the
   band's switch) wins over
-  the global setting in both directions.
+  the global setting in both directions. The per-thread limit («Thread
+  limit» in the context block, or `--limit` in the CLI) replaces the
+  settings' limit for that thread.
 
 ## CLI
 
@@ -114,7 +124,7 @@ Auto-compact rules:
 bb usage-forecast status [--refresh] [--json]
 bb usage-forecast thread <threadId> [--json]
 bb usage-forecast compact <threadId>
-bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95]
+bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95] [--limit <tokens>|0]
 ```
 
 Agents in bb threads get the same reference from

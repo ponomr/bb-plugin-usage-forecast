@@ -37,10 +37,10 @@ describe("settings section", () => {
       recentCompactions: [entry(1)],
     });
     const b = backend({ snapshot: s });
-    render(Section, {}, b, { settings: { autoCompactEnabled: true, autoCompactThresholdPercent: 70, pollIntervalMinutes: 5 } });
+    render(Section, {}, b, { settings: { autoCompactEnabled: true, autoCompactThresholdPercent: 70, pollIntervalMinutes: 5, contextLimitTokens: 120_000 } });
     const root = await screen.findByTestId("usage-settings");
     await waitFor(() => expect(root.textContent).toContain("Last poll: just now"));
-    expect(root.textContent).toContain("Auto compact: on, threshold 70%. Limits polled every 5 min.");
+    expect(root.textContent).toContain("Context limit 120k tokens. Auto compact: on, threshold 70% of the limit. Limits polled every 5 min.");
     expect(root.textContent).toContain("Poll error: codex: boom");
     expect(root.textContent).toContain("Claude Code: ok");
     expect(root.textContent).toContain("acp-cursor: not installed");

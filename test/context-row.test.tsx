@@ -5,7 +5,7 @@ import { loadPluginApp } from "@get-bb/plugin-sdk/testing/app";
 import { cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { CARD_SECTION_GROUP } from "../app";
-import { parseThreshold } from "../src/app/context-row";
+import { parseLimit, parseThreshold } from "../src/app/context-row";
 import { contextView } from "../src/app/model";
 import { backend, callsTo, render, T, threadState } from "./app-fixtures";
 
@@ -25,17 +25,19 @@ afterEach(cleanup);
 
 const select = () => screen.findByRole("combobox", { name: "Thread auto compact" }) as Promise<HTMLSelectElement>;
 const thresholdInput = () => screen.findByRole("textbox", { name: "Auto compact threshold, %" }) as Promise<HTMLInputElement>;
+const limitInput = () => screen.findByRole("textbox", { name: "Thread limit, k tokens" }) as Promise<HTMLInputElement>;
 
 describe("context card section", () => {
   it("shows the fill, free space, breakdown, the provider's own compact point and the effective threshold", async () => {
-    const autoCompact = { enabled: true, thresholdPercent: 80, effectiveThresholdPercent: 76, source: "settings" as const };
+    const autoCompact = { enabled: true, thresholdPercent: 80, effectiveThresholdPercent: 76, effectiveThresholdTokens: 114_000, source: "settings" as const };
     render(Section, props, backend({ thread: threadState({ autoCompact }) }));
     const details = await screen.findByTestId("context-details");
     expect(details.textContent).toContain("Context 60% used");
     expect(details.textContent).toContain("60k free of 150k");
     expect(within(screen.getByRole("list", { name: "Context breakdown" })).getByRole("listitem").textContent).toBe("Messages90k");
-    expect(details.textContent).toContain("The provider compacts on its own at 78%");
-    expect(details.textContent).toContain("Auto compact: on at 80%, acts at 76%");
+    expect(details.textContent).toContain("The provider compacts on its own at 117k (78% of the window)");
+    expect(details.textContent).toContain("Auto compact: on at 80%, acts at 76% (114k)");
+    expect(screen.queryByTestId("context-limit")).toBeNull();
     expect(screen.getByRole("button", { name: "Compact" })).toBeTruthy();
   });
 
@@ -108,6 +110,8 @@ describe("helpers", () => {
     const view = contextView({
       usedTokens: 120_000,
       windowTokens: 200_000,
+      limitTokens: 200_000,
+      limitSource: "settings",
       percent: 60,
       estimated: false,
       autoCompactAtTokens: null,
@@ -132,9 +136,73 @@ describe("helpers", () => {
   });
 
   it("draws one used part and derives free space when the provider gives no breakdown", () => {
-    const view = contextView({ usedTokens: 90_000, windowTokens: 100_000, percent: 90, estimated: true, autoCompactAtTokens: null, categories: [] });
+    const view = contextView({ usedTokens: 90_000, windowTokens: 100_000, limitTokens: 100_000, limitSource: "window", percent: 90, estimated: true, autoCompactAtTokens: null, categories: [] });
     expect(view.segments).toEqual([{ key: "used", tokens: 90_000 }]);
     expect(view.freeTokens).toBe(10_000);
     expect(view.tone).toBe("red");
+  });
+
+  it("measures the bar against the limit and shows only the buffer part inside it", () => {
+    const view = contextView({
+      usedTokens: 90_000,
+      windowTokens: 200_000,
+      limitTokens: 150_000,
+      limitSource: "settings",
+      percent: 60,
+      estimated: false,
+      autoCompactAtTokens: 156_000,
+      categories: [
+        { id: "m", label: "Messages", tokens: 90_000, kind: "used" },
+        { id: "b", label: "Autocompact buffer", tokens: 44_000, kind: "reserved" },
+        { id: "f", label: "Free space", tokens: 66_000, kind: "free" },
+      ],
+    });
+    expect(view.limitTokens).toBe(150_000);
+    expect(view.bufferTokens).toBe(0);
+    expect(view.freeTokens).toBe(60_000);
+  });
+
+  it("shows the limit line with ~ for an estimated fill and a per-thread limit", async () => {
+    const context = { usedTokens: 50_000, windowTokens: 258_400, limitTokens: 100_000, limitSource: "thread" as const, percent: 50, estimated: true, autoCompactAtTokens: null, categories: [] };
+    render(Section, props, backend({ thread: threadState({ providerId: "codex", context, override: { autoCompact: "inherit", limitTokens: 100_000 } }) }));
+    const details = await screen.findByTestId("context-details");
+    expect(details.textContent).toContain("Context ~50% used");
+    expect(details.textContent).toContain("50k free of 100k");
+    expect((await screen.findByTestId("context-limit")).textContent).toBe("Limit 100k (this thread) of the 258k window");
+    expect((await limitInput()).value).toBe("100");
+  });
+
+  it("keeps the thread's limit when the mode changes", async () => {
+    const b = backend({ thread: threadState({ override: { autoCompact: "inherit", limitTokens: 100_000 } }) });
+    render(Section, props, b);
+    fireEvent.change(await select(), { target: { value: "off" } });
+    await waitFor(() => expect(b.overrides.at(-1)).toEqual({ autoCompact: "off", limitTokens: 100_000 }));
+  });
+
+  it("sets and clears the per-thread limit in thousands of tokens", async () => {
+    const b = backend({ thread: threadState({ override: { autoCompact: "on", thresholdPercent: 70 } }) });
+    render(Section, props, b);
+    const input = await limitInput();
+    fireEvent.change(input, { target: { value: "120" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(b.overrides.at(-1)).toEqual({ autoCompact: "on", thresholdPercent: 70, limitTokens: 120_000 }));
+    await waitFor(() => expect(input.disabled).toBe(false));
+    fireEvent.change(input, { target: { value: "5" } });
+    expect(screen.getByText("Limit 10–2000k tokens, blank for the settings' limit")).toBeTruthy();
+    fireEvent.blur(input);
+    expect(b.overrides).toHaveLength(1);
+    expect(input.value).toBe("120");
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(b.overrides).toHaveLength(2));
+    expect(b.overrides.at(-1)).toEqual({ autoCompact: "on", thresholdPercent: 70 });
+    fireEvent.change(await select(), { target: { value: "off" } });
+    await waitFor(() => expect(b.overrides.at(-1)).toEqual({ autoCompact: "off" }));
+    expect(parseLimit("10")).toBe(10_000);
+    expect(parseLimit("2000")).toBe(2_000_000);
+    expect(parseLimit("9")).toBeNull();
+    expect(parseLimit("2001")).toBeNull();
+    expect(parseLimit("1.5")).toBeNull();
+    expect(parseLimit(" ")).toBeUndefined();
   });
 });

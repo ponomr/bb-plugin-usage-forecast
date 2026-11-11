@@ -118,7 +118,7 @@ describe("band, collapsed", () => {
   it("draws the context bar and colours its fill: 85% red, 60% amber", async () => {
     render(Banner, {}, backend({ thread: threadState({ context: { ...threadState().context!, percent: 85 } }) }));
     const ctx = await findWindow("context");
-    expect(ctx.textContent).toBe("Ctx150k85%");
+    expect(ctx.textContent).toBe("Ctx90k / 150k85%");
     expect(within(ctx).getByText("85%").getAttribute("data-tone")).toBe("red");
     expect(ctx.querySelector('[data-segment="messages"]')).toBeTruthy();
     cleanup();
@@ -146,8 +146,15 @@ describe("band, auto compact", () => {
     await waitFor(() => expect(b.overrides.at(-1)).toEqual({ autoCompact: "off" }));
   });
 
+  it("keeps the thread's limit when the switch changes the mode", async () => {
+    const b = backend({ thread: threadState({ override: { autoCompact: "on", thresholdPercent: 80, limitTokens: 100_000 } }) });
+    render(Banner, {}, b);
+    fireEvent.click(await toggle());
+    await waitFor(() => expect(b.overrides.at(-1)).toEqual({ autoCompact: "off", limitTokens: 100_000 }));
+  });
+
   it("shows on when the settings turn it on for every thread", async () => {
-    const autoCompact = { enabled: true, thresholdPercent: 70, effectiveThresholdPercent: 70, source: "settings" as const };
+    const autoCompact = { enabled: true, thresholdPercent: 70, effectiveThresholdPercent: 70, effectiveThresholdTokens: 105_000, source: "settings" as const };
     render(Banner, {}, backend({ thread: threadState({ autoCompact }) }));
     expect((await toggle()).getAttribute("aria-checked")).toBe("true");
     expect((await threshold()).value).toBe("70");
@@ -281,7 +288,7 @@ describe("band, expanded", () => {
     expect(details.textContent).toContain("Context 60% used");
     expect(details.textContent).toContain("60k free of 150k");
     expect(within(screen.getByRole("list", { name: "Context breakdown" })).getByRole("listitem").textContent).toBe("Messages90k");
-    expect(details.textContent).toContain("The provider compacts on its own at 78%");
+    expect(details.textContent).toContain("The provider compacts on its own at 117k (78% of the window)");
   });
 
   it("shows another provider on one line and its windows on tap", async () => {
@@ -357,7 +364,7 @@ describe("band, limits shown as left", () => {
     expect(fillWidth(weekly)).toBe("8%");
     expect(weekly.title).toBe("Weekly – 8% left");
     expect((await findWindow("Current session")).textContent).toBe("5H2h60%");
-    expect((await findWindow("context")).textContent).toBe("Ctx150k60%");
+    expect((await findWindow("context")).textContent).toBe("Ctx90k / 150k60%");
   });
 
   it("mirrors the pace tick: 60% used heading for 110% leaves 40% now and nothing at reset", async () => {
