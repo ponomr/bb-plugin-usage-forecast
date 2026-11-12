@@ -1,20 +1,15 @@
 // Composer band of a thread, after the band of claude-code-usage-quota-mod
-// (see NOTICE). The header has the headline, the auto-compact switch with its
-// threshold and the compact button; the collapsed row has a bar per limit
+// (see NOTICE). The header has the headline, the auto-compact switch with the
+// threshold it acts at and the compact button; the collapsed row has a bar per limit
 // window and the context bar; the expanded view has each window with its pace
 // note, the context breakdown and the other providers. On a phone the
 // expanded part scrolls inside a capped height, so the header with the
 // collapse button never leaves the screen.
 
 import { useEffect, useState, type ReactNode } from "react";
-import {
-  THRESHOLD_MAX_PERCENT,
-  THRESHOLD_MIN_PERCENT,
-  type ProviderLimits,
-  type ThreadState,
-} from "../shared/contract";
+import type { ProviderLimits, ThreadState } from "../shared/contract";
 import { formatPercent } from "../shared/thresholds";
-import { CompactButton, ContextPanel, parseThreshold } from "./context-row";
+import { CompactButton, ContextPanel } from "./context-row";
 import {
   contextPercent,
   formatAgo,
@@ -44,7 +39,6 @@ import { shownPercent } from "../shared/limits-show";
 import { RecentCompacts } from "./settings-section";
 import { Bar, Ink, SegmentBar, Switch, Toned } from "./ui";
 import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
 
 function Status({ view, now }: { view: BannerView; now: number }) {
   const s = useStrings();
@@ -82,7 +76,11 @@ function Status({ view, now }: { view: BannerView; now: number }) {
   }
 }
 
-/** The switch and threshold act on this thread's override; turning it on past the threshold asks first. */
+/**
+ * The switch acts on this thread's override at the thread's current threshold; turning it on past
+ * the threshold asks first. The threshold itself is set in the plugin settings, or for one thread
+ * in the context card, so a number typed here cannot silently become a thread override.
+ */
 function AutoCompactControls({
   state,
   compact,
@@ -99,22 +97,12 @@ function AutoCompactControls({
   const mode = state.override.autoCompact;
   const enabled = mode === "inherit" ? state.autoCompact.enabled : mode === "on";
   const current = state.override.thresholdPercent ?? state.autoCompact.thresholdPercent;
-  const [draft, setDraft] = useState(String(current));
-  useEffect(() => setDraft(String(current)), [current]);
   // The thread's own limit survives a mode change.
   const keep = state.override.limitTokens === undefined ? {} : { limitTokens: state.override.limitTokens };
 
-  const commit = () => {
-    const parsed = parseThreshold(draft);
-    if (parsed === null) return setDraft(String(current));
-    if (parsed === current && mode === "on") return;
-    set({ ...keep, autoCompact: "on", thresholdPercent: parsed });
-    onArm(parsed);
-  };
-
   return (
     <span className="flex flex-wrap items-center gap-2">
-      <span className="flex items-center gap-1.5">
+      <span className="flex items-center gap-1.5" title={s.autoCompactHint}>
         <Switch
           checked={enabled}
           label={s.autoCompact}
@@ -129,23 +117,9 @@ function AutoCompactControls({
             }
           }}
         />
-        <span className="text-muted-foreground">{s.autoCompact}</span>
-      </span>
-      <span className="flex items-center gap-0.5">
-        <Input
-          aria-label={s.thresholdLabel}
-          title={s.thresholdRange(THRESHOLD_MIN_PERCENT, THRESHOLD_MAX_PERCENT)}
-          inputMode="numeric"
-          className="h-6 w-10 px-1 text-center text-xs tabular-nums"
-          value={draft}
-          disabled={!enabled || pending}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") commit();
-          }}
-        />
-        <span className="text-muted-foreground">%</span>
+        <span className="text-muted-foreground" data-testid="auto-compact-at">
+          {s.autoCompactAt(formatPercent(state.autoCompact.effectiveThresholdPercent))}
+        </span>
       </span>
       <CompactButton state={state} compact={compact} />
       {error === null ? null : <Toned tone="red">{error}</Toned>}
