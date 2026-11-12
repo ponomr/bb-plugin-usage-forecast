@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // The composer band: headline, window bars with the pace marker, context bar,
-// auto-compact switch and threshold, compact button, expanded view, Russian.
+// auto-compact switch with the threshold it acts at, compact button, expanded view, Russian.
 
 import { loadPluginApp } from "@get-bb/plugin-sdk/testing/app";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -129,21 +129,35 @@ describe("band, collapsed", () => {
 
 describe("band, auto compact", () => {
   const toggle = () => screen.findByRole("switch", { name: "Auto compact" });
-  const threshold = () => screen.findByRole("textbox", { name: "Auto compact threshold, %" }) as Promise<HTMLInputElement>;
+  const actsAt = async () => (await screen.findByTestId("auto-compact-at")).textContent;
+
+  it("has no threshold field: the threshold lives in the settings and the context card", async () => {
+    render(Banner, {}, backend());
+    await toggle();
+    expect(screen.queryByRole("textbox", { name: "Auto compact threshold, %" })).toBeNull();
+    expect((await screen.findByTestId("auto-compact-at")).parentElement!.title).toContain("plugin settings");
+  });
 
   it("follows the settings, turns the thread on at the current threshold and off again", async () => {
     const b = backend();
     render(Banner, {}, b);
     const sw = await toggle();
     expect(sw.getAttribute("aria-checked")).toBe("false");
-    expect((await threshold()).disabled).toBe(true);
+    // The fixture's 80 % lands at 76 % below the provider's own point; the band names where it acts.
+    expect(await actsAt()).toBe("Auto compact at 76%");
     fireEvent.click(sw);
     await waitFor(() => expect(b.overrides).toEqual([{ autoCompact: "on", thresholdPercent: 80 }]));
     await waitFor(async () => expect((await toggle()).getAttribute("aria-checked")).toBe("true"));
-    expect((await threshold()).disabled).toBe(false);
     expect(screen.queryByRole("alert")).toBeNull();
     fireEvent.click(await toggle());
     await waitFor(() => expect(b.overrides.at(-1)).toEqual({ autoCompact: "off" }));
+  });
+
+  it("turns on at the thread's own threshold when it has one", async () => {
+    const b = backend({ thread: threadState({ override: { autoCompact: "off", thresholdPercent: 65 } }) });
+    render(Banner, {}, b);
+    fireEvent.click(await toggle());
+    await waitFor(() => expect(b.overrides.at(-1)).toEqual({ autoCompact: "on", thresholdPercent: 65 }));
   });
 
   it("keeps the thread's limit when the switch changes the mode", async () => {
@@ -157,15 +171,14 @@ describe("band, auto compact", () => {
     const autoCompact = { enabled: true, thresholdPercent: 70, effectiveThresholdPercent: 70, effectiveThresholdTokens: 105_000, source: "settings" as const };
     render(Banner, {}, backend({ thread: threadState({ autoCompact }) }));
     expect((await toggle()).getAttribute("aria-checked")).toBe("true");
-    expect((await threshold()).value).toBe("70");
+    expect(await actsAt()).toBe("Auto compact at 70%");
   });
 
-  it("asks before compacting when the new threshold is already passed; Now compacts once", async () => {
-    const b = backend({ thread: threadState({ override: { autoCompact: "on", thresholdPercent: 80 } }) });
+  it("asks before compacting when turned on past the threshold; Now compacts once", async () => {
+    const autoCompact = { enabled: false, thresholdPercent: 50, effectiveThresholdPercent: 50, effectiveThresholdTokens: 75_000, source: "settings" as const };
+    const b = backend({ thread: threadState({ autoCompact }) });
     render(Banner, {}, b);
-    const input = await threshold();
-    fireEvent.change(input, { target: { value: "50" } });
-    fireEvent.keyDown(input, { key: "Enter" });
+    fireEvent.click(await toggle());
     await waitFor(() => expect(b.overrides).toEqual([{ autoCompact: "on", thresholdPercent: 50 }]));
     const ask = await screen.findByRole("alert");
     expect(ask.textContent).toContain("Context is already at 60%, past 50%. Auto compact:");
@@ -175,27 +188,13 @@ describe("band, auto compact", () => {
   });
 
   it("After the next reply leaves the compact to the idle check", async () => {
-    const b = backend();
+    const autoCompact = { enabled: false, thresholdPercent: 55, effectiveThresholdPercent: 55, effectiveThresholdTokens: 82_500, source: "settings" as const };
+    const b = backend({ thread: threadState({ autoCompact }) });
     render(Banner, {}, b);
     fireEvent.click(await toggle());
-    await waitFor(async () => expect((await threshold()).disabled).toBe(false));
-    const input = await threshold();
-    fireEvent.change(input, { target: { value: "55" } });
-    fireEvent.blur(input);
     fireEvent.click(await screen.findByRole("button", { name: "After the next reply" }));
     expect(screen.queryByRole("alert")).toBeNull();
     expect(callsTo(b, "compact")).toEqual([]);
-  });
-
-  it("puts back an out-of-range threshold and sends nothing", async () => {
-    const b = backend({ thread: threadState({ override: { autoCompact: "on", thresholdPercent: 70 } }) });
-    render(Banner, {}, b);
-    const input = await threshold();
-    fireEvent.change(input, { target: { value: "40" } });
-    fireEvent.keyDown(input, { key: "Enter" });
-    expect(input.value).toBe("70");
-    expect(input.title).toBe("Threshold 50–95%");
-    expect(b.overrides).toEqual([]);
   });
 });
 

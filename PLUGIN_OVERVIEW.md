@@ -1,6 +1,6 @@
 ## What you get
 
-A band above the composer of every thread. Collapsed, it is two lines: a headline («On track…», «At this pace you'll run out before the … reset.», «Limit reached…») with an auto-compact switch and a Compact button, and one row of short bars: one per limit window of the thread's provider (5H, W, F for Fable) and one for the context window (Ctx).
+A band above the composer of every thread. Collapsed, it is two lines: a headline («On track…», «At this pace you'll run out before the … reset.», «Limit reached…») with an auto-compact switch that names the threshold it acts at and a Compact button, and one row of short bars: one per limit window of the thread's provider (5H, W, F for Fable) and one for the context window (Ctx).
 
 Each limit bar shows the time to reset, the percent used or left, and a tick where the current pace ends at the reset. Expanded, the band lists every window with a pace note («On pace for about 92% by reset – resets in 3d»), the context breakdown into messages, tools and other, one line per other provider and the latest compacts.
 
@@ -12,7 +12,7 @@ The server polls bb for limits every 2 minutes (1–10, configurable), with ever
 
 ## Auto-compact
 
-Off by default. When it is on, the server compacts a thread when the thread goes idle with its context at or above the threshold (80 % by default, 50–95). It never interrupts a turn and waits 10 minutes between attempts on one thread. The threshold is a percent of the thread's working context limit in tokens, which the model window caps. The limit follows the provider: a per-thread limit, else a per-provider limit for Claude Code or Codex, else the point where the provider compacts on its own when bb reports it (Claude Code does, Codex does not), else a global limit (150 000 by default). When a limit lies above the point where the provider compacts on its own, the plugin acts a little below that point. A per-thread mode (as in settings, off, or on with its own threshold) and a per-thread limit override the settings.
+Off by default. When it is on, the server compacts a thread when the thread goes idle with its context at or above the threshold (80 % by default, 50–95). It never interrupts a turn and waits 10 minutes between attempts on one thread. The threshold is a percent of the thread's working context limit in tokens, which the model window caps. The limit follows the provider: a per-thread limit, else a per-provider limit for Claude Code or Codex, else the point where the provider compacts on its own when bb reports it (Claude Code does, Codex does not), else a global limit (150 000 by default). When a limit lies above the point where the provider compacts on its own, the plugin acts a little below that point. With a large model window (for example 1M tokens) the provider's own point comes very late; set a per-provider limit, such as 200 000, to compact earlier. A per-thread mode (as in settings, off, or on with its own threshold) and a per-thread limit override the settings. The band's switch turns the per-thread mode on or off; the threshold is set in the settings or the context card.
 
 ## Settings and CLI
 

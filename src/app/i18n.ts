@@ -85,6 +85,8 @@ export interface Strings {
   compactBusyTitle: string;
   compactDidNotStart: string;
   autoCompact: string;
+  autoCompactAt(percent: string): string;
+  autoCompactHint: string;
   thresholdLabel: string;
   thresholdShort: string;
   thresholdRange(min: number, max: number): string;
@@ -196,6 +198,8 @@ export const en: Strings = {
   compactBusyTitle: "The agent is replying; compact after the reply",
   compactDidNotStart: "Compact did not start",
   autoCompact: "Auto compact",
+  autoCompactAt: (p) => `Auto compact at ${p}`,
+  autoCompactHint: "Turns auto compact on or off for this thread. Change the threshold in the plugin settings, or for this thread in the context card.",
   thresholdLabel: "Auto compact threshold, %",
   thresholdShort: "Threshold, %",
   thresholdRange: (min, max) => `Threshold ${min}–${max}%`,
@@ -313,6 +317,8 @@ export const ru: Strings = {
   compactBusyTitle: "Агент отвечает; сжать можно после ответа",
   compactDidNotStart: "Сжатие не запустилось",
   autoCompact: "Авто-компакт",
+  autoCompactAt: (p) => `Авто-компакт на ${p}`,
+  autoCompactHint: "Включает или выключает авто-компакт для этого треда. Порог меняется в настройках плагина, а для одного треда — в карточке контекста.",
   thresholdLabel: "Порог авто-компакта, %",
   thresholdShort: "Порог, %",
   thresholdRange: (min, max) => `Порог от ${min} до ${max}%`,

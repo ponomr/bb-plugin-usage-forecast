@@ -6,7 +6,7 @@ how full the current thread's context window is and can compact a thread
 before it overflows.
 
 > [!NOTE]
-> Version 0.4.1, tested with bb 0.49.0 and Plugin SDK 0.6.132. Limits appear
+> Version 0.4.2, tested with bb 0.49.0 and Plugin SDK 0.6.132. Limits appear
 > only for providers that report them to bb (Claude Code and Codex today).
 
 ## Screenshots
@@ -27,7 +27,8 @@ the context breakdown and one line per other provider.
 - **Band above the composer.** Its design follows the band of
   `claude-code-usage-quota-mod`. The header has a headline («On track…»,
   «At this pace you'll run out before the … reset.», «Limit reached…»), an
-  auto-compact switch with its threshold, and a Compact button. The collapsed
+  auto-compact switch that names the threshold it acts at, and a Compact
+  button. The collapsed
   row has a bar per limit window of the thread's provider (or of the worst
   provider) with time to reset, percent used and a marker where the pace ends
   at the reset, plus a context bar split into messages, tools and other.
@@ -57,9 +58,10 @@ the context breakdown and one line per other provider.
   compact» in the thread context card shows the fill in tokens, its
   breakdown, the limit, the compact button, the per-thread auto-compact mode
   (as in settings / off / on with its own threshold) and the per-thread
-  limit. The band's switch sets the same per-thread mode; when the new
-  threshold is already passed it asks whether to compact now or after the
-  next reply. On the phone the context panel is in the expanded band.
+  limit. The band's switch turns the same per-thread mode on or off at the
+  thread's threshold; the threshold itself is set in the settings or, for one
+  thread, in the context card. When the threshold is already passed, turning
+  the switch on asks whether to compact now or after the next reply. On the phone the context panel is in the expanded band.
 - **Server-side work.** Limits are polled on the server, so history and
   auto-compact work with every client closed.
 - **Live context.** The server listens to the thread's context events
@@ -118,6 +120,12 @@ Auto-compact rules:
   which compacts at 167 000, a 200 000 limit acts at 81 % = 162 000 tokens).
   Codex reports no such point, so for Codex keep its limit at or below its
   `model_auto_compact_token_limit`.
+- Large windows: with the provider limit on auto, the limit for Claude Code
+  is the point where it compacts on its own, near the end of the window
+  (167 000 of 200 000). With a much larger window (for example 1M tokens),
+  that point, and every threshold below it, comes very late. To compact
+  earlier, set the Claude Code or Codex context limit to the size you want to
+  work with (for example 200 000); the threshold is then a percent of it.
 - After a compact, or a failed attempt, a thread waits 10 minutes before the
   next one.
 - A per-thread override («Thread auto compact» in the context block, or the

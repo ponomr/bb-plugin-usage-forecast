@@ -61,6 +61,10 @@ Do not turn `autoCompactEnabled` on unless the user asks for it.
   the threshold is capped 2 % of the window below that point so the compact
   happens between turns. Codex reports no such point: keep its limit at or
   below its own auto-compact limit.
+- With a large model window (for example 1M tokens) the provider's own point
+  comes very late, so the threshold does too. A user who wants earlier
+  compacts sets `claudeCodeContextLimitTokens` or `codexContextLimitTokens`
+  to the size they want to work with.
 - After a compact, or a failed attempt, the thread waits 10 minutes.
 - Every attempt is logged with the fill before and after; `status` shows the
   last five.
