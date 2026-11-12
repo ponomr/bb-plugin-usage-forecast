@@ -88,7 +88,7 @@ function LimitControl({ state }: { state: ThreadState }) {
         title={s.limitRange(CONTEXT_LIMIT_MIN_TOKENS / 1000, CONTEXT_LIMIT_MAX_TOKENS / 1000)}
         placeholder={s.mode.inherit}
         inputMode="numeric"
-        className="h-6 w-20 px-1 text-xs tabular-nums"
+        className="h-6 w-36 px-1 text-xs tabular-nums"
         value={draft}
         disabled={pending}
         onChange={(e) => setDraft(e.target.value)}

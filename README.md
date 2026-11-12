@@ -6,7 +6,7 @@ how full the current thread's context window is and can compact a thread
 before it overflows.
 
 > [!NOTE]
-> Version 0.4.2, tested with bb 0.49.0 and Plugin SDK 0.6.132. Limits appear
+> Version 0.4.3, tested with bb 0.49.0 and Plugin SDK 0.6.132. Limits appear
 > only for providers that report them to bb (Claude Code and Codex today).
 
 ## Screenshots
