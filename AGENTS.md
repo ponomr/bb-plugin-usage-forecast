@@ -43,6 +43,10 @@ auto-compact without open clients.
   <json> --json`.
 - App tests need `// @vitest-environment jsdom` and `cleanup()` in `afterEach`
   (Vitest runs without globals).
+- `bb plugin build` failing with `Cannot find module 'npm/package.json'` means
+  the bb install has no bundled npm (seen on bb 0.49.0, macOS). Fix:
+  `npm install -g --prefix ~/.bb/npm npm@11.16.0`; repeat it if a bb update
+  removes the package.
 
 ## Host facts (bb 0.49.0, SDK 0.6.132, checked 2026-11-08)
 
@@ -145,8 +149,8 @@ UI surfaces:
   `^0.4.0` (get-bb/marketplace#928); a compatible release needs no new
   marketplace PR, a contract change needs a PR that moves the range.
 - Checks: the command above; there is no CI yet.
-- Release: bump `version` in `package.json` and `package-lock.json` in the PR,
-  merge it, tag the merge commit `vX.Y.Z` and push the tag.
+- Release: bump `version` in `package.json` and `package-lock.json` and add
+  the version to `CHANGELOG.md` in the PR, merge it, tag the merge commit `vX.Y.Z` and push the tag.
 - Install from a checkout: check out the tag and run
   `npm ci && npm run build && bb plugin install "$PWD" --yes`;
   `bb plugin list` must show the new version as `running`.
