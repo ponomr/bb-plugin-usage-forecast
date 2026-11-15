@@ -118,6 +118,12 @@ Context window:
   `threads.context` returns `usage: null`. After it the agent did not know
   a code word from before the clear, and knew it again once a message with
   the summary was sent.
+- Summary and clear on Hermes Porfyry (`acp-porfyry`, 2026-11-15, a dev copy
+  of 0.4.5): the manual compact (the compact failed as unsupported, then the
+  fallback) and auto-compact on `thread.idle` each took about 30 s from the
+  request to the logged after-fill. The agent kept the facts from before the
+  clear. A Hermes thread starts at about 18 600 tokens, so on an almost empty
+  thread the fill after is a little higher than before.
 - `threads.send` needs `mentions: []` on every text item;
   `threads.output({threadId})` returns `{output}`, the last answer's text.
 

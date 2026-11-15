@@ -179,6 +179,8 @@ export function createCli(service: Service, now: () => number = Date.now): Plugi
           const threadId = parseThreadId(positionals.threadId);
           const result = await service.compact(threadId);
           if (!result.ok) throw new PluginCliError(result.message ?? "Compact failed", { code: "failed" });
+          // Summary and clear runs in the background and returns no entry, only its message.
+          if (result.entry === null && result.message !== null) return { exitCode: 0, stdout: `${threadId}: ${result.message}.` };
           const before = result.entry?.beforePercent;
           return {
             exitCode: 0,

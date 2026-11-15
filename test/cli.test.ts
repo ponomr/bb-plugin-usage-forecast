@@ -1,6 +1,6 @@
 import { createFakePluginHost } from "@get-bb/plugin-sdk/testing";
 import { describe, expect, it } from "vitest";
-import { AutoCompactor } from "../src/server/auto-compact";
+import { AutoCompactor, SUMMARY_STARTED } from "../src/server/auto-compact";
 import { createCli, formatDuration, formatStatus, formatThread, formatTime } from "../src/server/cli";
 import { Poller } from "../src/server/poller";
 import { createService } from "../src/server/rpc";
@@ -178,6 +178,13 @@ describe("bb usage-forecast", () => {
     const busy = await t.run("compact", T);
     expect(busy.exitCode).not.toBe(0);
     expect(busy.stderr).toContain("The agent is answering");
+  });
+
+  it("compact says when it starts summary and clear instead", async () => {
+    const t = setup({ summaryClearEnabled: true });
+    t.threads.thread(T, "acp-x", codexContext(75_000));
+    await t.storage.markUnsupported("acp-x", NOW);
+    expect(await t.run("compact", T)).toMatchObject({ exitCode: 0, stdout: `thr_a: ${SUMMARY_STARTED}.` });
   });
 
   it("override sets and validates the mode and threshold", async () => {
