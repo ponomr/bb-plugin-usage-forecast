@@ -128,7 +128,13 @@ export function formatThread(t: ThreadState, now: number): string {
   const limitOverride = t.override.limitTokens === undefined ? "" : `, limit ${t.override.limitTokens.toLocaleString("en-US")} tokens`;
   lines.push(`Override: ${t.override.autoCompact}${t.override.thresholdPercent ? ` ${t.override.thresholdPercent}%` : ""}${limitOverride}`);
   if (t.cooldownUntil !== null) lines.push(`Cooldown: ${formatDuration(t.cooldownUntil - now)} left`);
-  if (!t.compactSupported) lines.push("Compact: not supported by this provider");
+  if (!t.compactSupported) {
+    lines.push(
+      t.summaryClear
+        ? "Compact: not supported by this provider; compact summarises and clears the context instead"
+        : "Compact: not supported by this provider",
+    );
+  }
   return lines.join("\n");
 }
 

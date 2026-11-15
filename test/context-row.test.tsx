@@ -76,6 +76,16 @@ describe("context card section", () => {
     expect(screen.queryByRole("button", { name: "Compact" })).toBeNull();
   });
 
+  it("offers summary and clear when the provider cannot compact and the setting is on", async () => {
+    const b = backend({ thread: threadState({ compactSupported: false, summaryClear: true, providerId: "acp-kaya" }) });
+    render(Section, props, b);
+    expect(await screen.findByText(/Compact and auto compact ask the agent for a summary/)).toBeTruthy();
+    const button = screen.getByRole("button", { name: "Compact" });
+    expect(button.closest("[title]")?.getAttribute("title")).toBe("Ask the agent for a summary, clear the context and send the summary back");
+    fireEvent.click(button);
+    await waitFor(() => expect(callsTo(b, "compact")).toEqual([{ method: "compact", input: { threadId: T } }]));
+  });
+
   it("speaks Russian when the setting says so", async () => {
     render(Section, props, backend(), { settings: { language: "ru" } });
     expect((await screen.findByTestId("context-details")).textContent).toContain("Контекст занято 60%");

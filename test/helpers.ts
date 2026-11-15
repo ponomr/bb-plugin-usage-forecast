@@ -16,6 +16,7 @@ export function makeStorage(): Storage {
 export function settingsOf(over: Partial<PluginSettings> = {}): () => Promise<PluginSettings> {
   const value: PluginSettings = {
     autoCompactEnabled: true,
+    summaryClearEnabled: false,
     autoCompactThresholdPercent: 80,
     pollIntervalMinutes: 2,
     contextLimitTokens: 150_000,
@@ -118,6 +119,36 @@ export class FakeThreads implements ThreadsSdk {
   async compact({ threadId }: { threadId: string }) {
     this.compactCalls.push(threadId);
     if (this.compactError) throw this.compactError;
+    return { ok: true };
+  }
+
+  /** Every `send`, in order. */
+  sends: Array<{ threadId: string; text: string; mode: string }> = [];
+  /** Errors thrown by the next `send` calls, consumed in order; null sends. */
+  sendErrors: Array<Error | null> = [];
+  /** Runs inside `send`, e.g. to play the turn's active and idle events. */
+  onSend: ((threadId: string, text: string) => void) | null = null;
+  /** The answer of `output`. */
+  outputs = new Map<string, unknown>();
+  clearCalls: string[] = [];
+  clearError: Error | null = null;
+
+  async send({ threadId, input, mode }: { threadId: string; input: Array<{ type: "text"; text: string }>; mode: string }) {
+    const text = input.map((i) => i.text).join("\n");
+    this.sends.push({ threadId, text, mode });
+    const error = this.sendErrors.shift() ?? null;
+    if (error) throw error;
+    this.onSend?.(threadId, text);
+    return { ok: true };
+  }
+
+  async output({ threadId }: { threadId: string }) {
+    return this.outputs.get(threadId) ?? { output: "" };
+  }
+
+  async clearContext({ threadId }: { threadId: string }) {
+    this.clearCalls.push(threadId);
+    if (this.clearError) throw this.clearError;
     return { ok: true };
   }
 }

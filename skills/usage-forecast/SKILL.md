@@ -20,7 +20,9 @@ identified by provider and label (`claude-code` / `Current session`).
   whether the agent is answering, the effective auto-compact policy and its
   source (settings or this thread), the cooldown.
 - `bb usage-forecast compact <threadId>` — compact now. It queues a `/compact`
-  turn, so it refuses while the thread is answering.
+  turn, so it refuses while the thread is answering. For a provider that
+  cannot compact, with `summaryClearEnabled` on, it starts summary and clear
+  instead and returns at once.
 - `bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95] [--limit <tokens>]` —
   per-thread auto-compact. `inherit` follows the settings. `--limit` sets the
   thread's working context limit in tokens (10 000–2 000 000; `0` returns to
@@ -40,6 +42,7 @@ Usage Forecast.
 | `codexContextLimitTokens` | 0 (auto) | 0, 10 000–2 000 000 (bb reports no compaction point for Codex; auto uses the global limit) |
 | `autoCompactEnabled` | `false` | — |
 | `autoCompactThresholdPercent` | 80 | 50–95 |
+| `summaryClearEnabled` | `false` | — (summary and clear for providers that cannot compact) |
 | `limitNotifyEnabled` | `true` | — (push through the `push-notifications` plugin) |
 | `limitNotifyPercent` | 90 | 50–100 |
 | `pollIntervalMinutes` | 2 | 1–10 |
@@ -53,7 +56,8 @@ reported value for the same window while a turn runs), the global limit. A
 smaller model window caps it. The fill percent and the threshold are of this
 limit.
 
-Do not turn `autoCompactEnabled` on unless the user asks for it.
+Do not turn `autoCompactEnabled` or `summaryClearEnabled` on unless the user
+asks for it.
 
 ## How auto-compact decides
 
@@ -68,6 +72,13 @@ Do not turn `autoCompactEnabled` on unless the user asks for it.
   compacts sets `claudeCodeContextLimitTokens` or `codexContextLimitTokens`
   to the size they want to work with.
 - After a compact, or a failed attempt, the thread waits 10 minutes.
+- A provider whose compact fails as unsupported (custom ACP agents) is
+  skipped for 24 hours, unless `summaryClearEnabled` is on: then the plugin
+  sends the agent a request for a summary starting with `[context-summary]`,
+  waits up to 10 minutes for that turn, clears the context
+  (`threads.clearContext`) and sends the summary back as the next message.
+  No summary, a failed turn or a new user turn means no clear. Log entries
+  of this kind say «summary and clear».
 - Every attempt is logged with the fill before and after; `status` shows the
   last five.
 - After a failed poll the next one waits 5 minutes, after two failures in a row

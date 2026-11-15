@@ -210,6 +210,12 @@ describe("band, compact button", () => {
     expect(screen.queryByRole("button", { name: "Compact" })).toBeNull();
   });
 
+  it("is shown for summary and clear", async () => {
+    render(Banner, {}, backend({ thread: threadState({ compactSupported: false, summaryClear: true }) }));
+    const button = await screen.findByRole("button", { name: "Compact" });
+    expect(button.closest("[title]")?.getAttribute("title")).toBe("Ask the agent for a summary, clear the context and send the summary back");
+  });
+
   it("AE4: one click calls compact once and stays disabled until the answer", async () => {
     let resolve!: (r: CompactResult) => void;
     const b = backend({ compact: () => new Promise<CompactResult>((r) => (resolve = r)) });

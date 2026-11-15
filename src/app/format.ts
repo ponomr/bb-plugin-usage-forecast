@@ -98,7 +98,9 @@ export function compactEntryText(s: Strings, entry: CompactLogEntry): string {
       : entry.afterPercent === null
         ? ` ${formatPercent(entry.beforePercent)}`
         : ` ${formatPercent(entry.beforePercent)} → ${formatPercent(entry.afterPercent)}`;
-  return `${entry.threadId} (${providerName(s, entry.providerId)}), ${s.trigger[entry.trigger]}:${fill}, ${s.result[entry.result]}`;
+  return `${entry.threadId} (${providerName(s, entry.providerId)}), ${s.trigger[entry.trigger]}:${fill}, ${s.result[entry.result]}${
+    entry.method === "summary" ? s.viaSummary : ""
+  }`;
 }
 
 

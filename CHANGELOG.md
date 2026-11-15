@@ -4,6 +4,19 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.5 — 2026-11-15
+
+- Summary and clear for providers that cannot compact (UF-4). New setting
+  «Summarise and clear when a provider cannot compact», off by default. When
+  it is on, Compact and auto-compact on a provider whose compact fails as
+  unsupported (custom ACP agents such as Hermes) ask the agent for a summary
+  that starts with `[context-summary]`, wait for that turn (at most 10
+  minutes), clear the context with `threads.clearContext` and send the summary
+  back as the next message. Nothing is cleared without a summary, after a
+  failed turn or once the user started a new turn. The Compact button stays
+  visible for such threads, and log entries carry `method: "summary"`
+  («summary and clear»). The thread state gains `summaryClear`.
+
 ## 0.4.4 — 2026-11-15
 
 - Push notifications before a limit runs out (UF-2): after each poll the

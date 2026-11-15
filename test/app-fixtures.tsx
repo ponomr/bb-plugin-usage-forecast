@@ -90,6 +90,7 @@ export function threadState(over: Partial<ThreadState> = {}): ThreadState {
     override: { autoCompact: "inherit" },
     autoCompact: { enabled: false, thresholdPercent: 80, effectiveThresholdPercent: 76, effectiveThresholdTokens: 114_000, source: "settings" },
     compactSupported: true,
+    summaryClear: false,
     cooldownUntil: null,
     ...over,
   };

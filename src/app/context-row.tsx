@@ -23,12 +23,16 @@ import { Ink, SegmentBar, Swatch, Toned } from "./ui";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 
-/** Hidden until the thread state is known and when the provider cannot compact. */
+/**
+ * Hidden until the thread state is known, and when the provider cannot
+ * compact and the summary fallback is off.
+ */
 export function CompactButton({ state, compact }: { state: ThreadState | undefined; compact: CompactState }) {
   const s = useStrings();
-  if (state === undefined || !state.compactSupported) return null;
+  if (state === undefined || !(state.compactSupported || state.summaryClear)) return null;
+  const title = state.active ? s.compactBusyTitle : state.summaryClear ? s.summaryClearTitle : s.compactTitle;
   return (
-    <span className="inline-flex items-center gap-2" title={state.active ? s.compactBusyTitle : s.compactTitle}>
+    <span className="inline-flex items-center gap-2" title={title}>
       <Button
         size="sm"
         variant="outline"
@@ -235,7 +239,9 @@ export function ContextPanel({ state }: { state: ThreadState }) {
           ) : null}
         </>
       )}
-      {state.compactSupported ? null : <div className="text-muted-foreground">{s.compactUnsupported}</div>}
+      {state.compactSupported ? null : (
+        <div className="text-muted-foreground">{state.summaryClear ? s.summaryClearNote : s.compactUnsupported}</div>
+      )}
       <div className="text-muted-foreground">{autoCompactLine(s, state, now)}</div>
       <LimitControl state={state} />
     </div>

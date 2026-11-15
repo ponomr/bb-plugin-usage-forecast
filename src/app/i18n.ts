@@ -4,6 +4,7 @@
 
 import type { CompactLogEntry, ContextLimitSource, ProviderStatus, ThreadOverride } from "../shared/contract";
 import type { Lang } from "../shared/language";
+import { SUMMARY_MARKER } from "../shared/summary";
 
 export interface Strings {
   lang: Lang;
@@ -77,6 +78,8 @@ export interface Strings {
   limitRange(minK: number, maxK: number): string;
   providerCompactsAt(tokens: string, percentOfWindow: string): string;
   compactUnsupported: string;
+  /** Shown instead of `compactUnsupported` when the summary fallback is on. */
+  summaryClearNote: string;
 
   // Compact and auto compact
   compact: string;
@@ -84,6 +87,8 @@ export interface Strings {
   compactTitle: string;
   compactBusyTitle: string;
   compactDidNotStart: string;
+  /** The button's title when it summarises and clears. */
+  summaryClearTitle: string;
   autoCompact: string;
   autoCompactAt(percent: string): string;
   autoCompactHint: string;
@@ -103,6 +108,14 @@ export interface Strings {
   recentCompacts: string;
   trigger: Record<CompactLogEntry["trigger"], string>;
   result: Record<CompactLogEntry["result"], string>;
+  /** Appended to a log entry made by summary and clear. */
+  viaSummary: string;
+
+  // Messages the plugin sends into a thread whose provider cannot compact
+  /** Asks the agent for a summary that opens with SUMMARY_MARKER. */
+  summaryRequest: string;
+  /** Gives the summary back after the context was cleared. */
+  summaryRestore(summary: string): string;
 
   // Settings section
   /** `claude` and `codex` are null when their limit is auto. */
@@ -197,12 +210,14 @@ export const en: Strings = {
   limitRange: (min, max) => `Limit ${min}–${max}k tokens, blank for the provider's or global limit`,
   providerCompactsAt: (t, p) => `The provider compacts on its own at ${t} (${p} of the window)`,
   compactUnsupported: "The provider does not support compacting",
+  summaryClearNote: "The provider cannot compact: Compact and auto compact ask the agent for a summary, clear the context and send the summary back",
 
   compact: "Compact",
   compacting: "Compacting…",
   compactTitle: "Compact the thread context (/compact)",
   compactBusyTitle: "The agent is replying; compact after the reply",
   compactDidNotStart: "Compact did not start",
+  summaryClearTitle: "Ask the agent for a summary, clear the context and send the summary back",
   autoCompact: "Auto compact",
   autoCompactAt: (p) => `Auto compact at ${p}`,
   autoCompactHint: "Turns auto compact on or off for this thread. Change the threshold in the plugin settings, or for this thread in the context card.",
@@ -224,6 +239,19 @@ export const en: Strings = {
   recentCompacts: "Recent compacts",
   trigger: { auto: "auto", manual: "manual" },
   result: { compacted: "compacted", failed: "failed", unsupported: "unsupported", cancelled: "cancelled" },
+  viaSummary: " (summary and clear)",
+
+  summaryRequest:
+    "The usage-forecast plugin is about to clear this thread's context to free the context window. " +
+    "Write a summary of the conversation so far that lets you continue the work after the clear: the goal, " +
+    "decisions made, the current state, open questions, next steps, and the exact names you will need " +
+    "(files, commands, identifiers, values). Do not call tools and do not change files. " +
+    `Start your answer with the line ${SUMMARY_MARKER}.`,
+  summaryRestore: (summary) =>
+    "The usage-forecast plugin cleared this thread's context to free the context window. Below is the summary " +
+    "you wrote just before the clear; treat it as the conversation so far and continue from it. " +
+    "Do not start any work now: reply with one short line that you have it.\n\n" +
+    `${SUMMARY_MARKER}\n${summary}`,
 
   settingsSummary: (on, t, i, limit, claude, codex) =>
     `Context limit: Claude Code ${claude ?? "auto"}, Codex ${codex ?? "auto"}, otherwise ${limit} tokens. Auto compact: ${
@@ -320,12 +348,14 @@ export const ru: Strings = {
   limitRange: (min, max) => `Лимит от ${min} до ${max} тыс. токенов, пусто — лимит провайдера или общий`,
   providerCompactsAt: (t, p) => `Провайдер сжимает сам на ${t} (${p} окна)`,
   compactUnsupported: "Провайдер не поддерживает сжатие",
+  summaryClearNote: "Провайдер не умеет сжимать: «Сжать» и авто-компакт просят агента о пересказе, очищают контекст и отправляют пересказ обратно",
 
   compact: "Сжать",
   compacting: "Сжимаю…",
   compactTitle: "Сжать контекст треда (/compact)",
   compactBusyTitle: "Агент отвечает; сжать можно после ответа",
   compactDidNotStart: "Сжатие не запустилось",
+  summaryClearTitle: "Попросить агента о пересказе, очистить контекст и отправить пересказ обратно",
   autoCompact: "Авто-компакт",
   autoCompactAt: (p) => `Авто-компакт на ${p}`,
   autoCompactHint: "Включает или выключает авто-компакт для этого треда. Порог меняется в настройках плагина, а для одного треда — в карточке контекста.",
@@ -347,6 +377,19 @@ export const ru: Strings = {
   recentCompacts: "Последние сжатия",
   trigger: { auto: "авто", manual: "вручную" },
   result: { compacted: "сжат", failed: "ошибка", unsupported: "не поддерживается", cancelled: "отменён" },
+  viaSummary: " (пересказ и очистка)",
+
+  summaryRequest:
+    "Плагин usage-forecast сейчас очистит контекст этого треда, чтобы освободить окно контекста. " +
+    "Напиши пересказ разговора, по которому ты продолжишь работу после очистки: цель, принятые решения, " +
+    "текущее состояние, открытые вопросы, следующие шаги и точные названия, которые понадобятся " +
+    "(файлы, команды, идентификаторы, значения). Не вызывай инструменты и не меняй файлы. " +
+    `Начни ответ со строки ${SUMMARY_MARKER}.`,
+  summaryRestore: (summary) =>
+    "Плагин usage-forecast очистил контекст этого треда, чтобы освободить окно контекста. Ниже пересказ, " +
+    "который ты написал перед очисткой; считай его разговором до этого места и продолжай с него. " +
+    "Сейчас не начинай работу: ответь одной короткой строкой, что пересказ получен.\n\n" +
+    `${SUMMARY_MARKER}\n${summary}`,
 
   settingsSummary: (on, t, i, limit, claude, codex) =>
     `Лимит контекста: Claude Code ${claude ?? "авто"}, Codex ${codex ?? "авто"}, остальные ${limit} токенов. Авто-компакт: ${
