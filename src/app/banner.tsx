@@ -32,8 +32,8 @@ import {
   useSnapshot,
   useThreadState,
   type CompactState,
+  useStrings,
 } from "./hooks";
-import { useStrings } from "./i18n";
 import { bannerView, contextView, headline, paceDetails, windowNote, windowView, type BannerView, type WindowView } from "./model";
 import { shownPercent } from "../shared/limits-show";
 import { RecentCompacts } from "./settings-section";

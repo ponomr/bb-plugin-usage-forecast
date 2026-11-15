@@ -5,7 +5,7 @@ import { createFakePluginHost, makeThreadResponse } from "@get-bb/plugin-sdk/tes
 import { afterEach, describe, expect, it, vi } from "vitest";
 import plugin, { CONTEXT_INVALIDATE_MIN_MS, POLL_SCHEDULE } from "../server";
 import { LIMITS_TAG, threadTag, type LimitsSnapshot, type ThreadState } from "../src/shared/contract";
-import { claudeContext, claudeLimits, codexContext, FakeThreads } from "./helpers";
+import { claudeContext, claudeLimits, codexContext, FakeThreads, NOW } from "./helpers";
 
 const T = "thr_a";
 
@@ -23,6 +23,7 @@ async function load(settings: Record<string, boolean | number> = {}, limits: () 
         return () => subscriptions.splice(subscriptions.indexOf(args), 1);
       }) as never,
       system: { usageLimits: () => limits() },
+      plugins: { callRpc: (async () => ({ ok: true, channels: ["mobile"] })) as never },
       threads: {
         get: (args) => threads.get(args),
         context: (args) => threads.context(args),
@@ -53,6 +54,22 @@ describe("plugin wiring", () => {
     expect(text).not.toContain("secret-account-key");
     expect(invalidations()).toContainEqual([LIMITS_TAG]);
     expect(harness.sdk.callsTo("system.usageLimits")).toHaveLength(1);
+  });
+
+  it("pushes through push-notifications once a limit window crosses the threshold", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(NOW);
+    let session = 40;
+    const { harness } = await load({}, () => claudeLimits(session, 20));
+    await harness.runSchedule(POLL_SCHEDULE);
+    expect(harness.sdk.callsTo("plugins.callRpc")).toHaveLength(0);
+    session = 92;
+    await harness.callRpc("refresh", null);
+    await harness.callRpc("refresh", null);
+    const calls = harness.sdk.callsTo("plugins.callRpc");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toMatchObject([{ pluginId: "push-notifications", method: "notifications.send", input: { title: "Claude Code: 5 Hour limit at 92%" } }]);
+    expect(JSON.stringify(calls[0])).not.toContain("owner@example.com");
   });
 
   it("refresh polls now", async () => {

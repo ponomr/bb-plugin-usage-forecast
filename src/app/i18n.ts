@@ -1,9 +1,9 @@
 // UI text in English (default) and Russian, chosen by the `language` setting.
-// Every user-visible string of the app lives here; formatters take the table.
+// Every user-visible string of the app and of the server's push notifications
+// lives here; formatters take the table. No app imports, so the server can use it.
 
-import { useSettings } from "@get-bb/plugin-sdk/app";
 import type { CompactLogEntry, ContextLimitSource, ProviderStatus, ThreadOverride } from "../shared/contract";
-import { parseLang, type Lang } from "../shared/language";
+import type { Lang } from "../shared/language";
 
 export interface Strings {
   lang: Lang;
@@ -114,6 +114,12 @@ export interface Strings {
   refreshing: string;
   pollError(message: string): string;
   providerUsageNote: string;
+
+  /** Push title when a limit window crosses the notify threshold or runs out. */
+  pushTitle(provider: string, window: string, percent: string): string;
+  pushReachedTitle(provider: string, window: string): string;
+  /** Push body: the reset span from formatResetIn, or null when unknown. */
+  pushBody(resetIn: string | null): string;
 }
 
 const EN_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
@@ -232,6 +238,10 @@ export const en: Strings = {
   pollError: (m) => `Poll error: ${m}`,
   providerUsageNote:
     "The built-in «Provider usage» plugin (bb--provider-usage) can stay on: both read the same bb limits and do not interfere.",
+
+  pushTitle: (provider, window, percent) => `${provider}: ${window} limit at ${percent}`,
+  pushReachedTitle: (provider, window) => `${provider}: ${window} limit reached`,
+  pushBody: (resetIn) => (resetIn === null ? "Usage limit is close." : `The limit ${resetIn}.`),
 };
 
 /** Accusative weekdays: "в среду". */
@@ -351,11 +361,10 @@ export const ru: Strings = {
   pollError: (m) => `Ошибка опроса: ${m}`,
   providerUsageNote:
     "Встроенный плагин «Provider usage» (bb--provider-usage) можно оставить включённым: оба читают одни и те же лимиты bb и не мешают друг другу.",
+
+  pushTitle: (provider, window, percent) => `${provider}: лимит «${window}» — ${percent}`,
+  pushReachedTitle: (provider, window) => `${provider}: лимит «${window}» исчерпан`,
+  pushBody: (resetIn) => (resetIn === null ? "Лимит почти исчерпан." : `Лимит: ${resetIn}.`),
 };
 
 export const STRINGS: Record<Lang, Strings> = { en, ru };
-
-/** The table for the `language` setting; English until the settings load. */
-export function useStrings(): Strings {
-  return STRINGS[parseLang(useSettings().values?.language)];
-}

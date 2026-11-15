@@ -1,11 +1,16 @@
 // Server entry: settings, the limits poller, storage, auto-compact, RPC
 // `usage-forecast.v1` and the `bb usage-forecast` CLI.
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
+import { z } from "zod";
 import {
   CONTEXT_LIMIT_DEFAULT_TOKENS,
   CONTEXT_LIMIT_MAX_TOKENS,
   CONTEXT_LIMIT_MIN_TOKENS,
   contextLimitSchema,
+  LIMIT_NOTIFY_DEFAULT_PERCENT,
+  LIMIT_NOTIFY_MAX_PERCENT,
+  LIMIT_NOTIFY_MIN_PERCENT,
+  limitNotifySchema,
   LIMITS_TAG,
   PROVIDER_LIMIT_AUTO,
   PROVIDER_LIMIT_SETTINGS,
@@ -23,6 +28,7 @@ import {
 } from "./src/shared/contract";
 import { AutoCompactor } from "./src/server/auto-compact";
 import { createCli } from "./src/server/cli";
+import { LimitNotifier } from "./src/server/limit-notifier";
 import { Poller, TICK_CRON } from "./src/server/poller";
 import { createService } from "./src/server/rpc";
 import { Storage } from "./src/server/storage";
@@ -31,6 +37,13 @@ import { DEFAULT_LANGUAGE, LANGUAGES } from "./src/shared/language";
 import { DEFAULT_LIMITS_SHOW, LIMITS_SHOW } from "./src/shared/limits-show";
 
 export const POLL_SCHEDULE = "poll-limits";
+
+/** The bb plugin that delivers pushes, and the answer of its `notifications.send`. */
+export const PUSH_PLUGIN_ID = "push-notifications";
+const pushSendOutput = z.object({
+  ok: z.literal(true),
+  channels: z.array(z.enum(["web", "desktop", "mobile"])),
+});
 
 /** Thread events after which the context fill is re-read. */
 export const CONTEXT_EVENT_TYPES: ReadonlySet<string> = new Set([
@@ -79,6 +92,19 @@ export default async function plugin(bb: BbPluginApi) {
       default: THRESHOLD_DEFAULT_PERCENT,
       experimental_schema: thresholdSchema,
     },
+    limitNotifyEnabled: {
+      type: "boolean",
+      label: "Limit push notifications",
+      description: "Send a push through the push-notifications plugin when a limit window reaches the percent below, and again when it runs out. One push per window and step until the window resets.",
+      default: true,
+    },
+    limitNotifyPercent: {
+      type: "number",
+      label: "Limit push threshold, %",
+      description: `Usage of a limit window that sends a push, ${LIMIT_NOTIFY_MIN_PERCENT}-${LIMIT_NOTIFY_MAX_PERCENT}.`,
+      default: LIMIT_NOTIFY_DEFAULT_PERCENT,
+      experimental_schema: limitNotifySchema,
+    },
     pollIntervalMinutes: {
       type: "number",
       label: "Limits poll interval, minutes",
@@ -121,11 +147,27 @@ export default async function plugin(bb: BbPluginApi) {
     compact: (args) => bb.sdk.threads.compact(args),
   };
 
+  const notifier = new LimitNotifier({
+    storage,
+    settings,
+    send: async ({ title, body }) =>
+      (
+        await bb.sdk.plugins.callRpc({
+          pluginId: PUSH_PLUGIN_ID,
+          method: "notifications.send",
+          input: { title, body },
+          outputSchema: pushSendOutput,
+        })
+      ).channels,
+    log: bb.log,
+  });
+
   const poller = new Poller({
     usageLimits: (args) => bb.sdk.system.usageLimits(args),
     storage,
     intervalMinutes: async () => (await settings()).pollIntervalMinutes,
     invalidate: invalidateLimits,
+    afterPoll: (providers, now) => notifier.check(providers, now),
   });
 
   const compactor = new AutoCompactor({ threads, storage, settings, invalidate: invalidateThread, log: bb.log });

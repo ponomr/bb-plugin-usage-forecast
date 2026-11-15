@@ -13,8 +13,7 @@ import {
   type UsageForecastContract,
 } from "../shared/contract";
 import { compactEntryText, formatAgo, providerName, shortTokens, statusText } from "./format";
-import { errorText, useNow, useSnapshot } from "./hooks";
-import { useStrings } from "./i18n";
+import { errorText, useNow, useSnapshot, useStrings } from "./hooks";
 import { Toned } from "./ui";
 import { Button } from "../../components/ui/button";
 

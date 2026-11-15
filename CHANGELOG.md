@@ -4,6 +4,18 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## Unreleased
+
+- Push notifications before a limit runs out (UF-2): after each poll the
+  server sends one push through bb's `push-notifications` plugin when a limit
+  window reaches the threshold (90 % by default, 50–100), and one more at
+  100 %. New settings «Limit push notifications» (on by default) and «Limit
+  push threshold, %». Sent pushes are kept in KV (`notify:sent`), so a
+  restart does not repeat them.
+- The UI string tables in `src/app/i18n.ts` no longer import the app SDK;
+  `useStrings` moved to `src/app/hooks.ts`, so the server reads the push texts
+  from the same tables.
+
 ## 0.4.3 — 2026-11-12
 
 - The «Thread limit, k tokens» field in the context card is 144 px wide instead

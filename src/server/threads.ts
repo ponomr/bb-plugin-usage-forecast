@@ -9,6 +9,9 @@ import {
   CONTEXT_LIMIT_MAX_TOKENS,
   CONTEXT_LIMIT_MIN_TOKENS,
   contextCategorySchema,
+  LIMIT_NOTIFY_DEFAULT_PERCENT,
+  LIMIT_NOTIFY_MAX_PERCENT,
+  LIMIT_NOTIFY_MIN_PERCENT,
   normalizeOverride,
   overrideSchema,
   PROVIDER_LIMIT_AUTO,
@@ -24,6 +27,7 @@ import {
   type ThreadOverride,
   type ThreadState,
 } from "../shared/contract";
+import { parseLang, type Lang } from "../shared/language";
 import type { Storage } from "./storage";
 
 export type LimitProvider = keyof typeof PROVIDER_LIMIT_SETTINGS;
@@ -36,6 +40,10 @@ export interface PluginSettings {
   contextLimitTokens: number;
   /** Per-provider working limit in tokens; PROVIDER_LIMIT_AUTO (0) is auto. */
   providerLimitTokens: Record<LimitProvider, number>;
+  /** Push through the push-notifications plugin when a limit window nears its end. */
+  limitNotifyEnabled: boolean;
+  limitNotifyPercent: number;
+  language: Lang;
 }
 
 function clampInt(value: unknown, min: number, max: number, fallback: number): number {
@@ -75,6 +83,14 @@ export function parseSettings(raw: Record<string, unknown> | null | undefined): 
     providerLimitTokens: Object.fromEntries(
       LIMIT_PROVIDERS.map((id) => [id, parseProviderLimit(raw?.[PROVIDER_LIMIT_SETTINGS[id]])]),
     ) as Record<LimitProvider, number>,
+    limitNotifyEnabled: raw?.limitNotifyEnabled !== false,
+    limitNotifyPercent: clampInt(
+      raw?.limitNotifyPercent,
+      LIMIT_NOTIFY_MIN_PERCENT,
+      LIMIT_NOTIFY_MAX_PERCENT,
+      LIMIT_NOTIFY_DEFAULT_PERCENT,
+    ),
+    language: parseLang(raw?.language),
   };
 }
 

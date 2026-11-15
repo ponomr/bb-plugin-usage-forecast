@@ -11,7 +11,8 @@ import {
   useComposer,
   useSettings,
 } from "@get-bb/plugin-sdk/app";
-import { useStrings } from "./i18n";
+import { STRINGS, type Strings } from "./i18n";
+import { parseLang } from "../shared/language";
 import { parseLimitsShow, type LimitsShow } from "../shared/limits-show";
 import { normalizeOverride, usageForecastContract, type CompactResult, type ThreadOverride } from "../shared/contract";
 
@@ -32,6 +33,11 @@ function useInterval(callback: () => void, ms: number | null) {
 export function errorText(error: unknown): string {
   if (error instanceof Error && error.message) return error.message;
   return String(error);
+}
+
+/** The table for the `language` setting; English until the settings load. */
+export function useStrings(): Strings {
+  return STRINGS[parseLang(useSettings().values?.language)];
 }
 
 /** The `limitsShow` setting; used until the settings load. */

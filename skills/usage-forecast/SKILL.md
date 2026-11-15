@@ -40,6 +40,8 @@ Usage Forecast.
 | `codexContextLimitTokens` | 0 (auto) | 0, 10 000–2 000 000 (bb reports no compaction point for Codex; auto uses the global limit) |
 | `autoCompactEnabled` | `false` | — |
 | `autoCompactThresholdPercent` | 80 | 50–95 |
+| `limitNotifyEnabled` | `true` | — (push through the `push-notifications` plugin) |
+| `limitNotifyPercent` | 90 | 50–100 |
 | `pollIntervalMinutes` | 2 | 1–10 |
 | `language` | `en` | `en`, `ru` (UI language) |
 | `limitsShow` | `used` | `used`, `remaining` (band only; CLI output stays in percent used) |

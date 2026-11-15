@@ -11,6 +11,10 @@ export const threadTag = (threadId: string) => `thread:${threadId}`;
 export const THRESHOLD_MIN_PERCENT = 50;
 export const THRESHOLD_MAX_PERCENT = 95;
 export const THRESHOLD_DEFAULT_PERCENT = 80;
+/** Push when a limit window reaches this percent; 100 still pushes once at the limit. */
+export const LIMIT_NOTIFY_MIN_PERCENT = 50;
+export const LIMIT_NOTIFY_MAX_PERCENT = 100;
+export const LIMIT_NOTIFY_DEFAULT_PERCENT = 90;
 export const POLL_MIN_MINUTES = 1;
 export const POLL_MAX_MINUTES = 10;
 export const POLL_DEFAULT_MINUTES = 2;
@@ -38,6 +42,7 @@ export const RECENT_COMPACTIONS = 5;
 
 export const threadIdSchema = z.string().min(1).max(128);
 export const thresholdSchema = z.number().int().min(THRESHOLD_MIN_PERCENT).max(THRESHOLD_MAX_PERCENT);
+export const limitNotifySchema = z.number().int().min(LIMIT_NOTIFY_MIN_PERCENT).max(LIMIT_NOTIFY_MAX_PERCENT);
 export const pollIntervalSchema = z.number().int().min(POLL_MIN_MINUTES).max(POLL_MAX_MINUTES);
 export const contextLimitSchema = z.number().int().min(CONTEXT_LIMIT_MIN_TOKENS).max(CONTEXT_LIMIT_MAX_TOKENS);
 /** A per-provider limit: `0` for auto, else a working limit in tokens. */
