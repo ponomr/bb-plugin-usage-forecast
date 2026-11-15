@@ -4,7 +4,7 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
-## Unreleased
+## 0.4.4 — 2026-11-15
 
 - Push notifications before a limit runs out (UF-2): after each poll the
   server sends one push through bb's `push-notifications` plugin when a limit
