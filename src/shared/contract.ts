@@ -100,6 +100,14 @@ export type ProviderLimits = z.infer<typeof providerLimitsSchema>;
 // --- Auto-compact log --------------------------------------------------------
 
 export const COMPACT_RESULTS = ["compacted", "failed", "unsupported", "cancelled"] as const;
+/**
+ * How the context was made smaller: `compact` is the provider's own
+ * `/compact`; `summary` is the fallback for a provider that cannot compact:
+ * the agent writes a summary, the plugin clears the context and sends the
+ * summary back.
+ */
+export const COMPACT_METHODS = ["compact", "summary"] as const;
+export type CompactMethod = (typeof COMPACT_METHODS)[number];
 
 export const compactLogEntrySchema = z.object({
   threadId: z.string(),
@@ -111,6 +119,8 @@ export const compactLogEntrySchema = z.object({
   afterPercent: z.number().nullable(),
   result: z.enum(COMPACT_RESULTS),
   message: z.string().nullable(),
+  /** Absent in entries written before 0.4.5, which were all `compact`. */
+  method: z.enum(COMPACT_METHODS).optional(),
 });
 export type CompactLogEntry = z.infer<typeof compactLogEntrySchema>;
 
@@ -212,6 +222,11 @@ export const threadStateSchema = z.object({
   }),
   /** False once a compact of this provider failed as unsupported. */
   compactSupported: z.boolean(),
+  /**
+   * True when the provider cannot compact and the `summaryClearEnabled`
+   * setting is on: Compact and auto-compact then summarise and clear.
+   */
+  summaryClear: z.boolean(),
   /** Epoch ms until which auto-compact skips this thread, or null. */
   cooldownUntil: z.number().nullable(),
 });

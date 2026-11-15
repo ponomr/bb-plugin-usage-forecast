@@ -128,7 +128,13 @@ export function formatThread(t: ThreadState, now: number): string {
   const limitOverride = t.override.limitTokens === undefined ? "" : `, limit ${t.override.limitTokens.toLocaleString("en-US")} tokens`;
   lines.push(`Override: ${t.override.autoCompact}${t.override.thresholdPercent ? ` ${t.override.thresholdPercent}%` : ""}${limitOverride}`);
   if (t.cooldownUntil !== null) lines.push(`Cooldown: ${formatDuration(t.cooldownUntil - now)} left`);
-  if (!t.compactSupported) lines.push("Compact: not supported by this provider");
+  if (!t.compactSupported) {
+    lines.push(
+      t.summaryClear
+        ? "Compact: not supported by this provider; compact summarises and clears the context instead"
+        : "Compact: not supported by this provider",
+    );
+  }
   return lines.join("\n");
 }
 
@@ -173,6 +179,8 @@ export function createCli(service: Service, now: () => number = Date.now): Plugi
           const threadId = parseThreadId(positionals.threadId);
           const result = await service.compact(threadId);
           if (!result.ok) throw new PluginCliError(result.message ?? "Compact failed", { code: "failed" });
+          // Summary and clear runs in the background and returns no entry, only its message.
+          if (result.entry === null && result.message !== null) return { exitCode: 0, stdout: `${threadId}: ${result.message}.` };
           const before = result.entry?.beforePercent;
           return {
             exitCode: 0,

@@ -115,6 +115,7 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Codex context limit, tokens | 0 (auto) | 0, 10 000–2 000 000 | Working limit for Codex threads; bb reports no compaction point for Codex, so auto uses the global limit. Set it to your `model_auto_compact_token_limit` to measure against where Codex compacts |
 | Auto-compact | off | — | Compact a thread when it goes idle with its context at or above the threshold |
 | Auto-compact threshold, % | 80 | 50–95 | Fill of the context limit that triggers it |
+| Summarise and clear when a provider cannot compact | off | — | For a provider without compaction (custom ACP agents such as Hermes), Compact and auto-compact ask the agent for a summary, clear the context and send the summary back |
 | Limit push notifications | on | — | Push through the `push-notifications` plugin when a limit window reaches the threshold below, and again when it runs out |
 | Limit push threshold, % | 90 | 50–100 | Usage of a limit window that sends the push |
 | Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
@@ -139,6 +140,16 @@ Auto-compact rules:
   work with (for example 200 000); the threshold is then a percent of it.
 - After a compact, or a failed attempt, a thread waits 10 minutes before the
   next one.
+- A provider whose compact fails as unsupported (custom ACP agents such as
+  Hermes) is skipped for 24 hours. With «Summarise and clear when a provider
+  cannot compact» on, Compact and auto-compact do this instead: ask the agent
+  for a summary that starts with `[context-summary]` (no tools, no file
+  changes), wait for that turn (at most 10 minutes), check the answer is a
+  summary, clear the thread's context (bb keeps the history visible) and send
+  the summary back as the next message. Nothing is cleared without a summary,
+  and a turn the user starts meanwhile cancels the run. The log marks such an
+  entry «summary and clear». Clearing keeps less than a provider's own
+  compact: only what the summary says.
 - A per-thread override («Thread auto compact» in the context block, or the
   band's switch) wins over
   the global setting in both directions. The per-thread limit («Thread
@@ -168,6 +179,8 @@ e-mail addresses in error texts are masked.
 
 - Providers that bb does not report limits for (ACP agents, Cursor when it is
   not installed) are shown by status only.
+- Summary and clear sends two messages into the thread on the user's behalf
+  (the request and the summary), and both turns use the provider's limits.
 - The learned forecast appears after the server has seen a window close
   (five hours for a session window, a week for a weekly one) and uses the last
   eight. The current-pace forecast waits until 5 % of the window has passed.

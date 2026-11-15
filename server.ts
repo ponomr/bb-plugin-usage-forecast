@@ -64,6 +64,13 @@ export default async function plugin(bb: BbPluginApi) {
       description: "Compact a thread when it goes idle with its context at or above the threshold.",
       default: false,
     },
+    summaryClearEnabled: {
+      type: "boolean",
+      label: "Summarise and clear when a provider cannot compact",
+      description:
+        "For a provider without compaction (such as custom ACP agents), Compact and auto-compact ask the agent for a summary, clear the thread's context and send the summary back as the next message. The thread history stays visible. Off: such threads are skipped.",
+      default: false,
+    },
     contextLimitTokens: {
       type: "number",
       label: "Context limit, tokens",
@@ -145,6 +152,9 @@ export default async function plugin(bb: BbPluginApi) {
     updatePluginMetadata: (args) =>
       bb.sdk.threads.updatePluginMetadata(args as Parameters<typeof bb.sdk.threads.updatePluginMetadata>[0]),
     compact: (args) => bb.sdk.threads.compact(args),
+    send: ({ input, ...rest }) => bb.sdk.threads.send({ ...rest, input: input.map((item) => ({ ...item, mentions: [] })) }),
+    output: (args) => bb.sdk.threads.output(args),
+    clearContext: (args) => bb.sdk.threads.clearContext(args),
   };
 
   const notifier = new LimitNotifier({

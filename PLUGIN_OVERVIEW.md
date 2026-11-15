@@ -18,9 +18,11 @@ When a limit window reaches 90 % (50–100, configurable) the server sends one p
 
 Off by default. When it is on, the server compacts a thread when the thread goes idle with its context at or above the threshold (80 % by default, 50–95). It never interrupts a turn and waits 10 minutes between attempts on one thread. The threshold is a percent of the thread's working context limit in tokens, which the model window caps. The limit follows the provider: a per-thread limit, else a per-provider limit for Claude Code or Codex, else the point where the provider compacts on its own when bb reports it (Claude Code does, Codex does not), else a global limit (150 000 by default). When a limit lies above the point where the provider compacts on its own, the plugin acts a little below that point. With a large model window (for example 1M tokens) the provider's own point comes very late; set a per-provider limit, such as 200 000, to compact earlier. A per-thread mode (as in settings, off, or on with its own threshold) and a per-thread limit override the settings. The band's switch turns the per-thread mode on or off; the threshold is set in the settings or the context card.
 
+Some providers cannot compact (custom ACP agents such as Hermes). With «Summarise and clear when a provider cannot compact» on (off by default), Compact and auto-compact ask such an agent for a summary, clear the thread's context once the summary arrives and send the summary back as the next message. The thread history stays visible, and nothing is cleared without a summary.
+
 ## Settings and CLI
 
-Settings: the global context limit and one for each of Claude Code and Codex, auto-compact and its threshold, limit push notifications and their threshold, the poll interval, the UI language (English or Russian) and whether limits show the percent used or the percent left.
+Settings: the global context limit and one for each of Claude Code and Codex, auto-compact and its threshold, summary and clear for providers that cannot compact, limit push notifications and their threshold, the poll interval, the UI language (English or Russian) and whether limits show the percent used or the percent left.
 
 The `bb usage-forecast` command prints the status of every provider and a thread's context, compacts a thread and sets a thread's auto-compact mode. Agents in bb threads get the same reference as a skill.
 

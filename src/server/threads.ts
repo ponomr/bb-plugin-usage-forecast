@@ -34,6 +34,8 @@ export type LimitProvider = keyof typeof PROVIDER_LIMIT_SETTINGS;
 
 export interface PluginSettings {
   autoCompactEnabled: boolean;
+  /** For a provider that cannot compact: summarise, clear the context and send the summary back. */
+  summaryClearEnabled: boolean;
   autoCompactThresholdPercent: number;
   pollIntervalMinutes: number;
   /** The global working context limit in tokens; the thread's window caps it. */
@@ -67,6 +69,7 @@ export function isLimitProvider(providerId: string | null): providerId is LimitP
 export function parseSettings(raw: Record<string, unknown> | null | undefined): PluginSettings {
   return {
     autoCompactEnabled: raw?.autoCompactEnabled === true,
+    summaryClearEnabled: raw?.summaryClearEnabled === true,
     autoCompactThresholdPercent: clampInt(
       raw?.autoCompactThresholdPercent,
       THRESHOLD_MIN_PERCENT,
@@ -303,6 +306,8 @@ export interface ThreadInfo {
   providerId: string | null;
   /** True while the agent is answering or the thread is starting or stopping. */
   active: boolean;
+  /** True when the last turn failed (status `error`). */
+  failed: boolean;
 }
 
 export function readThreadInfo(answer: unknown): ThreadInfo {
@@ -310,6 +315,7 @@ export function readThreadInfo(answer: unknown): ThreadInfo {
   return {
     providerId: typeof thread.providerId === "string" ? thread.providerId : null,
     active: typeof thread.status === "string" ? !IDLE_STATUSES.has(thread.status) : false,
+    failed: thread.status === "error",
   };
 }
 
@@ -319,6 +325,16 @@ export interface ThreadsSdk {
   getPluginMetadata(args: { threadId: string }): Promise<unknown>;
   updatePluginMetadata(args: { threadId: string; set?: Record<string, unknown>; remove?: string[] }): Promise<unknown>;
   compact(args: { threadId: string }): Promise<unknown>;
+  /** Starts a turn (`start`) or queues behind a running one (`queue-if-active`). */
+  send(args: {
+    threadId: string;
+    input: Array<{ type: "text"; text: string }>;
+    mode: "start" | "queue-if-active";
+  }): Promise<unknown>;
+  /** The thread's last agent answer, as `{ output }`. */
+  output(args: { threadId: string }): Promise<unknown>;
+  /** Drops the model context of an idle thread; its history stays visible. */
+  clearContext(args: { threadId: string }): Promise<unknown>;
 }
 
 export interface ThreadReaderDeps {
@@ -342,6 +358,7 @@ export async function readThreadState(deps: ThreadReaderDeps, threadId: string):
   const override = parseOverride(metadata);
   const ctx = await measureThread(deps.storage, context, providerId, override, settings, now);
   const policy = effectivePolicy(override, settings);
+  const compactSupported = providerId === null || !unsupported.includes(providerId);
   return {
     threadId,
     providerId,
@@ -353,7 +370,8 @@ export async function readThreadState(deps: ThreadReaderDeps, threadId: string):
       effectiveThresholdPercent: effectiveThreshold(policy.thresholdPercent, ctx),
       effectiveThresholdTokens: effectiveThresholdTokens(policy.thresholdPercent, ctx),
     },
-    compactSupported: providerId === null || !unsupported.includes(providerId),
+    compactSupported,
+    summaryClear: !compactSupported && settings.summaryClearEnabled,
     cooldownUntil: cooldown !== null && cooldown > now ? cooldown : null,
   };
 }

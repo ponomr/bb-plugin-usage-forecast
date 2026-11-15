@@ -105,7 +105,27 @@ Context window:
   per-provider setting.
 - `providers.list()` capabilities have no `supportsManualCompaction` (A5):
   the plugin tries `threads.compact` and marks the provider unsupported on
-  failure.
+  failure. For a provider without manual compaction the host answers 409
+  `Provider "<id>" does not support manual context compaction`. Custom ACP
+  agents (the Hermes `kaya`, `hera`, `porfyry`) have no
+  `supportsManualCompaction` and get it; OpenCode and Grok ACP can compact.
+  An ACP thread's `threads.context` has `usedTokens` and
+  `modelContextWindow` only (200 000 for OpenCode, 500 000 for Hermes).
+- `threads.clearContext({threadId})` (checked 2026-11-15 on an OpenCode
+  thread) needs an idle or errored thread with no pending interaction, else
+  409. It stops the provider runtime and writes a `system/operation` event
+  `context_clear`; the history stays visible. Until the next turn
+  `threads.context` returns `usage: null`. After it the agent did not know
+  a code word from before the clear, and knew it again once a message with
+  the summary was sent.
+- Summary and clear on Hermes Porfyry (`acp-porfyry`, 2026-11-15, a dev copy
+  of 0.4.5): the manual compact (the compact failed as unsupported, then the
+  fallback) and auto-compact on `thread.idle` each took about 30 s from the
+  request to the logged after-fill. The agent kept the facts from before the
+  clear. A Hermes thread starts at about 18 600 tokens, so on an almost empty
+  thread the fill after is a little higher than before.
+- `threads.send` needs `mentions: []` on every text item;
+  `threads.output({threadId})` returns `{output}`, the last answer's text.
 
 Compaction events:
 
