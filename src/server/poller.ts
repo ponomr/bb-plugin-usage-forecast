@@ -72,6 +72,8 @@ export interface PollerDeps {
   storage: Storage;
   intervalMinutes: () => Promise<number>;
   invalidate: () => void;
+  /** Runs after a poll that reached the host and was stored; must not throw. */
+  afterPoll?: (providers: readonly StoredProvider[], now: number) => Promise<void>;
   now?: () => number;
 }
 
@@ -119,6 +121,7 @@ export class Poller {
 
     let latest: StoredLatest;
     let error: string | null;
+    let answered = false;
     try {
       const previous = await storage.latest();
       try {
@@ -126,11 +129,13 @@ export class Poller {
         const applied = await this.apply(previous, answer, now);
         error = pollError(applied.providers);
         latest = { ...applied, pollError: error };
+        answered = true;
       } catch (cause) {
         error = cleanMessage(cause);
         latest = { ...previous, polledAt: now, pollError: error };
       }
       await storage.setLatest(latest);
+      if (answered) await this.deps.afterPoll?.(latest.providers, now);
     } catch (cause) {
       // Plugin storage failed: nothing was saved, the poll still counts as failed.
       error = cleanMessage(cause);

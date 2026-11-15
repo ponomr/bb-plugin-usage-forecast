@@ -22,6 +22,7 @@ export const keys = {
   cooldown: (threadId: string) => `autocompact:cooldown:${threadId}`,
   unsupported: "autocompact:unsupported",
   compactPoints: "context:compact-points",
+  notified: "notify:sent",
 } as const;
 
 /** The last compaction point bb reported for one provider and window size. */
@@ -29,6 +30,16 @@ export interface CompactPoint {
   tokens: number;
   /** Epoch ms of the last read that reported it. */
   seenAt: number;
+}
+
+/** Remembered limit notifications (one per provider and window label). */
+export const MAX_NOTIFIED = 50;
+
+/** The last push sent for one limit window: its period and how far it went. */
+export interface Notified {
+  resetsAt: number | null;
+  level: "threshold" | "reached";
+  at: number;
 }
 
 export const compactPointKey = (providerId: string, windowTokens: number) => `${providerId}|${windowTokens}`;
@@ -201,5 +212,24 @@ export class Storage {
       .sort((a, b) => b[1].seenAt - a[1].seenAt)
       .slice(0, MAX_COMPACT_POINTS);
     await this.kv.set(keys.compactPoints, Object.fromEntries(kept));
+  }
+
+  /** Keyed by `windowKey`. A value in another shape reads as empty. */
+  async notified(): Promise<Record<string, Notified>> {
+    const value = await this.kv.get<unknown>(keys.notified);
+    if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+    return Object.fromEntries(
+      Object.entries(value).filter(
+        (entry): entry is [string, Notified] => typeof (entry[1] as Notified | null)?.at === "number",
+      ),
+    );
+  }
+
+  /** Keeps the MAX_NOTIFIED most recent entries. */
+  async setNotified(notified: Record<string, Notified>): Promise<void> {
+    const kept = Object.entries(notified)
+      .sort((a, b) => b[1].at - a[1].at)
+      .slice(0, MAX_NOTIFIED);
+    await this.kv.set(keys.notified, Object.fromEntries(kept));
   }
 }

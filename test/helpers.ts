@@ -20,6 +20,9 @@ export function settingsOf(over: Partial<PluginSettings> = {}): () => Promise<Pl
     pollIntervalMinutes: 2,
     contextLimitTokens: 150_000,
     providerLimitTokens: { "claude-code": 0, codex: 0 },
+    limitNotifyEnabled: true,
+    limitNotifyPercent: 90,
+    language: "en",
     ...over,
   };
   return async () => value;

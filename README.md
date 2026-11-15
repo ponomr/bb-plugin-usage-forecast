@@ -64,6 +64,15 @@ the context breakdown and one line per other provider.
   the switch on asks whether to compact now or after the next reply. On the phone the context panel is in the expanded band.
 - **Server-side work.** Limits are polled on the server, so history and
   auto-compact work with every client closed.
+- **Push before a limit runs out.** After each poll the server checks every
+  limit window. When one reaches the threshold (90 % by default) it sends one
+  push through bb's `push-notifications` plugin («Claude Code: 5 Hour limit at
+  91%», «The limit resets in 2h.»), and one more when the window reaches
+  100 %. A window stays quiet until it resets or drops below the threshold;
+  what was sent is kept across restarts. The push carries the provider, the
+  window and percents, no account data, and opens bb on tap. Without the
+  `push-notifications` plugin, or with no device registered, the plugin only
+  logs that the push was not delivered.
 - **Live context.** The server listens to the thread's context events
   (usage updated, compacted, cleared) and refreshes the open band at once;
   a poll every 30 s while the agent answers is only a backstop.
@@ -106,6 +115,8 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Codex context limit, tokens | 0 (auto) | 0, 10 000–2 000 000 | Working limit for Codex threads; bb reports no compaction point for Codex, so auto uses the global limit. Set it to your `model_auto_compact_token_limit` to measure against where Codex compacts |
 | Auto-compact | off | — | Compact a thread when it goes idle with its context at or above the threshold |
 | Auto-compact threshold, % | 80 | 50–95 | Fill of the context limit that triggers it |
+| Limit push notifications | on | — | Push through the `push-notifications` plugin when a limit window reaches the threshold below, and again when it runs out |
+| Limit push threshold, % | 90 | 50–100 | Usage of a limit window that sends the push |
 | Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
 | Language | English | English, Русский | Language of the plugin UI |
 | Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used |

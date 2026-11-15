@@ -16,8 +16,8 @@ import {
 } from "../shared/contract";
 import { formatPercent } from "../shared/thresholds";
 import { contextPercent, formatSpan, formatTokens, providerName, shortTokens } from "./format";
-import { useCompact, useNow, useSetOverride, useThreadState, type CompactState } from "./hooks";
-import { useStrings, type Strings } from "./i18n";
+import { useCompact, useNow, useSetOverride, useThreadState, type CompactState, useStrings } from "./hooks";
+import type { Strings } from "./i18n";
 import { contextView } from "./model";
 import { Ink, SegmentBar, Swatch, Toned } from "./ui";
 import { Button } from "../../components/ui/button";

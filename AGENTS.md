@@ -10,7 +10,8 @@ auto-compact without open clients.
 - `server.ts` — wires storage, schedule, events, RPC contract and CLI.
 - `src/shared/` — RPC contract, window table, thresholds and the forecast
   (`forecast.ts`, adapted from `claude-code-usage-quota-mod`, see `NOTICE`).
-- `src/server/` — poller, KV storage, auto-compact, CLI.
+- `src/server/` — poller, KV storage, auto-compact, limit push notifications
+  (through the `push-notifications` plugin), CLI.
 - `src/app/` — composer band (design after `claude-code-usage-quota-mod`),
   context card section, settings section; UI strings in `i18n.ts`.
 - `components/`, `lib/`, `hooks/` — vendored BB UI components; import them by
@@ -31,8 +32,9 @@ auto-compact without open clients.
 5. **One KV value stays under 256 KB.** Every list is a ring buffer trimmed
    before it is written.
 6. **UI text is English by default**, Russian through the `language`
-   setting. Every UI string lives in `src/app/i18n.ts` in both languages;
-   code, comments and docs are English.
+   setting. Every UI string, push texts included, lives in `src/app/i18n.ts`
+   in both languages; that file imports nothing from the app SDK so the
+   server can use it. Code, comments and docs are English.
 
 ## Commands
 
