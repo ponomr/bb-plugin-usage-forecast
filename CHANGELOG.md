@@ -4,6 +4,12 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.20 — 2026-11-16
+
+- Docs only. The agent skill lists the `showBand` setting, says that the
+  percent and reset settings also apply to the sidebar card and that token
+  totals are approximate, and tells where the band and the ring are hidden.
+
 ## 0.4.19 — 2026-11-16
 
 - Removed the «Sidebar ring and card» setting of 0.4.18: bb keeps the footer

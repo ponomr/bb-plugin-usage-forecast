@@ -12,7 +12,8 @@ auto-compact without open clients.
   (`forecast.ts`, adapted from `claude-code-usage-quota-mod`, see `NOTICE`)
   and the window's pace state with its hold (`pace.ts`), the display
   settings (`limits-show.ts`, `reset-show.ts`), account grouping across hosts
-  (`accounts.ts`), the CLI's window verdict and provider headroom
+  (`accounts.ts`: `accountGroups` is the one grouping for the sidebar card
+  and the CLI; a `sharedWith` link counts from either side), the CLI's window verdict and provider headroom
   (`headroom.ts`), the plan multiplier and its text (`plan.ts`) and the
   `hiddenProviders` setting's parser (`hidden-providers.ts`), and the token
   totals' pure core: counting, trims, sums and number format (`tokens.ts`).
@@ -256,7 +257,11 @@ Chrome against the web app, bb 0.49.0):
 - Repository: public `ponomr/bb-plugin-usage-forecast`, MIT. Submitted to the
   BB Community marketplace as `usage-forecast` with a Git source that tracks
   `^0.4.0` (get-bb/marketplace#928); a compatible release needs no new
-  marketplace PR, a contract change needs a PR that moves the range.
+  marketplace PR, a contract change needs a PR that moves the range. The
+  marketplace's long description (`overview/usage-forecast.md` there) is a
+  copy of `PLUGIN_OVERVIEW.md`, at most 4000 characters; after changing it,
+  open a marketplace PR with the new copy (get-bb/marketplace#973 for
+  0.4.19). Its screenshots (`docs/screenshots/`) show the band only.
 - Checks: the command above; there is no CI yet.
 - Release: bump `version` in `package.json` and `package-lock.json` and add
   the version to `CHANGELOG.md` in the PR, merge it, tag the merge commit `vX.Y.Z` and push the tag.
