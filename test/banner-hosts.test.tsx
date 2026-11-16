@@ -31,7 +31,7 @@ const codex = (session: number, weekly: number, plan: string) =>
 const twoHosts = (mac: Partial<Parameters<typeof host>[2]> = {}) =>
   snapshot([], {
     hosts: [
-      host("host_server", [codex(20, 57, "Pro")], { name: "clovis", primary: true }),
+      host("host_server", [codex(20, 57, "Pro")], { name: "server", primary: true }),
       host("host_mac", [codex(3, 5, "Plus")], { name: "MacBook", ...mac }),
     ],
   });
@@ -53,16 +53,16 @@ describe("band per host", () => {
     await waitFor(() => expect(band.textContent).toContain("Plus"));
     expect(band.textContent).not.toContain("57%");
     expect(band.textContent).not.toContain("Pro");
-    expect(band.textContent).not.toContain("clovis");
+    expect(band.textContent).not.toContain("server");
     expect(band.textContent).not.toContain("MacBook");
   });
 
   it("AE6: one host shows its windows with no host name, whatever the thread's host", async () => {
-    const s = snapshot([], { hosts: [host("host_server", [codex(20, 57, "Pro")], { name: "clovis", primary: true })] });
+    const s = snapshot([], { hosts: [host("host_server", [codex(20, 57, "Pro")], { name: "server", primary: true })] });
     render(Banner, {}, backend({ snapshot: s, thread: codexThread(null) }));
     await waitFor(() => expect(document.querySelector('[data-window="Weekly limit"]')?.textContent).toContain("57%"));
     const band = await bandText();
-    expect(band.textContent).not.toContain("clovis");
+    expect(band.textContent).not.toContain("server");
     expect(screen.queryByTestId("stale")).toBeNull();
   });
 
@@ -90,7 +90,7 @@ describe("band per host", () => {
   it("does not show the other host's poll error", async () => {
     const s = twoHosts();
     s.hosts[0]!.pollError = "boom";
-    s.pollError = "clovis: boom";
+    s.pollError = "server: boom";
     render(Banner, {}, backend({ snapshot: s, thread: codexThread("host_mac") }));
     fireEvent.click(await screen.findByRole("button", { name: "Show details" }));
     const band = await bandText();

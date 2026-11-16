@@ -94,7 +94,7 @@ async function dump(kv: ReturnType<typeof makeKv>): Promise<string> {
   return JSON.stringify(all);
 }
 
-const twoHosts = [hostInfo(SERVER, "clovis"), hostInfo(MAC, "MacBook")];
+const twoHosts = [hostInfo(SERVER, "server"), hostInfo(MAC, "MacBook")];
 
 describe("poll every host", () => {
   it("keeps each host's own windows for different accounts (AE1, AE3)", async () => {
@@ -115,7 +115,7 @@ describe("poll every host", () => {
     expect(await t.storage.hostIndex()).toEqual({
       legacyOwner: SERVER,
       hosts: [
-        { hostId: SERVER, name: "clovis", connected: true, polledAt: NOW, pollError: null },
+        { hostId: SERVER, name: "server", connected: true, polledAt: NOW, pollError: null },
         { hostId: MAC, name: "MacBook", connected: true, polledAt: NOW, pollError: null },
       ],
     });
@@ -191,7 +191,7 @@ describe("poll every host", () => {
   it("keeps a disconnected host's record, marks it, and drops its forecasts in the snapshot (AE4)", async () => {
     const t = setup({ hosts: twoHosts, answers: { [SERVER]: () => codex("a", 18, 57), [MAC]: () => codex("b", 2, 5) } });
     await t.poller.poll();
-    t.setHosts([hostInfo(SERVER, "clovis"), hostInfo(MAC, "MacBook", "disconnected")]);
+    t.setHosts([hostInfo(SERVER, "server"), hostInfo(MAC, "MacBook", "disconnected")]);
     t.clock.advance(2 * MIN);
     t.calls.length = 0;
     await t.poller.tick();
@@ -211,7 +211,7 @@ describe("poll every host", () => {
   it("notes a host that disconnects on a tick that polls nothing", async () => {
     const t = setup({ hosts: twoHosts, answers: { [SERVER]: () => codex("a", 1, 2), [MAC]: () => codex("b", 1, 2) } });
     await t.poller.tick();
-    t.setHosts([hostInfo(SERVER, "clovis"), hostInfo(MAC, "MacBook", "disconnected")]);
+    t.setHosts([hostInfo(SERVER, "server"), hostInfo(MAC, "MacBook", "disconnected")]);
     t.clock.advance(MIN);
     t.calls.length = 0;
     await t.poller.tick();
@@ -227,7 +227,7 @@ describe("poll every host", () => {
     });
     await t.poller.poll();
     expect(await t.kv.list(keys.hostLatest(third))).toHaveLength(1);
-    t.setHosts([hostInfo(SERVER, "clovis"), hostInfo(MAC, "MacBook", "disconnected", "destroyed")]);
+    t.setHosts([hostInfo(SERVER, "server"), hostInfo(MAC, "MacBook", "disconnected", "destroyed")]);
     t.clock.advance(2 * MIN);
     await t.poller.poll();
     expect((await t.storage.hostIndex())!.hosts.map((h) => h.hostId)).toEqual([SERVER]);
@@ -267,7 +267,7 @@ describe("one host and the upgrade", () => {
   it("stores the same record for one host as the poller before 0.4.6 (R5)", async () => {
     const before = setup({ legacy: true, answers: { "": () => claudeLimits(40, 20) } });
     await before.poller.poll();
-    const after = setup({ hosts: [hostInfo(SERVER, "clovis")], primary: () => null, answers: { [SERVER]: () => claudeLimits(40, 20) } });
+    const after = setup({ hosts: [hostInfo(SERVER, "server")], primary: () => null, answers: { [SERVER]: () => claudeLimits(40, 20) } });
     await after.poller.poll();
     expect(await after.storage.latest(null)).toEqual(await before.storage.latest(null));
     expect(await after.storage.samples("claude-code")).toEqual(await before.storage.samples("claude-code"));

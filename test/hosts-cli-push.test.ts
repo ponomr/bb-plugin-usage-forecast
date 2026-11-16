@@ -54,7 +54,7 @@ function setup(over: Partial<PluginSettings> = {}) {
 
 /** Claude Code on one account on both hosts. */
 const shared = (serverWeekly: number, macWeekly: number) => [
-  notifyHost(SERVER, "clovis", [prov("claude-code", serverWeekly, "Max", [MAC])]),
+  notifyHost(SERVER, "server", [prov("claude-code", serverWeekly, "Max", [MAC])]),
   notifyHost(MAC, "MacBook", [prov("claude-code", macWeekly, "Max", [SERVER])]),
 ];
 
@@ -62,7 +62,7 @@ describe("limit pushes across hosts", () => {
   it("AE2: a shared account crossing the threshold sends one push naming both hosts, the next poll none", async () => {
     const { notifier, sent } = setup();
     await notifier.checkHosts(shared(91, 91), NOW);
-    expect(sent).toEqual([{ title: "Claude Code: Weekly limit at 91% on clovis, MacBook", body: "The limit resets in 3d." }]);
+    expect(sent).toEqual([{ title: "Claude Code: Weekly limit at 91% on server, MacBook", body: "The limit resets in 3d." }]);
     await notifier.checkHosts(shared(92, 92), NOW + 2 * MIN);
     expect(sent).toHaveLength(1);
   });
@@ -70,10 +70,10 @@ describe("limit pushes across hosts", () => {
   it("different accounts on two hosts get a push each, naming their own host", async () => {
     const { notifier, sent } = setup();
     await notifier.checkHosts(
-      [notifyHost(SERVER, "clovis", [prov("codex", 95, "Pro")]), notifyHost(MAC, "MacBook", [prov("codex", 93, "Plus")])],
+      [notifyHost(SERVER, "server", [prov("codex", 95, "Pro")]), notifyHost(MAC, "MacBook", [prov("codex", 93, "Plus")])],
       NOW,
     );
-    expect(sent.map((m) => m.title)).toEqual(["Codex: Weekly limit at 95% on clovis", "Codex: Weekly limit at 93% on MacBook"]);
+    expect(sent.map((m) => m.title)).toEqual(["Codex: Weekly limit at 95% on server", "Codex: Weekly limit at 93% on MacBook"]);
   });
 
   it("does not repeat a push remembered before the upgrade under the legacy key", async () => {
@@ -92,21 +92,21 @@ describe("limit pushes across hosts", () => {
     // The server does not answer: the Mac alone, with no group this poll.
     await notifier.checkHosts(
       [
-        notifyHost(SERVER, "clovis", [prov("claude-code", 91, "Max", [MAC])], { answered: false }),
+        notifyHost(SERVER, "server", [prov("claude-code", 91, "Max", [MAC])], { answered: false }),
         notifyHost(MAC, "MacBook", [prov("claude-code", 93, "Max")]),
       ],
       NOW + 2 * MIN,
     );
     expect(sent).toHaveLength(1);
     // Reaching 100 % is a new level and still sends.
-    await notifier.checkHosts([notifyHost(MAC, "MacBook", [prov("claude-code", 100, "Max")]), notifyHost(SERVER, "clovis", [], { answered: false })], NOW + 4 * MIN);
+    await notifier.checkHosts([notifyHost(MAC, "MacBook", [prov("claude-code", 100, "Max")]), notifyHost(SERVER, "server", [], { answered: false })], NOW + 4 * MIN);
     expect(sent.map((m) => m.title).at(-1)).toBe("Claude Code: Weekly limit reached on MacBook");
   });
 
   it("does not check a host that did not answer this poll", async () => {
     const { notifier, sent } = setup();
     await notifier.checkHosts(
-      [notifyHost(SERVER, "clovis", [prov("codex", 10, "Pro")]), notifyHost(MAC, "MacBook", [prov("codex", 99, "Plus")], { answered: false })],
+      [notifyHost(SERVER, "server", [prov("codex", 10, "Pro")]), notifyHost(MAC, "MacBook", [prov("codex", 99, "Plus")], { answered: false })],
       NOW,
     );
     expect(sent).toEqual([]);
@@ -115,12 +115,12 @@ describe("limit pushes across hosts", () => {
   it("names the hosts in Russian with two hosts and no host with one", async () => {
     const ru = setup({ language: "ru" });
     await ru.notifier.checkHosts(shared(91, 91), NOW);
-    expect(ru.sent[0]!.title).toBe("Claude Code: лимит «Неделя» — 91% на clovis, MacBook");
+    expect(ru.sent[0]!.title).toBe("Claude Code: лимит «Неделя» — 91% на server, MacBook");
     const one = setup({ language: "ru" });
-    await one.notifier.checkHosts([notifyHost(SERVER, "clovis", [prov("claude-code", 91, "Max")])], NOW);
+    await one.notifier.checkHosts([notifyHost(SERVER, "server", [prov("claude-code", 91, "Max")])], NOW);
     expect(one.sent[0]!.title).toBe("Claude Code: лимит «Неделя» — 91%");
     const en = setup();
-    await en.notifier.checkHosts([notifyHost(SERVER, "clovis", [prov("claude-code", 91, "Max")])], NOW);
+    await en.notifier.checkHosts([notifyHost(SERVER, "server", [prov("claude-code", 91, "Max")])], NOW);
     expect(en.sent[0]!.title).toBe("Claude Code: Weekly limit at 91%");
   });
 });
@@ -149,7 +149,7 @@ describe("CLI status across hosts", () => {
   it("AE2: a shared account is one block naming both hosts, with the newest answer", async () => {
     const out = formatStatus(
       status([
-        cliHost(SERVER, "clovis", [prov("claude-code", 40, "Max", [MAC], NOW - MIN)]),
+        cliHost(SERVER, "server", [prov("claude-code", 40, "Max", [MAC], NOW - MIN)]),
         cliHost(MAC, "MacBook", [prov("claude-code", 41, "Max", [SERVER], NOW)]),
       ]),
       NOW + MIN,
@@ -157,7 +157,7 @@ describe("CLI status across hosts", () => {
     expect(out).toBe(
       [
         "Limits, polled 2026-11-08 12:00 UTC (1m ago)",
-        "  claude-code (Max) on clovis, MacBook: ok",
+        "  claude-code (Max) on server, MacBook: ok",
         "    Weekly limit: 41%, resets in 2d 23h",
         "Recent compacts: none",
       ].join("\n"),
@@ -166,35 +166,35 @@ describe("CLI status across hosts", () => {
 
   it("AE3: different accounts are two blocks, each with its host and plan", () => {
     const out = formatStatus(
-      status([cliHost(SERVER, "clovis", [prov("codex", 57, "Pro")]), cliHost(MAC, "MacBook", [prov("codex", 5, "Plus")])]),
+      status([cliHost(SERVER, "server", [prov("codex", 57, "Pro")]), cliHost(MAC, "MacBook", [prov("codex", 5, "Plus")])]),
       NOW,
     );
-    expect(out).toContain("  codex (Pro) on clovis: ok\n    Weekly limit: 57%");
+    expect(out).toContain("  codex (Pro) on server: ok\n    Weekly limit: 57%");
     expect(out).toContain("  codex (Plus) on MacBook: ok\n    Weekly limit: 5%");
   });
 
   it("says when a host is not connected and from when its data is", () => {
     const out = formatStatus(
       status([
-        cliHost(SERVER, "clovis", [prov("claude-code", 40, "Max", [MAC])]),
+        cliHost(SERVER, "server", [prov("claude-code", 40, "Max", [MAC])]),
         cliHost(MAC, "MacBook", [prov("claude-code", 30, "Max", [SERVER], NOW - HOUR_MS)], { connected: false, polledAt: NOW - HOUR_MS }),
       ]),
       NOW,
     );
-    expect(out).toContain("  claude-code (Max) on clovis, MacBook: ok\n    Weekly limit: 40%");
+    expect(out).toContain("  claude-code (Max) on server, MacBook: ok\n    Weekly limit: 40%");
     expect(out).toContain("    MacBook: not connected, data from 2026-11-08 11:00 UTC");
   });
 
   it("joins hosts that share an account through a third", () => {
     const out = formatStatus(
       status([
-        cliHost(SERVER, "clovis", [prov("codex", 1, "Pro", ["h3"])]),
+        cliHost(SERVER, "server", [prov("codex", 1, "Pro", ["h3"])]),
         cliHost(MAC, "MacBook", [prov("codex", 1, "Pro", ["h3"])]),
         cliHost("h3", "mini", [prov("codex", 1, "Pro", [SERVER, MAC])]),
       ]),
       NOW,
     );
     expect(out.match(/codex/g)).toHaveLength(1);
-    expect(out).toContain("codex (Pro) on clovis, MacBook, mini: ok");
+    expect(out).toContain("codex (Pro) on server, MacBook, mini: ok");
   });
 });
