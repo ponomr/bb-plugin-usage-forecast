@@ -4,6 +4,7 @@
 
 import type { CompactLogEntry, ContextLimitSource, ProviderStatus, ThreadOverride } from "../shared/contract";
 import type { Lang } from "../shared/language";
+import type { PaceState } from "../shared/pace";
 import { SUMMARY_MARKER } from "../shared/summary";
 
 export interface Strings {
@@ -137,6 +138,15 @@ export interface Strings {
   summaryRequest: string;
   /** Gives the summary back after the context was cleared. */
   summaryRestore(summary: string): string;
+
+  // Sidebar indicator
+  /** The footer item's label and the ring's accessible name. */
+  indicatorLabel: string;
+  /** A pace state in a few words, for the ring's title. */
+  paceStateName: Record<PaceState, string>;
+  noLimitsData: string;
+  /** Next to a shared account's provider: the other hosts signed in to it. */
+  alsoOn(hosts: string): string;
 
   // Settings section
   /** `claude` and `codex` are null when their limit is auto. */
@@ -288,6 +298,11 @@ export const en: Strings = {
     "Do not start any work now: reply with one short line that you have it.\n\n" +
     `${SUMMARY_MARKER}\n${summary}`,
 
+  indicatorLabel: "Usage limits",
+  paceStateName: { calm: "on track", tight: "tight", short: "runs out before reset", critical: "critical", hit: "limit reached" },
+  noLimitsData: "No limits data",
+  alsoOn: (hosts) => `also ${hosts}`,
+
   settingsSummary: (on, t, i, limit, claude, codex) =>
     `Context limit: Claude Code ${claude ?? "auto"}, Codex ${codex ?? "auto"}, otherwise ${limit} tokens. Auto compact: ${
       on ? `on, threshold ${t}% of the limit` : "off"
@@ -438,6 +453,11 @@ export const ru: Strings = {
     "который ты написал перед очисткой; считай его разговором до этого места и продолжай с него. " +
     "Сейчас не начинай работу: ответь одной короткой строкой, что пересказ получен.\n\n" +
     `${SUMMARY_MARKER}\n${summary}`,
+
+  indicatorLabel: "Лимиты",
+  paceStateName: { calm: "в норме", tight: "впритык", short: "не хватит до сброса", critical: "критично", hit: "лимит исчерпан" },
+  noLimitsData: "Нет данных о лимитах",
+  alsoOn: (hosts) => `также ${hosts}`,
 
   settingsSummary: (on, t, i, limit, claude, codex) =>
     `Лимит контекста: Claude Code ${claude ?? "авто"}, Codex ${codex ?? "авто"}, остальные ${limit} токенов. Авто-компакт: ${
