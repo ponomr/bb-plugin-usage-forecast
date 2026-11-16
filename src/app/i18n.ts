@@ -52,6 +52,10 @@ export interface Strings {
   loading: string;
   unavailable(message: string): string;
   noDataYet: string;
+  /** The thread's host is disconnected or its last poll failed. */
+  hostStale(clock: string): string;
+  /** The thread's host could not be determined, or has no data yet. */
+  hostUnknown: string;
   pollFailed(message: string): string;
   updated(ago: string): string;
   justNow: string;
@@ -131,6 +135,8 @@ export interface Strings {
   /** Push title when a limit window crosses the notify threshold or runs out. */
   pushTitle(provider: string, window: string, percent: string): string;
   pushReachedTitle(provider: string, window: string): string;
+  /** A push title with the hosts it is about, when more than one host is known. */
+  pushOnHosts(title: string, hosts: string): string;
   /** Push body: the reset span from formatResetIn, or null when unknown. */
   pushBody(resetIn: string | null): string;
 }
@@ -178,6 +184,8 @@ export const en: Strings = {
   loading: "Loading limits",
   unavailable: (m) => `Limits unavailable: ${m}`,
   noDataYet: "No limit data yet",
+  hostStale: (clock) => `Host unavailable, data from ${clock}`,
+  hostUnknown: "Limits unknown: this thread's host has no data",
   pollFailed: (m) => `Last poll failed: ${m}`,
   updated: (ago) => `Updated ${ago}`,
   justNow: "just now",
@@ -269,6 +277,7 @@ export const en: Strings = {
 
   pushTitle: (provider, window, percent) => `${provider}: ${window} limit at ${percent}`,
   pushReachedTitle: (provider, window) => `${provider}: ${window} limit reached`,
+  pushOnHosts: (title, hosts) => `${title} on ${hosts}`,
   pushBody: (resetIn) => (resetIn === null ? "Usage limit is close." : `The limit ${resetIn}.`),
 };
 
@@ -316,6 +325,8 @@ export const ru: Strings = {
   loading: "Загрузка лимитов",
   unavailable: (m) => `Лимиты недоступны: ${m}`,
   noDataYet: "Данные ещё не получены",
+  hostStale: (clock) => `Хост недоступен, данные от ${clock}`,
+  hostUnknown: "Лимиты неизвестны: нет данных хоста этого треда",
   pollFailed: (m) => `Последний опрос не удался: ${m}`,
   updated: (ago) => `Обновлено ${ago}`,
   justNow: "только что",
@@ -407,6 +418,7 @@ export const ru: Strings = {
 
   pushTitle: (provider, window, percent) => `${provider}: лимит «${window}» — ${percent}`,
   pushReachedTitle: (provider, window) => `${provider}: лимит «${window}» исчерпан`,
+  pushOnHosts: (title, hosts) => `${title} на ${hosts}`,
   pushBody: (resetIn) => (resetIn === null ? "Лимит почти исчерпан." : `Лимит: ${resetIn}.`),
 };
 

@@ -95,7 +95,12 @@ export class FakeThreads implements ThreadsSdk {
     const call = (this.getCalls.get(threadId) ?? 0) + 1;
     this.getCalls.set(threadId, call);
     this.onGet?.(threadId, call);
-    return { id: threadId, providerId: this.providers.get(threadId) ?? null, status: this.status.get(threadId) ?? "idle" };
+    return {
+      id: threadId,
+      providerId: this.providers.get(threadId) ?? null,
+      status: this.status.get(threadId) ?? "idle",
+      environmentId: this.environments.get(threadId) ?? null,
+    };
   }
 
   async context({ threadId }: { threadId: string }) {
@@ -150,6 +155,25 @@ export class FakeThreads implements ThreadsSdk {
     this.clearCalls.push(threadId);
     if (this.clearError) throw this.clearError;
     return { ok: true };
+  }
+
+  /** Thread id → environment id, and environment id → host id. */
+  environments = new Map<string, string>();
+  environmentHosts = new Map<string, string>();
+  environmentError: Error | null = null;
+
+  /** Places a thread on a host through an environment of its own. */
+  onHost(threadId: string, hostId: string): this {
+    this.environments.set(threadId, `env_${threadId}`);
+    this.environmentHosts.set(`env_${threadId}`, hostId);
+    return this;
+  }
+
+  async environment({ environmentId }: { environmentId: string }) {
+    if (this.environmentError) throw this.environmentError;
+    const hostId = this.environmentHosts.get(environmentId);
+    if (hostId === undefined) throw new Error(`Environment ${environmentId} not found`);
+    return { id: environmentId, hostId };
   }
 }
 

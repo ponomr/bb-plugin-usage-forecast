@@ -40,7 +40,7 @@ describe("formatters", () => {
   });
 
   it("formats an empty snapshot", () => {
-    expect(formatStatus({ polledAt: null, pollError: null, providers: [], recentCompactions: [] }, NOW)).toBe(
+    expect(formatStatus({ polledAt: null, pollError: null, hosts: [], recentCompactions: [] }, NOW)).toBe(
       "Limits: not polled yet.\nRecent compacts: none",
     );
   });
@@ -49,7 +49,7 @@ describe("formatters", () => {
     const s: LimitsSnapshot = {
       polledAt: NOW,
       pollError: "codex: boom",
-      providers: [
+      hosts: [{ hostId: null, name: null, connected: true, primary: true, polledAt: NOW, pollError: "codex: boom", providers: [
         {
           providerId: "claude-code",
           status: "expired",
@@ -90,7 +90,7 @@ describe("formatters", () => {
             },
           ],
         },
-      ],
+      ] }],
       recentCompactions: [],
     } as unknown as LimitsSnapshot;
     expect(formatStatus(s, NOW + 3 * MIN)).toBe(
@@ -121,7 +121,7 @@ describe("bb usage-forecast", () => {
     expect(refreshed.stdout).not.toContain("owner@example.com");
 
     const json = await t.run("status", "--json");
-    expect(JSON.parse(json.stdout).providers[0].providerId).toBe("claude-code");
+    expect(JSON.parse(json.stdout).hosts[0].providers[0].providerId).toBe("claude-code");
   });
 
   it("thread shows the context, the limit source and the cooldown", async () => {

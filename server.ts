@@ -155,6 +155,7 @@ export default async function plugin(bb: BbPluginApi) {
     send: ({ input, ...rest }) => bb.sdk.threads.send({ ...rest, input: input.map((item) => ({ ...item, mentions: [] })) }),
     output: (args) => bb.sdk.threads.output(args),
     clearContext: (args) => bb.sdk.threads.clearContext(args),
+    environment: (args) => bb.sdk.environments.get(args),
   };
 
   const notifier = new LimitNotifier({
@@ -174,10 +175,12 @@ export default async function plugin(bb: BbPluginApi) {
 
   const poller = new Poller({
     usageLimits: (args) => bb.sdk.system.usageLimits(args),
+    hosts: () => bb.sdk.hosts.list(),
+    primaryHostId: async () => (await bb.sdk.system.config()).primaryHostId,
     storage,
     intervalMinutes: async () => (await settings()).pollIntervalMinutes,
     invalidate: invalidateLimits,
-    afterPoll: (providers, now) => notifier.check(providers, now),
+    afterPoll: (hosts, now) => notifier.checkHosts(hosts, now),
   });
 
   const compactor = new AutoCompactor({ threads, storage, settings, invalidate: invalidateThread, log: bb.log });

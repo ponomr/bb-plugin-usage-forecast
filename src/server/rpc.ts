@@ -3,7 +3,7 @@
 
 import { isInheritOverride, normalizeOverride, type LimitsSnapshot, type ThreadOverride, type ThreadState, type CompactResult } from "../shared/contract";
 import type { AutoCompactor } from "./auto-compact";
-import { toSnapshot, type Poller } from "./poller";
+import { readHosts, toSnapshot, type Poller } from "./poller";
 import type { Storage } from "./storage";
 import { readThreadState, type ThreadReaderDeps } from "./threads";
 
@@ -25,8 +25,8 @@ export interface Service {
 export function createService(deps: ServiceDeps): Service {
   const now = deps.now ?? Date.now;
   const snapshot = async () => {
-    const [latest, log] = await Promise.all([deps.storage.latest(), deps.storage.log()]);
-    return toSnapshot(latest, log, now());
+    const [hosts, log] = await Promise.all([readHosts(deps.storage), deps.storage.log()]);
+    return toSnapshot(hosts, log, now());
   };
   return {
     snapshot,

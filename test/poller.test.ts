@@ -215,10 +215,20 @@ describe("snapshot", () => {
   it("drops the forecast of a window whose reset has passed", async () => {
     const t = setup(() => claudeLimits(40, 20));
     const { latest } = await t.poller.poll();
-    const later = toSnapshot(latest, [], NOW + 3 * HOUR_MS);
-    expect(later.providers[0]!.windows[0]!.forecast).toBeNull();
-    expect(later.providers[0]!.windows[1]!.forecast).not.toBeNull();
-    expect(later.providers[0]).not.toHaveProperty("open");
+    const later = toSnapshot([{ hostId: null, name: null, primary: true, connected: true, latest }], [], NOW + 3 * HOUR_MS);
+    const provider = later.hosts[0]!.providers[0]!;
+    expect(provider.windows[0]!.forecast).toBeNull();
+    expect(provider.windows[1]!.forecast).not.toBeNull();
+    expect(provider).not.toHaveProperty("open");
+  });
+
+  it("drops every forecast of a host whose last poll failed (R6)", async () => {
+    const t = setup(() => claudeLimits(40, 20));
+    const { latest } = await t.poller.poll();
+    const failed = { ...latest, pollError: "boom" };
+    const s = toSnapshot([{ hostId: null, name: null, primary: true, connected: true, latest: failed }], [], NOW);
+    expect(s.pollError).toBe("boom");
+    expect(s.hosts[0]!.providers[0]!.windows.map((w) => w.forecast)).toEqual([null, null]);
   });
 });
 
