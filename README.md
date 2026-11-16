@@ -196,6 +196,8 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Language | English | English, Русский | Language of the plugin UI |
 | Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used. A press on a percent in the band switches it |
 | Reset shows | Countdown | Countdown, Exact time | When a limit window resets: the time left until it, or the local time of the reset (the short weekday when not today). A press on a reset time in the band switches it |
+| Band above the composer | on | on, off | The limits and context band above the message field. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
+| Sidebar ring and card | on | on, off | The limits ring in the sidebar footer and the card it opens. Off: the ring is not drawn and the card says it is turned off; bb keeps the item's empty button in the footer (see «Turning it off») |
 | Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |
 
 Auto-compact rules:
@@ -342,9 +344,11 @@ Plugins.
 auto-compact. Threads and providers stay unchanged, and the stored history is
 kept for when the plugin is enabled again.
 
-To hide only the ring, open More in the sidebar footer → Customize footer →
-«Remove Usage limits from footer»; it moves into the More menu. bb has no
-plugin setting for this: a footer item cannot follow a setting.
+To hide only the band above the composer or only the sidebar ring and card,
+switch off «Band above the composer» or «Sidebar ring and card» in the plugin
+settings. A footer item cannot follow a setting in bb, so the ring's empty
+button stays in the footer: More in the sidebar footer → Customize footer →
+«Remove Usage limits from footer» moves it into the More menu.
 
 ## Development
 

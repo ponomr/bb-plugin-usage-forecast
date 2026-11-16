@@ -159,6 +159,8 @@ export interface Strings {
   /** A pace state in a few words, for the ring's title. */
   paceStateName: Record<PaceState, string>;
   noLimitsData: string;
+  /** The sidebar card when the `showSidebar` setting is off. */
+  sidebarOff: string;
   /** Next to a shared account's provider: the other hosts signed in to it. */
   alsoOn(hosts: string): string;
 
@@ -332,6 +334,7 @@ export const en: Strings = {
   indicatorLabel: "Usage limits",
   paceStateName: { calm: "on track", tight: "tight", short: "runs out before reset", critical: "critical", hit: "limit reached" },
   noLimitsData: "No limits data",
+  sidebarOff: "Turned off in the plugin settings",
   alsoOn: (hosts) => `also ${hosts}`,
 
   tokensLine: (thread, today, month) =>
@@ -513,6 +516,7 @@ export const ru: Strings = {
   indicatorLabel: "Лимиты",
   paceStateName: { calm: "в норме", tight: "впритык", short: "не хватит до сброса", critical: "критично", hit: "лимит исчерпан" },
   noLimitsData: "Нет данных о лимитах",
+  sidebarOff: "Выключено в настройках плагина",
   alsoOn: (hosts) => `также ${hosts}`,
 
   tokensLine: (thread, today, month) =>

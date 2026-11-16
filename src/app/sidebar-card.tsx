@@ -13,7 +13,7 @@ import { planText } from "../shared/plan";
 import { formatTokenCount } from "../shared/tokens";
 import { ResetTime, WindowBar, WindowPercent } from "./banner";
 import { formatClock, formatRunOut, providerName, shortWindowLabel, windowLabel } from "./format";
-import { errorText, useHiddenProviders, useLimitsShow, useNow, useResetShow, useSnapshot, useStrings, useTokens } from "./hooks";
+import { errorText, useHiddenProviders, useLimitsShow, useNow, useResetShow, useSidebarShown, useSnapshot, useStrings, useTokens } from "./hooks";
 import type { Strings } from "./i18n";
 import { indicatorView, type IndicatorProvider } from "./indicator";
 import { hostStale, paceDetails, windowNote, windowView } from "./model";
@@ -92,7 +92,18 @@ function ProviderSection({ entry, now, tokens }: { entry: IndicatorProvider; now
   );
 }
 
+/** The card, or one line when the `showSidebar` setting is off. */
 export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
+  const s = useStrings();
+  if (useSidebarShown()) return <Card />;
+  return (
+    <div className="px-3 py-2 text-muted-foreground text-xs" data-testid="limits-card-off">
+      {s.sidebarOff}
+    </div>
+  );
+}
+
+function Card() {
   const s = useStrings();
   const now = useNow();
   const hidden = useHiddenProviders();

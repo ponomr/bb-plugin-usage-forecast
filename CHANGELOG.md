@@ -4,6 +4,12 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.18 — 2026-11-16
+
+- Two settings, both on by default: «Band above the composer» and «Sidebar
+  ring and card». Switched off, the band or the ring is not drawn and asks
+  the server for nothing. bb keeps the ring's empty button in the footer.
+
 ## 0.4.17 — 2026-11-16
 
 - `bb usage-forecast status` and `headroom` no longer list a shared account
