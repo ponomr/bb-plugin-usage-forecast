@@ -276,7 +276,7 @@ function CollapsedRow({ provider, state, now }: { provider: ProviderLimits | nul
 /** A note in the window's colour: one with a pace state that is not calm. Others stay muted. */
 const paceToned = (v: WindowView) => v.pace !== null && v.tone !== "normal";
 
-function WindowList({ provider, now }: { provider: ProviderLimits; now: number }) {
+export function WindowList({ provider, now }: { provider: ProviderLimits; now: number }) {
   const s = useStrings();
   const show = useLimitsShow();
   const resetShow = useResetShow();

@@ -100,6 +100,15 @@ the context breakdown and one line per other provider.
   show as one entry naming all of them, and get one push, whose title names
   the hosts when there is more than one. History collected before 0.4.6
   belongs to bb's primary host.
+- **Ring in the sidebar footer.** A small ring next to bb's own footer
+  buttons shows the worst limit window across every host: filled to its used
+  percent and coloured by its pace state. The worst window is the one with
+  the worst state (a window without a state counts as calm), then the higher
+  percent, then the nearer reset; its tooltip names it, for example «laptop ·
+  Claude Code · 5 Hour: 92%, critical». Pressing the ring opens a card with
+  every provider's windows and their notes, grouped by host when there is
+  more than one, with an account shared by several hosts listed once («also
+  laptop»).
 - **Push before a limit runs out.** After each poll the server checks every
   limit window. When one reaches the threshold (90 % by default) it sends one
   push through bb's `push-notifications` plugin («Claude Code: 5 Hour limit at
@@ -273,6 +282,10 @@ Plugins.
 `bb plugin disable usage-forecast` removes the banner and stops polling and
 auto-compact. Threads and providers stay unchanged, and the stored history is
 kept for when the plugin is enabled again.
+
+To hide only the ring, open More in the sidebar footer → Customize footer →
+«Remove Usage limits from footer»; it moves into the More menu. bb has no
+plugin setting for this: a footer item cannot follow a setting.
 
 ## Development
 
