@@ -40,6 +40,14 @@ describe("SidebarCard", () => {
     expect(within(card().querySelector('[data-host="server"]')!).getByText("Codex")).toBeTruthy();
   });
 
+  it("shows one line and asks for nothing when the showSidebar setting is off", async () => {
+    const b = backend();
+    render(SidebarCard, props, b, { settings: { showSidebar: false, language: "ru" } });
+    expect((await screen.findByTestId("limits-card-off")).textContent).toBe("Выключено в настройках плагина");
+    expect(screen.queryByTestId("limits-card")).toBeNull();
+    expect(b.calls).toHaveLength(0);
+  });
+
   it("with one host has no tabs", async () => {
     render(SidebarCard, props, backend());
     await waitFor(() => expect(card().querySelector("[data-provider]")).not.toBeNull());

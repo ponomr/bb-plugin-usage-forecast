@@ -40,6 +40,7 @@ import {
   useThreadState,
   useTokens,
   type CompactState,
+  useBandShown,
   useStrings,
 } from "./hooks";
 import {
@@ -450,7 +451,12 @@ export function TokensLine({ threadId, providerId }: { threadId: string; provide
   );
 }
 
+/** The band, unless the `showBand` setting is off. */
 export function Banner() {
+  return useBandShown() ? <Band /> : null;
+}
+
+function Band() {
   const s = useStrings();
   const threadId = useComposerThreadId();
   const snapshot = useSnapshot();

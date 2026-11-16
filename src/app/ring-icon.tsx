@@ -45,6 +45,7 @@ export function Ring({
 
 /** The registered icon component. */
 export function RingIcon({ className }: { className?: string }) {
-  const { worst, title } = useIndicatorState();
+  const { worst, title, hidden } = useIndicatorState();
+  if (hidden) return null;
   return <Ring worst={worst} title={title} className={className} />;
 }

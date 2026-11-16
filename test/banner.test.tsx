@@ -49,6 +49,14 @@ async function findWindow(label: string, root: () => HTMLElement | null = () => 
 const providerBlock = (id: string) => () => document.querySelector<HTMLElement>(`[data-provider="${id}"]`);
 
 describe("band, collapsed", () => {
+  it("renders nothing and asks for nothing when the showBand setting is off", async () => {
+    const b = backend({ snapshot: twoProviders() });
+    const { container } = render(Banner, {}, b, { settings: { showBand: false } });
+    await act(async () => {});
+    expect(container.querySelector('[data-testid="usage-banner"]')).toBeNull();
+    expect(b.calls).toHaveLength(0);
+  });
+
   it("AE1: shows the thread's provider as 5H and W bars, the weekly one tight and amber at 92%", async () => {
     render(Banner, {}, backend({ snapshot: twoProviders() }));
     const weekly = await findWindow("Weekly limit");
