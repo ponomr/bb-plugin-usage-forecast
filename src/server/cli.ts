@@ -17,6 +17,7 @@ import {
 import { lastingBudget, mainProjection, type LastingBudget } from "../shared/forecast";
 import { forecastWarns, formatPercent } from "../shared/thresholds";
 import { showsModelTag } from "../shared/windows";
+import type { PaceState } from "../shared/pace";
 import { providerCompactsAtPercent } from "./threads";
 import type { Service } from "./rpc";
 
@@ -62,9 +63,18 @@ function formatPace(w: LimitWindow, f: NonNullable<LimitWindow["forecast"]>, now
   }`;
 }
 
+const PACE_WORDS: Record<PaceState, string> = {
+  calm: "calm",
+  tight: "tight",
+  short: "will not last",
+  critical: "critical",
+  hit: "used up",
+};
+
 function formatWindow(w: LimitWindow, now: number): string {
   const model = showsModelTag(w.label, w.model) ? ` [${w.model}]` : "";
-  const parts = [`${w.label}${model}: ${formatPercent(w.usedPercent)}`];
+  const state = w.pace != null ? ` [${PACE_WORDS[w.pace]}]` : "";
+  const parts = [`${w.label}${model}: ${formatPercent(w.usedPercent)}${state}`];
   if (w.resetsAt !== null) parts.push(w.resetsAt > now ? `resets in ${formatDuration(w.resetsAt - now)}` : "reset passed");
   if (w.cost) parts.push(`$${(w.cost.usedUsdCents / 100).toFixed(2)} of $${(w.cost.limitUsdCents / 100).toFixed(2)}`);
   const f = w.forecast;

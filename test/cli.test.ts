@@ -196,6 +196,40 @@ describe("forecast wording", () => {
   });
 });
 
+describe("pace state word", () => {
+  function line(pace: LimitWindow["pace"], used = 60): string {
+    const w: LimitWindow = {
+      label: "Weekly limit",
+      usedPercent: used,
+      resetsAt: NOW + 3 * DAY_MS,
+      model: null,
+      cost: null,
+      durationMs: 7 * DAY_MS,
+      forecast: null,
+      pace,
+    };
+    const s = {
+      polledAt: NOW,
+      pollError: null,
+      providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+      recentCompactions: [],
+    } as LimitsSnapshot;
+    return formatStatus(s, NOW).split("\n")[2]!;
+  }
+
+  it("names each state after the percent", () => {
+    expect(line("calm")).toBe("    Weekly limit: 60% [calm], resets in 3d 0h");
+    expect(line("tight")).toBe("    Weekly limit: 60% [tight], resets in 3d 0h");
+    expect(line("short")).toBe("    Weekly limit: 60% [will not last], resets in 3d 0h");
+    expect(line("critical")).toBe("    Weekly limit: 60% [critical], resets in 3d 0h");
+    expect(line("hit", 100)).toBe("    Weekly limit: 100% [used up], resets in 3d 0h");
+  });
+
+  it("prints no bracket for a window without a state", () => {
+    expect(line(null)).toBe("    Weekly limit: 60%, resets in 3d 0h");
+  });
+});
+
 describe("bb usage-forecast", () => {
   it("status prints the polled limits with a forecast, and JSON on request", async () => {
     const t = setup();
@@ -205,7 +239,7 @@ describe("bb usage-forecast", () => {
     const refreshed = await t.run("status", "--refresh");
     expect(refreshed.exitCode).toBe(0);
     expect(refreshed.stdout).toContain("  claude-code (Max): ok");
-    expect(refreshed.stdout).toMatch(/Current session: 40%, resets in 2h 0m, at this pace (lasts to reset|runs out)/);
+    expect(refreshed.stdout).toMatch(/Current session: 40% \[calm\], resets in 2h 0m, at this pace lasts to reset/);
     expect(refreshed.stdout).not.toContain("owner@example.com");
 
     const json = await t.run("status", "--json");
