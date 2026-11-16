@@ -180,7 +180,7 @@ export default async function plugin(bb: BbPluginApi) {
     storage,
     intervalMinutes: async () => (await settings()).pollIntervalMinutes,
     invalidate: invalidateLimits,
-    afterPoll: (hosts, now) => notifier.check(hosts.find((h) => h.primary)?.latest.providers ?? [], now),
+    afterPoll: (hosts, now) => notifier.checkHosts(hosts, now),
   });
 
   const compactor = new AutoCompactor({ threads, storage, settings, invalidate: invalidateThread, log: bb.log });

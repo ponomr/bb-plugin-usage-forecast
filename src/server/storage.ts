@@ -46,8 +46,8 @@ export interface CompactPoint {
   seenAt: number;
 }
 
-/** Remembered limit notifications (one per provider and window label). */
-export const MAX_NOTIFIED = 50;
+/** Remembered limit notifications (one per host, provider and window label). */
+export const MAX_NOTIFIED = 200;
 
 /** The last push sent for one limit window: its period and how far it went. */
 export interface Notified {

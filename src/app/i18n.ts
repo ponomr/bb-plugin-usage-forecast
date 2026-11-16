@@ -135,6 +135,8 @@ export interface Strings {
   /** Push title when a limit window crosses the notify threshold or runs out. */
   pushTitle(provider: string, window: string, percent: string): string;
   pushReachedTitle(provider: string, window: string): string;
+  /** A push title with the hosts it is about, when more than one host is known. */
+  pushOnHosts(title: string, hosts: string): string;
   /** Push body: the reset span from formatResetIn, or null when unknown. */
   pushBody(resetIn: string | null): string;
 }
@@ -275,6 +277,7 @@ export const en: Strings = {
 
   pushTitle: (provider, window, percent) => `${provider}: ${window} limit at ${percent}`,
   pushReachedTitle: (provider, window) => `${provider}: ${window} limit reached`,
+  pushOnHosts: (title, hosts) => `${title} on ${hosts}`,
   pushBody: (resetIn) => (resetIn === null ? "Usage limit is close." : `The limit ${resetIn}.`),
 };
 
@@ -415,6 +418,7 @@ export const ru: Strings = {
 
   pushTitle: (provider, window, percent) => `${provider}: лимит «${window}» — ${percent}`,
   pushReachedTitle: (provider, window) => `${provider}: лимит «${window}» исчерпан`,
+  pushOnHosts: (title, hosts) => `${title} на ${hosts}`,
   pushBody: (resetIn) => (resetIn === null ? "Лимит почти исчерпан." : `Лимит: ${resetIn}.`),
 };
 
