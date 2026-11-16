@@ -2,7 +2,7 @@
 
 A band above the composer of every thread. Collapsed, it is two lines: a headline («On track…», «At this pace you'll run out before the … reset.», «Limit reached…») with an auto-compact switch that names the threshold it acts at and a Compact button, and one row of short bars: one per limit window of the thread's provider (5H, W, F for Fable) and one for the context window (Ctx).
 
-Each limit bar shows the time to reset, the percent used or left, and a tick where the current pace ends at the reset. Expanded, the band lists every window with a pace note («On pace for about 92% by reset – resets in 3d»), the context breakdown into messages, tools and other, one line per other provider and the latest compacts.
+Each limit bar shows the time to reset, the percent used or left, and a tick where the current pace ends at the reset. Expanded, the band lists every window with a pace note («At this pace lasts to reset – about 92% used, resets in 3d», or when the limit runs out «At this pace runs out Thu 4:00 AM – 8h before reset» with «to last: up to 13% a day»), the context breakdown into messages, tools and other, one line per other provider and the latest compacts.
 
 On the desktop, the thread context card gets a section with the fill in tokens, the breakdown, the Compact button and the thread's auto-compact mode. On a phone the same controls are in the expanded band.
 

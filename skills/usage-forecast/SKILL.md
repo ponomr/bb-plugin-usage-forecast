@@ -12,9 +12,13 @@ identified by provider and label (`claude-code` / `Current session`).
 ## Commands
 
 - `bb usage-forecast status [--refresh] [--json]` — every provider and window:
-  percent used, time to reset, forecast at reset from the current pace and,
-  after enough history, from past windows (`learned pace N% (K windows)`). `[over 100%]` means
-  the window runs out before it resets. `--refresh` polls now.
+  percent used, time to reset and the forecast from the current pace: either
+  `at this pace lasts to reset (N% at reset)` or `at this pace runs out <UTC time>
+  (<span> before reset), budget N%/day` (`/hour` for five-hour windows,
+  `N% until reset` when less than one day or hour is left). In the first 5 %
+  of a window it says `too early to judge`. After enough history it adds the
+  past windows as a reference (`usual pace N% (K windows)`). `[over 100%]` means
+  the current pace runs out before the reset. `--refresh` polls now.
 - `bb usage-forecast thread <threadId> [--json]` — context fill (tokens and % of the working limit), the limit and its source
   (this thread, the provider setting, where the provider compacts on its own, the global setting, or the model window),
   whether the agent is answering, the effective auto-compact policy and its
