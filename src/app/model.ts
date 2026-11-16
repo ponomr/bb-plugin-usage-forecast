@@ -5,7 +5,7 @@
 import type { LimitsSnapshot, LimitWindow, ProviderLimits, ThreadContext } from "../shared/contract";
 import { contextTone, forecastWarns, limitTone, paceTone, worseTone, type Tone } from "../shared/thresholds";
 import { shownPercent, type LimitsShow } from "../shared/limits-show";
-import { lastingBudget, type WindowForecast } from "../shared/forecast";
+import { lastingBudget, mainProjection } from "../shared/forecast";
 import { DAY_MS } from "../shared/windows";
 import { formatResetIn, formatRunOut, formatSpan, formatTime, providerName, statusText } from "./format";
 import type { Strings } from "./i18n";
@@ -87,15 +87,6 @@ export interface WindowView {
   tone: Tone;
   /** Where the bar's forecast tick sits, in percent, or null for none. */
   marker: number | null;
-}
-
-/**
- * The projection that speaks for the window. A forecast from a server older
- * than `main` and `early` is read as before: the current pace, else the learned one.
- */
-function mainProjection(f: Pick<WindowForecast, "current" | "learned"> & Partial<Pick<WindowForecast, "main" | "early">>) {
-  const main = f.main ?? (f.early ? null : f.current ? "current" : f.learned ? "learned" : null);
-  return main === null ? null : f[main];
 }
 
 export function windowView(window: LimitWindow): WindowView {

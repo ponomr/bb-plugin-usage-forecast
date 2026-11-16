@@ -14,7 +14,8 @@ import {
   type ProviderLimits,
   type ThreadState,
 } from "../shared/contract";
-import { formatPercent } from "../shared/thresholds";
+import { lastingBudget, mainProjection, type LastingBudget } from "../shared/forecast";
+import { forecastWarns, formatPercent } from "../shared/thresholds";
 import { showsModelTag } from "../shared/windows";
 import { providerCompactsAtPercent } from "./threads";
 import type { Service } from "./rpc";
@@ -41,6 +42,26 @@ export function formatDuration(ms: number): string {
   return `${mins}m`;
 }
 
+function formatBudget(b: LastingBudget): string {
+  return b.per === "rest" ? `${formatPercent(b.percent)} until reset` : `${formatPercent(b.percent)}/${b.per}`;
+}
+
+/** The main projection worded as the band words it; `runs out` only strictly above 100 %. */
+function formatPace(w: LimitWindow, f: NonNullable<LimitWindow["forecast"]>, now: number): string | null {
+  if (f.early) return "too early to judge";
+  const main = mainProjection(f);
+  if (main === null) return null;
+  if (!forecastWarns(main.projectedPercent)) return `at this pace lasts to reset (${formatPercent(main.projectedPercent)} at reset)`;
+  // A projection above 100 % always has a run-out time; this guards a malformed forecast.
+  if (main.runOutAt === null || w.resetsAt === null) return null;
+  const budget = lastingBudget({ usedPercent: w.usedPercent, resetsAt: w.resetsAt, durationMs: w.durationMs, now });
+  // "8h", not "8h 0m": the shortfall reads as the band's.
+  const before = formatDuration(w.resetsAt - main.runOutAt).replace(/ 0[hm]$/, "");
+  return `at this pace runs out ${formatTime(main.runOutAt)} (${before} before reset)${
+    budget === null ? "" : `, budget ${formatBudget(budget)}`
+  }`;
+}
+
 function formatWindow(w: LimitWindow, now: number): string {
   const model = showsModelTag(w.label, w.model) ? ` [${w.model}]` : "";
   const parts = [`${w.label}${model}: ${formatPercent(w.usedPercent)}`];
@@ -51,12 +72,13 @@ function formatWindow(w: LimitWindow, now: number): string {
     parts.push("limit reached");
   } else if (f) {
     const at: string[] = [];
-    if (f.current) {
-      const out = f.current.runOutAt !== null ? `, runs out in ${formatDuration(f.current.runOutAt - now)}` : "";
-      at.push(`current pace ${formatPercent(f.current.projectedPercent)}${out}`);
+    const pace = formatPace(w, f, now);
+    if (pace !== null) at.push(pace);
+    // The usual pace is a reference, unless it is what `pace` already worded.
+    if (f.learned && (f.early || mainProjection(f) !== f.learned)) {
+      at.push(`usual pace ${formatPercent(f.learned.projectedPercent)} (${f.learned.basedOnWindows} windows)`);
     }
-    if (f.learned) at.push(`learned pace ${formatPercent(f.learned.projectedPercent)} (${f.learned.basedOnWindows} windows)`);
-    if (at.length) parts.push(`forecast at reset: ${at.join("; ")}${f.warning ? " [over 100%]" : ""}`);
+    if (at.length) parts.push(`${at.join("; ")}${f.warning ? " [over 100%]" : ""}`);
   } else if (w.durationMs === null) {
     parts.push("no forecast: unknown window length");
   }

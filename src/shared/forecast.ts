@@ -128,6 +128,17 @@ export function forecastWindow(input: ForecastInput): WindowForecast | null {
   return { status: "running", current, learned, main, early, warning };
 }
 
+/**
+ * The projection that speaks for the window. A forecast stored before `main`
+ * and `early` existed reads as before: the current pace, else the learned one.
+ */
+export function mainProjection(
+  f: Pick<WindowForecast, "current" | "learned"> & Partial<Pick<WindowForecast, "main" | "early">>,
+): Projection | null {
+  const main = f.main ?? (f.early ? null : f.current ? "current" : f.learned ? "learned" : null);
+  return main === null ? null : f[main];
+}
+
 export interface LastingBudget {
   /** Percent of the limit per `per` that lasts to the reset; for `rest`, the percent left. */
   percent: number;

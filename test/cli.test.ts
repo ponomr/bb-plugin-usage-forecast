@@ -5,8 +5,9 @@ import { createCli, formatDuration, formatStatus, formatThread, formatTime } fro
 import { Poller } from "../src/server/poller";
 import { createService } from "../src/server/rpc";
 import { readThreadState } from "../src/server/threads";
-import type { LimitsSnapshot } from "../src/shared/contract";
-import { HOUR_MS } from "../src/shared/windows";
+import type { LimitsSnapshot, LimitWindow } from "../src/shared/contract";
+import { forecastWindow, type ClosedWindow } from "../src/shared/forecast";
+import { DAY_MS, HOUR_MS } from "../src/shared/windows";
 import { claudeContext, claudeLimits, Clock, codexContext, FakeThreads, makeStorage, MIN, NOW, settingsOf } from "./helpers";
 
 const T = "thr_a";
@@ -66,7 +67,7 @@ describe("formatters", () => {
               kind: "five-hour",
               model: null,
               cost: null,
-              forecast: { status: "hit", current: null, learned: null, warning: true },
+              forecast: { status: "hit", current: { projectedPercent: 100, runOutAt: NOW }, learned: null, main: "current", early: false, warning: true },
             },
             {
               label: "Extra",
@@ -108,6 +109,93 @@ describe("formatters", () => {
   });
 });
 
+describe("forecast wording", () => {
+  const history = (peak: number, count: number): ClosedWindow[] =>
+    Array.from({ length: count }, (_, i) => ({ startedAt: NOW - (i + 2) * DAY_MS, resetAt: NOW - (i + 1) * DAY_MS, peakUsedPercent: peak }));
+
+  function line(label: string, used: number, remaining: number, durationMs: number, closedWindows: ClosedWindow[] = []): string {
+    const resetsAt = NOW + remaining;
+    const w = {
+      label,
+      usedPercent: used,
+      resetsAt,
+      model: null,
+      cost: null,
+      durationMs,
+      forecast: forecastWindow({ usedPercent: used, resetsAt, durationMs, now: NOW, closedWindows }),
+    } as LimitWindow;
+    const s: LimitsSnapshot = {
+      polledAt: NOW,
+      pollError: null,
+      providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+      recentCompactions: [],
+    } as unknown as LimitsSnapshot;
+    return formatStatus(s, NOW).split("\n")[2]!;
+  }
+
+  it("AE7: gives the run-out time, the shortfall and the budget", () => {
+    // 60 % after 4 of 7 days is 15 % a day: out in 2d 16h, 8h before the reset.
+    expect(line("Weekly limit", 60, 3 * DAY_MS, 7 * DAY_MS)).toBe(
+      "    Weekly limit: 60%, resets in 3d 0h, at this pace runs out 2026-11-11 04:00 UTC (8h before reset), budget 13%/day [over 100%]",
+    );
+  });
+
+  it("gives an hourly budget, and the percent left when under an hour remains", () => {
+    expect(line("Current session", 80, 3 * HOUR_MS, 5 * HOUR_MS)).toBe(
+      "    Current session: 80%, resets in 3h 0m, at this pace runs out 2026-11-08 12:30 UTC (2h 30m before reset), budget 7%/hour [over 100%]",
+    );
+    expect(line("Current session", 95, 30 * MIN, 5 * HOUR_MS)).toContain(", budget 5% until reset [over 100%]");
+  });
+
+  it("says a window lasts, and keeps the usual pace as a reference", () => {
+    expect(line("Current session", 38, 3 * HOUR_MS, 5 * HOUR_MS)).toBe(
+      "    Current session: 38%, resets in 3h 0m, at this pace lasts to reset (95% at reset)",
+    );
+    // AE2: 40 % by the current pace, 120 % by the usual one; no over-100 mark.
+    expect(line("Current session", 20, 2.5 * HOUR_MS, 5 * HOUR_MS, history(200, 3))).toBe(
+      "    Current session: 20%, resets in 2h 30m, at this pace lasts to reset (40% at reset); usual pace 120% (3 windows)",
+    );
+  });
+
+  it("reads exactly 100 % as lasting, with no budget", () => {
+    expect(line("Current session", 40, 3 * HOUR_MS, 5 * HOUR_MS)).toBe(
+      "    Current session: 40%, resets in 3h 0m, at this pace lasts to reset (100% at reset)",
+    );
+  });
+
+  it("says it is too early to judge, with and without past windows", () => {
+    // 10 minutes into the window; a usual peak of 37 % adds 35.8 % for the rest.
+    expect(line("Current session", 3, 5 * HOUR_MS - 10 * MIN, 5 * HOUR_MS, history(37, 8))).toBe(
+      "    Current session: 3%, resets in 4h 50m, too early to judge; usual pace 39% (8 windows)",
+    );
+    expect(line("Current session", 3, 5 * HOUR_MS - 10 * MIN, 5 * HOUR_MS)).toBe(
+      "    Current session: 3%, resets in 4h 50m, too early to judge",
+    );
+    // AE4: early with a usual pace above 100 %: no mark.
+    expect(line("Current session", 3, 5 * HOUR_MS - 6 * MIN, 5 * HOUR_MS, history(110, 8))).not.toContain("[over 100%]");
+  });
+
+  it("reads a forecast stored before main and early as before", () => {
+    const resetsAt = NOW + 3 * HOUR_MS;
+    const w = {
+      label: "Current session",
+      usedPercent: 80,
+      resetsAt,
+      model: null,
+      cost: null,
+      durationMs: 5 * HOUR_MS,
+      forecast: { status: "running", current: { projectedPercent: 200, runOutAt: NOW + 30 * MIN }, learned: null, warning: true },
+    };
+    const s = {
+      polledAt: NOW,
+      pollError: null,
+      providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+      recentCompactions: [],
+    } as unknown as LimitsSnapshot;
+    expect(formatStatus(s, NOW)).toContain("at this pace runs out 2026-11-08 12:30 UTC (2h 30m before reset), budget 7%/hour [over 100%]");
+  });
+});
+
 describe("bb usage-forecast", () => {
   it("status prints the polled limits with a forecast, and JSON on request", async () => {
     const t = setup();
@@ -117,7 +205,7 @@ describe("bb usage-forecast", () => {
     const refreshed = await t.run("status", "--refresh");
     expect(refreshed.exitCode).toBe(0);
     expect(refreshed.stdout).toContain("  claude-code (Max): ok");
-    expect(refreshed.stdout).toMatch(/Current session: 40%, resets in 2h 0m, forecast at reset: current pace \d+%/);
+    expect(refreshed.stdout).toMatch(/Current session: 40%, resets in 2h 0m, at this pace (lasts to reset|runs out)/);
     expect(refreshed.stdout).not.toContain("owner@example.com");
 
     const json = await t.run("status", "--json");
