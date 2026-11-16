@@ -1,12 +1,12 @@
 ## What you get
 
-A band above the composer of every thread. Collapsed, it is two lines: a headline («On track…», «At this pace you'll run out before the … reset.», «Limit reached…») with an auto-compact switch that names the threshold it acts at and a Compact button, and one row of short bars: one per limit window of the thread's provider (5H, W, F for Fable) and one for the context window (Ctx).
+A band above the composer of every thread. Collapsed, it is two lines: a headline («On track…», «At this pace you'll run out before the … reset.») with an auto-compact switch and a Compact button, and one row of short bars: one per limit window of the thread's provider (5H, W) and one for the context window (Ctx).
 
-Each limit bar shows the time to reset, the percent used or left, and a tick where the current pace ends at the reset. Expanded, the band lists every window with a pace note («At this pace lasts to reset – about 92% used, resets in 3d», or when the limit runs out «At this pace runs out Thu 4:00 AM – 8h before reset» with «to last: up to 13% a day»), the context breakdown into messages, tools and other, one line per other provider and the latest compacts.
+Each limit bar shows the time to reset, the percent used or left, and a tick where the current pace ends at the reset. Expanded, the band lists every window with a pace note («At this pace lasts to reset – about 92% used, resets in 3d», or the time the limit runs out and the daily budget that would last), the context breakdown into messages, tools and other, one line per other provider and the latest compacts.
 
 A ring in the sidebar footer shows the worst limit window across every provider, filled to its used percent and coloured by its pace. Pressing it opens a compact card with every provider's windows, one line each, the plan name and the tokens used today and this month.
 
-On the desktop, the thread context card gets a section with the fill in tokens, the breakdown, the Compact button and the thread's auto-compact mode. On a phone the same controls are in the expanded band.
+On the desktop, the thread context card gets a section with the fill in tokens, the breakdown, the Compact button and the thread's auto-compact mode.
 
 ## How the forecast works
 
@@ -18,17 +18,17 @@ Each connected bb host (the server and, for example, a laptop enrolled in the sa
 
 ## Push notifications
 
-When a limit window reaches 90 % (50–100, configurable) the server sends one push through bb's push-notifications plugin, and one more when the window runs out. A window stays quiet until it resets. Pushes are on by default and can be turned off in the settings.
+When a limit window reaches 90 % (configurable) the server sends one push through bb's push-notifications plugin, and one more when the window runs out. On by default.
 
 ## Auto-compact
 
-Off by default. When it is on, the server compacts a thread when the thread goes idle with its context at or above the threshold (80 % by default, 50–95). It never interrupts a turn and waits 10 minutes between attempts on one thread. The threshold is a percent of the thread's working context limit in tokens, which the model window caps. The limit follows the provider: a per-thread limit, else a per-provider limit for Claude Code or Codex, else the point where the provider compacts on its own when bb reports it (Claude Code does, Codex does not), else a global limit (150 000 by default). When a limit lies above the point where the provider compacts on its own, the plugin acts a little below that point. With a large model window (for example 1M tokens) the provider's own point comes very late; set a per-provider limit, such as 200 000, to compact earlier. A per-thread mode (as in settings, off, or on with its own threshold) and a per-thread limit override the settings. The band's switch turns the per-thread mode on or off; the threshold is set in the settings or the context card.
+Off by default. When it is on, the server compacts a thread when the thread goes idle with its context at or above the threshold (80 % by default, 50–95). It never interrupts a turn. The threshold is a percent of the thread's working context limit in tokens. The limit is a per-thread limit, else a per-provider limit for Claude Code or Codex, else the point where the provider compacts on its own when bb reports it, else a global limit (150 000 by default). A per-thread mode and limit override the settings; the band's switch turns the thread's mode on or off.
 
-Some providers cannot compact (custom ACP agents such as Hermes). With «Summarise and clear when a provider cannot compact» on (off by default), Compact and auto-compact ask such an agent for a summary, clear the thread's context once the summary arrives and send the summary back as the next message. The thread history stays visible, and nothing is cleared without a summary.
+For a provider that cannot compact (custom ACP agents), an optional setting, off by default, asks the agent for a summary, clears the thread's context and sends the summary back. The history stays visible, and nothing is cleared without a summary.
 
 ## Settings and CLI
 
-Settings: the global context limit and one for each of Claude Code and Codex, auto-compact and its threshold, summary and clear for providers that cannot compact, limit push notifications and their threshold, the poll interval, the UI language (English or Russian), whether limits show the percent used or the percent left and a reset as a countdown or a time, providers to hide, and a switch for the band above the composer.
+Settings: context limits, auto-compact and its threshold, limit pushes and their threshold, the poll interval, the UI language (English or Russian), percent used or left, reset as a countdown or a time, providers to hide, and a switch for the band above the composer.
 
 The `bb usage-forecast` command prints the status of every provider and a thread's context, compacts a thread and sets a thread's auto-compact mode. `bb usage-forecast headroom` tells an agent which provider has room left until its reset. Agents in bb threads get the same reference as a skill.
 
