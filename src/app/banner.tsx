@@ -34,7 +34,7 @@ import {
   type CompactState,
   useStrings,
 } from "./hooks";
-import { bannerView, contextView, headline, paceDetails, windowNote, windowView, type BannerView, type WindowView } from "./model";
+import { bannerView, contextView, headline, paceDetails, windowBudget, windowNote, windowView, type BannerView, type WindowView } from "./model";
 import { shownPercent } from "../shared/limits-show";
 import { RecentCompacts } from "./settings-section";
 import { Bar, Ink, SegmentBar, Switch, Toned } from "./ui";
@@ -211,6 +211,7 @@ function WindowList({ provider, now }: { provider: ProviderLimits; now: number }
     <ul className="flex flex-col gap-2">
       {provider.windows.map((w) => {
         const v = windowView(w);
+        const budget = windowBudget(s, v, now);
         return (
           <li key={`${w.label}:${w.model ?? ""}`} className="flex flex-col gap-0.5" data-window={w.label} title={paceDetails(s, w, show)}>
             <span className="flex items-center gap-2">
@@ -226,6 +227,11 @@ function WindowList({ provider, now }: { provider: ProviderLimits; now: number }
               )}
               {w.cost ? <span className="text-muted-foreground"> · {formatCost(s, w.cost)}</span> : null}
             </span>
+            {budget === null ? null : (
+              <span className="text-muted-foreground" data-testid="window-budget">
+                {budget}
+              </span>
+            )}
           </li>
         );
       })}

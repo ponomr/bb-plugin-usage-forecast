@@ -87,6 +87,13 @@ export function formatClock(s: Strings, at: number, now: number): string {
   return `${date.toLocaleDateString(s.locale, { day: "numeric", month: "short" })}, ${time}`;
 }
 
+/** A run-out moment: the local time, and the short weekday when it is not today. */
+export function formatRunOut(s: Strings, at: number, now: number): { time: string; weekday: string | null } {
+  const date = new Date(at);
+  const today = new Date(now).toDateString() === date.toDateString();
+  return { time: formatTime(s, at), weekday: today ? null : date.toLocaleDateString(s.locale, { weekday: "short" }) };
+}
+
 export function formatCost(s: Strings, cost: { usedUsdCents: number; limitUsdCents: number }): string {
   return s.cost(`$${(cost.usedUsdCents / 100).toFixed(2)}`, `$${(cost.limitUsdCents / 100).toFixed(2)}`);
 }

@@ -5,8 +5,9 @@
 import type { LimitsSnapshot, LimitWindow, ProviderLimits, ThreadContext } from "../shared/contract";
 import { contextTone, forecastWarns, limitTone, paceTone, worseTone, type Tone } from "../shared/thresholds";
 import { shownPercent, type LimitsShow } from "../shared/limits-show";
+import { lastingBudget, type WindowForecast } from "../shared/forecast";
 import { DAY_MS } from "../shared/windows";
-import { formatResetIn, formatSpan, formatTime, providerName, statusText } from "./format";
+import { formatResetIn, formatRunOut, formatSpan, formatTime, providerName, statusText } from "./format";
 import type { Strings } from "./i18n";
 
 // --- Which provider --------------------------------------------------------
@@ -72,15 +73,15 @@ export function bannerView(
 
 /**
  * `hit`: the limit is used up. `out`: on course to run out before the reset.
- * `ok`: on course to reach the reset. `idle`: no forecast (unknown duration,
- * no reset time, or too early in a window without past windows).
+ * `ok`: on course to reach the reset. `early`: too early in the window to
+ * judge; it never warns. `idle`: no forecast (unknown duration or no reset time).
  */
-export type WindowStatus = "hit" | "out" | "ok" | "idle";
+export type WindowStatus = "hit" | "out" | "ok" | "early" | "idle";
 
 export interface WindowView {
   window: LimitWindow;
   status: WindowStatus;
-  /** Projected percent at the reset: the current pace, else the learned one. */
+  /** Projected percent at the reset by the main projection; for `early`, the learned one. */
   projected: number | null;
   runOutAt: number | null;
   tone: Tone;
@@ -88,12 +89,22 @@ export interface WindowView {
   marker: number | null;
 }
 
+/**
+ * The projection that speaks for the window. A forecast from a server older
+ * than `main` and `early` is read as before: the current pace, else the learned one.
+ */
+function mainProjection(f: Pick<WindowForecast, "current" | "learned"> & Partial<Pick<WindowForecast, "main" | "early">>) {
+  const main = f.main ?? (f.early ? null : f.current ? "current" : f.learned ? "learned" : null);
+  return main === null ? null : f[main];
+}
+
 export function windowView(window: LimitWindow): WindowView {
   const used = window.usedPercent;
   const f = window.forecast;
   const base = { window, projected: null, runOutAt: null, marker: null };
   if (used >= 100 || f?.status === "hit") return { ...base, status: "hit", tone: "red" };
-  const pace = f?.current ?? f?.learned ?? null;
+  if (f?.early) return { ...base, status: "early", projected: f.learned?.projectedPercent ?? null, tone: limitTone(used) };
+  const pace = f ? mainProjection(f) : null;
   if (pace === null) return { ...base, status: "idle", tone: limitTone(used) };
   const projected = pace.projectedPercent;
   const at = Math.min(100, projected);
@@ -109,19 +120,37 @@ export function isWeekly(window: LimitWindow): boolean {
 /** The note under a window: what its pace means before the reset, as used or as left. */
 export function windowNote(s: Strings, view: WindowView, now: number, show: LimitsShow = "used"): string {
   const reset = formatResetIn(s, view.window.resetsAt, now);
-  const atReset = (projected: number) =>
-    show === "used" ? s.onPaceFor(Math.round(projected), reset) : s.leftAtReset(Math.round(shownPercent(show, projected)), reset);
+  // A projection as the note shows it: capped at 100 %, used or left.
+  const shown = (projected: number) => Math.round(shownPercent(show, Math.min(100, projected)));
+  const lasts = (projected: number) => (show === "used" ? s.lastsUsed : s.lastsLeft)(shown(projected), reset);
+  const idle = reset === null ? s.noReset : `${s.noForecast} – ${reset}`;
   switch (view.status) {
     case "hit":
       return s.hitNote(reset);
-    case "out":
-      if (view.runOutAt !== null) return s.willHitIn(formatSpan(s, Math.max(0, view.runOutAt - now)), reset);
-      return atReset(view.projected!);
+    case "out": {
+      const resetsAt = view.window.resetsAt;
+      // A projection above 100 % always has a run-out time; this guards a malformed forecast.
+      if (view.runOutAt === null || resetsAt === null) return idle;
+      const { time, weekday } = formatRunOut(s, view.runOutAt, now);
+      return s.runsOut(time, weekday, formatSpan(s, Math.max(0, resetsAt - view.runOutAt)));
+    }
     case "ok":
-      return atReset(Math.min(100, view.projected!));
+      return lasts(view.projected!);
+    case "early": {
+      const usual = view.projected === null ? null : (show === "used" ? s.usuallyUsed : s.usuallyLeft)(shown(view.projected));
+      return s.tooEarly(usual, reset);
+    }
     case "idle":
-      return reset === null ? s.noReset : `${s.noForecast} – ${reset}`;
+      return idle;
   }
+}
+
+/** The budget line under a window that runs out: the rate that lasts to the reset, or null. */
+export function windowBudget(s: Strings, view: WindowView, now: number): string | null {
+  if (view.status !== "out") return null;
+  const { usedPercent, resetsAt, durationMs } = view.window;
+  const budget = lastingBudget({ usedPercent, resetsAt, durationMs, now });
+  return budget === null ? null : s.budget(Math.round(budget.percent), budget.per);
 }
 
 /** Both projections, for the window's tooltip. */
@@ -132,9 +161,13 @@ export function paceDetails(s: Strings, window: LimitWindow, show: LimitsShow = 
     const text = `${Math.round(shownPercent(show, projected))}%`;
     return show === "used" ? text : s.percentLeft(text);
   };
+  const main = mainProjection(f);
+  const both = f.current !== null && f.learned !== null;
+  // With both lines, the one the band speaks from is marked.
+  const mark = (line: string, p: object) => (both && p === main ? s.mainPace(line) : line);
   const lines: string[] = [];
-  if (f.current !== null) lines.push(s.currentPace(pct(f.current.projectedPercent)));
-  if (f.learned !== null) lines.push(s.usualPace(pct(f.learned.projectedPercent), f.learned.basedOnWindows));
+  if (f.current !== null) lines.push(mark(s.currentPace(pct(f.current.projectedPercent)), f.current));
+  if (f.learned !== null) lines.push(mark(s.usualPace(pct(f.learned.projectedPercent), f.learned.basedOnWindows), f.learned));
   return lines.length === 0 ? undefined : lines.join("\n");
 }
 
