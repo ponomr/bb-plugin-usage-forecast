@@ -4,11 +4,17 @@ A band above the composer of every thread. Collapsed, it is two lines: a headlin
 
 Each limit bar shows the time to reset, the percent used or left, and a tick where the current pace ends at the reset. Expanded, the band lists every window with a pace note («At this pace lasts to reset – about 92% used, resets in 3d», or when the limit runs out «At this pace runs out Thu 4:00 AM – 8h before reset» with «to last: up to 13% a day»), the context breakdown into messages, tools and other, one line per other provider and the latest compacts.
 
+A ring in the sidebar footer shows the worst limit window across every provider, filled to its used percent and coloured by its pace. Pressing it opens a compact card with every provider's windows, one line each, the plan name and the tokens used today and this month.
+
 On the desktop, the thread context card gets a section with the fill in tokens, the breakdown, the Compact button and the thread's auto-compact mode. On a phone the same controls are in the expanded band.
 
 ## How the forecast works
 
 The server polls bb for limits every 2 minutes (1–10, configurable), with every client closed too. The first forecast extends the current window's pace once 5 % of the window has passed. After the server has seen windows of the same kind close, it also shows a learned forecast from the last eight of them.
+
+## Several hosts
+
+Each connected bb host (the server and, for example, a laptop enrolled in the same bb) is polled on its own, with its own history and forecast. A thread shows the limits of the host it runs on, and the sidebar card shows one host per tab. Hosts signed in to one account show it once and get one push.
 
 ## Push notifications
 
@@ -22,9 +28,9 @@ Some providers cannot compact (custom ACP agents such as Hermes). With «Summari
 
 ## Settings and CLI
 
-Settings: the global context limit and one for each of Claude Code and Codex, auto-compact and its threshold, summary and clear for providers that cannot compact, limit push notifications and their threshold, the poll interval, the UI language (English or Russian) and whether limits show the percent used or the percent left.
+Settings: the global context limit and one for each of Claude Code and Codex, auto-compact and its threshold, summary and clear for providers that cannot compact, limit push notifications and their threshold, the poll interval, the UI language (English or Russian), whether limits show the percent used or the percent left and a reset as a countdown or a time, providers to hide, and a switch for the band above the composer.
 
-The `bb usage-forecast` command prints the status of every provider and a thread's context, compacts a thread and sets a thread's auto-compact mode. Agents in bb threads get the same reference as a skill.
+The `bb usage-forecast` command prints the status of every provider and a thread's context, compacts a thread and sets a thread's auto-compact mode. `bb usage-forecast headroom` tells an agent which provider has room left until its reset. Agents in bb threads get the same reference as a skill.
 
 ## Requirements
 
