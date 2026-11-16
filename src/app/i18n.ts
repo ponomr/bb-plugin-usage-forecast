@@ -53,6 +53,11 @@ export interface Strings {
   /** The reset's local time in a sentence; the short weekday when not today. */
   resetsAt(time: string, weekday: string | null): string;
   resetNow: string;
+  /** Labels of the press targets: what is shown, then what a press does. */
+  showResetTime(shown: string): string;
+  showCountdown(shown: string): string;
+  showPercentLeft(shown: string): string;
+  showPercentUsed(shown: string): string;
   noReset: string;
   noForecast: string;
   currentPace(percent: string): string;
@@ -193,6 +198,10 @@ export const en: Strings = {
   resetsIn: (span) => `resets in ${span}`,
   resetsAt: (time, day) => (day === null ? `resets at ${time}` : `resets ${day} ${time}`),
   resetNow: "resets now",
+  showResetTime: (shown) => `${shown} – Show reset time`,
+  showCountdown: (shown) => `${shown} – Show countdown`,
+  showPercentLeft: (shown) => `${shown} – Show percent left`,
+  showPercentUsed: (shown) => `${shown} – Show percent used`,
   noReset: "No reset time",
   noForecast: "No forecast yet",
   currentPace: (p) => `Current pace: ${p} by reset`,
@@ -345,6 +354,10 @@ export const ru: Strings = {
   resetsIn: (span) => `сброс через ${span}`,
   resetsAt: (time, day) => (day === null ? `сброс в ${time}` : `сброс в ${day} ${time}`),
   resetNow: "сброс сейчас",
+  showResetTime: (shown) => `${shown} – Показать время сброса`,
+  showCountdown: (shown) => `${shown} – Показать обратный отсчёт`,
+  showPercentLeft: (shown) => `${shown} – Показать остаток`,
+  showPercentUsed: (shown) => `${shown} – Показать расход`,
   noReset: "Время сброса неизвестно",
   noForecast: "Прогноза пока нет",
   currentPace: (p) => `По текущему темпу к сбросу: ${p}`,

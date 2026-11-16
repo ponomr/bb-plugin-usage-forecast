@@ -3,7 +3,7 @@
 // server.ts). The intervals below are a backstop for hosts where realtime
 // does not reach the client (the phone on bb 0.49).
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   experimental_usePluginId,
   experimental_useRpcMutation,
@@ -14,7 +14,8 @@ import {
 import { STRINGS, type Strings } from "./i18n";
 import { parseLang } from "../shared/language";
 import { parseLimitsShow, type LimitsShow } from "../shared/limits-show";
-import { normalizeOverride, usageForecastContract, type CompactResult, type ThreadOverride } from "../shared/contract";
+import { parseResetShow, type ResetShow } from "../shared/reset-show";
+import { normalizeOverride, usageForecastContract, type CompactResult, type Display, type ThreadOverride } from "../shared/contract";
 
 export const SNAPSHOT_REFETCH_MS = 60_000;
 export const THREAD_ACTIVE_REFETCH_MS = 30_000;
@@ -40,9 +41,80 @@ export function useStrings(): Strings {
   return STRINGS[parseLang(useSettings().values?.language)];
 }
 
-/** The `limitsShow` setting; used until the settings load. */
+// A press on a percent or a reset time shows its result at once, before the
+// settings follow the save. The pressed value lives here, one per setting and
+// shared by every row: `base` is the settings value at the press. The override
+// stands while the settings still say `base`; once they say anything else
+// (the save landed, or the settings page or another device changed it) the
+// settings win and the override goes. A failed save drops it at once.
+
+type DisplayKey = keyof Display;
+interface DisplayOverride<K extends DisplayKey> {
+  value: Display[K];
+  base: Display[K];
+}
+const displayOverrides: { [K in DisplayKey]?: DisplayOverride<K> } = {};
+const displayListeners = new Set<() => void>();
+const DISPLAY_PARSE: { [K in DisplayKey]: (value: unknown) => Display[K] } = {
+  limitsShow: parseLimitsShow,
+  resetShow: parseResetShow,
+};
+
+function setDisplayOverride<K extends DisplayKey>(key: K, override: DisplayOverride<K> | undefined) {
+  if (displayOverrides[key] === override) return;
+  if (override === undefined) delete displayOverrides[key];
+  else (displayOverrides as Record<K, DisplayOverride<K>>)[key] = override;
+  for (const listener of displayListeners) listener();
+}
+
+function subscribeDisplay(listener: () => void) {
+  displayListeners.add(listener);
+  return () => displayListeners.delete(listener);
+}
+
+/** Drops every pressed value; for tests, whose renders share this module. */
+export function clearDisplayOverrides() {
+  setDisplayOverride("limitsShow", undefined);
+  setDisplayOverride("resetShow", undefined);
+}
+
+function useDisplay<K extends DisplayKey>(key: K): Display[K] {
+  const setting = DISPLAY_PARSE[key](useSettings().values?.[key]);
+  const getOverride = () => displayOverrides[key] as DisplayOverride<K> | undefined;
+  const override = useSyncExternalStore(subscribeDisplay, getOverride, getOverride);
+  const stale = override !== undefined && override.base !== setting;
+  useEffect(() => {
+    if (stale && displayOverrides[key] === override) setDisplayOverride(key, undefined);
+  }, [key, override, stale]);
+  return override === undefined || stale ? setting : override.value;
+}
+
+/** The `limitsShow` setting, or the value just pressed; used until the settings load. */
 export function useLimitsShow(): LimitsShow {
-  return parseLimitsShow(useSettings().values?.limitsShow);
+  return useDisplay("limitsShow");
+}
+
+/** The `resetShow` setting, or the value just pressed; the countdown until the settings load. */
+export function useResetShow(): ResetShow {
+  return useDisplay("resetShow");
+}
+
+/** Saves one display setting from a press, showing it at once in every row. */
+export function useSetDisplay() {
+  const mutation = experimental_useRpcMutation({ contract: usageForecastContract, method: "setDisplay" });
+  const values = useSettings().values;
+  return useCallback(
+    <K extends DisplayKey>(key: K, value: Display[K]) => {
+      const base = DISPLAY_PARSE[key](values?.[key]);
+      const override = value === base ? undefined : { value, base };
+      setDisplayOverride(key, override);
+      mutation.mutate({ [key]: value }).catch(() => {
+        // No error banner: the row returns to what it showed before the press.
+        if (displayOverrides[key] === override) setDisplayOverride(key, undefined);
+      });
+    },
+    [mutation, values],
+  );
 }
 
 export function useSnapshot() {
