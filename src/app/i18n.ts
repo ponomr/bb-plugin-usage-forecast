@@ -28,10 +28,18 @@ export interface Strings {
   shortWindow: Readonly<Record<string, string>>;
   fullWindow: Readonly<Record<string, string>>;
   hitNote(resetIn: string | null): string;
-  willHitIn(hitIn: string, resetIn: string | null): string;
-  onPaceFor(percent: number, resetIn: string | null): string;
-  /** The pace note when the band shows what is left. */
-  leftAtReset(percent: number, resetIn: string | null): string;
+  /** When the limit runs out: the local time, the short weekday when not today, and the span before the reset. */
+  runsOut(time: string, weekday: string | null, beforeReset: string): string;
+  /** A window that lasts, with the projected percent used at the reset. */
+  lastsUsed(percent: number, resetIn: string | null): string;
+  /** The same when the band shows what is left. */
+  lastsLeft(percent: number, resetIn: string | null): string;
+  /** Too early in the window; `usual` from usuallyUsed or usuallyLeft, or null without past windows. */
+  tooEarly(usual: string | null, resetIn: string | null): string;
+  usuallyUsed(percent: number): string;
+  usuallyLeft(percent: number): string;
+  /** The rate that lasts to the reset; for `rest`, the percent left until it. */
+  budget(percent: number, per: "day" | "hour" | "rest"): string;
   /** "75% left", for the percent shown as what is left. */
   percentLeft(percent: string): string;
   resetsIn(span: string): string;
@@ -40,6 +48,8 @@ export interface Strings {
   noForecast: string;
   currentPace(percent: string): string;
   usualPace(percent: string, windows: number): string;
+  /** Marks the tooltip line of the projection the band speaks from. */
+  mainPace(line: string): string;
   cost(used: string, limit: string): string;
   dataFrom(clock: string): string;
   noWindows: string;
@@ -158,9 +168,14 @@ export const en: Strings = {
   shortWindow: { "Current session": "5H", "Weekly limit": "W" },
   fullWindow: { "Current session": "5 Hour", "Weekly limit": "Weekly" },
   hitNote: (reset) => (reset === null ? "Limit reached" : `Limit reached – ${reset}`),
-  willHitIn: (hit, reset) => `Limit will hit in ${hit}${reset === null ? "" : ` – ${reset}`}`,
-  onPaceFor: (p, reset) => `On pace for about ${p}% by reset${reset === null ? "" : ` – ${reset}`}`,
-  leftAtReset: (p, reset) => `About ${p}% left at reset${reset === null ? "" : ` – ${reset}`}`,
+  runsOut: (time, day, before) => `At this pace runs out ${day === null ? `at ${time}` : `${day} ${time}`} – ${before} before reset`,
+  lastsUsed: (p, reset) => `At this pace lasts to reset – about ${p}% used${reset === null ? "" : `, ${reset}`}`,
+  lastsLeft: (p, reset) => `At this pace lasts to reset – about ${p}% left${reset === null ? "" : `, ${reset}`}`,
+  tooEarly: (usual, reset) =>
+    `Too early to judge${usual === null ? "" : ` – ${usual}`}${reset === null ? "" : `${usual === null ? " – " : ", "}${reset}`}`,
+  usuallyUsed: (p) => `usually ends at about ${p}%`,
+  usuallyLeft: (p) => `usually ends with about ${p}% left`,
+  budget: (p, per) => (per === "rest" ? `${p}% left until reset` : `to last: up to ${p}% ${per === "day" ? "a day" : "an hour"}`),
   percentLeft: (p) => `${p} left`,
   resetsIn: (span) => `resets in ${span}`,
   resetNow: "resets now",
@@ -168,6 +183,7 @@ export const en: Strings = {
   noForecast: "No forecast yet",
   currentPace: (p) => `Current pace: ${p} by reset`,
   usualPace: (p, n) => `Usual pace (${n} past windows): ${p}`,
+  mainPace: (line) => `${line} (main forecast)`,
   cost: (used, limit) => `${used} of ${limit}`,
   dataFrom: (clock) => `data from ${clock}`,
   noWindows: "no limit windows",
@@ -299,9 +315,14 @@ export const ru: Strings = {
   shortWindow: { "Current session": "5ч", "Weekly limit": "Нед" },
   fullWindow: { "Current session": "5 часов", "Weekly limit": "Неделя" },
   hitNote: (reset) => (reset === null ? "Лимит исчерпан" : `Лимит исчерпан – ${reset}`),
-  willHitIn: (hit, reset) => `Лимит закончится через ${hit}${reset === null ? "" : ` – ${reset}`}`,
-  onPaceFor: (p, reset) => `К сбросу примерно ${p}%${reset === null ? "" : ` – ${reset}`}`,
-  leftAtReset: (p, reset) => `К сбросу останется примерно ${p}%${reset === null ? "" : ` – ${reset}`}`,
+  runsOut: (time, day, before) => `При текущем темпе кончится ${day === null ? `в ${time}` : `в ${day} ${time}`} – за ${before} до сброса`,
+  lastsUsed: (p, reset) => `При текущем темпе хватит до сброса – будет использовано примерно ${p}%${reset === null ? "" : `, ${reset}`}`,
+  lastsLeft: (p, reset) => `При текущем темпе хватит до сброса – останется примерно ${p}%${reset === null ? "" : `, ${reset}`}`,
+  tooEarly: (usual, reset) =>
+    `Пока рано судить${usual === null ? "" : ` – ${usual}`}${reset === null ? "" : `${usual === null ? " – " : ", "}${reset}`}`,
+  usuallyUsed: (p) => `обычно к сбросу примерно ${p}%`,
+  usuallyLeft: (p) => `обычно к сбросу остаётся примерно ${p}%`,
+  budget: (p, per) => (per === "rest" ? `до сброса осталось ${p}%` : `чтобы хватило – не больше ${p}% в ${per === "day" ? "день" : "час"}`),
   percentLeft: (p) => `осталось ${p}`,
   resetsIn: (span) => `сброс через ${span}`,
   resetNow: "сброс сейчас",
@@ -309,6 +330,7 @@ export const ru: Strings = {
   noForecast: "Прогноза пока нет",
   currentPace: (p) => `По текущему темпу к сбросу: ${p}`,
   usualPace: (p, n) => `По прошлым окнам (${n}): ${p}`,
+  mainPace: (line) => `${line} (основной прогноз)`,
   cost: (used, limit) => `${used} из ${limit}`,
   dataFrom: (clock) => `данные от ${clock}`,
   noWindows: "нет окон лимитов",

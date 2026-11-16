@@ -27,7 +27,14 @@ export function win(label: string, usedPercent: number, over: Partial<LimitWindo
     model: null,
     cost: null,
     durationMs: 5 * HOUR_MS,
-    forecast: { status: "running", current: { projectedPercent: usedPercent, runOutAt: null }, learned: null, warning: false },
+    forecast: {
+      status: "running",
+      current: { projectedPercent: usedPercent, runOutAt: null },
+      learned: null,
+      main: "current",
+      early: false,
+      warning: false,
+    },
     ...over,
   };
 }
@@ -37,7 +44,9 @@ export function forecastOf(current: number, learned: number | null = null): Limi
     status: "running",
     current: { projectedPercent: current, runOutAt: null },
     learned: learned === null ? null : { projectedPercent: learned, runOutAt: null, basedOnWindows: 3 },
-    warning: current > 100 || (learned ?? 0) > 100,
+    main: "current",
+    early: false,
+    warning: current > 100,
   };
 }
 

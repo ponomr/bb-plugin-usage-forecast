@@ -4,6 +4,22 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## Unreleased
+
+- Worded forecast (UF-6). The current pace is now the main forecast; the
+  usual pace from past windows speaks only in the first 5 % of a window, as
+  «Too early to judge – usually ends at about N%», and such a window never
+  warns. A window that runs out says the local time it runs out and how long
+  before the reset («At this pace runs out Thu 4:00 AM – 8h before reset»),
+  with a budget line that would last («to last: up to 13% a day»); one that
+  lasts says «At this pace lasts to reset – about N% used». The warning flag,
+  colour, tick, headline and the CLI's `[over 100%]` follow the main forecast
+  only, so a high usual pace alone no longer warns. The tooltip marks the main
+  pace. `bb usage-forecast status` prints the same facts (`at this pace runs
+  out 2026-11-11 04:00 UTC (8h before reset), budget 13%/day`; `usual pace`
+  replaces `learned pace`). The window forecast gains `main` and `early`
+  (defaults for older stored values).
+
 ## 0.4.6 — 2026-11-16
 
 - Limits per bb host (UF-5). Every connected host is polled with

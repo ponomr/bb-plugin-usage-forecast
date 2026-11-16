@@ -12,9 +12,13 @@ identified by provider and label (`claude-code` / `Current session`).
 ## Commands
 
 - `bb usage-forecast status [--refresh] [--json]` — every provider and window:
-  percent used, time to reset, forecast at reset from the current pace and,
-  after enough history, from past windows (`learned pace N% (K windows)`). `[over 100%]` means
-  the window runs out before it resets. `--refresh` polls now. With more than
+  percent used, time to reset and the forecast from the current pace: either
+  `at this pace lasts to reset (N% at reset)` or `at this pace runs out <UTC time>
+  (<span> before reset), budget N%/day` (`/hour` for five-hour windows,
+  `N% until reset` when less than one day or hour is left). In the first 5 %
+  of a window it says `too early to judge`. After enough history it adds the
+  past windows as a reference (`usual pace N% (K windows)`). `[over 100%]` means
+  the current pace runs out before the reset. `--refresh` polls now. With more than
   one bb host each block names its host (`codex (Plus) on MacBook: ok`); hosts
   signed in to one account share a block, and a host that is not connected
   says from when its data is. `--json` has the same data per host in `hosts`.

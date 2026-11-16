@@ -36,8 +36,10 @@ the context breakdown and one line per other provider.
   labels (5H, W, F for Fable, Ctx), their bars stretched to fill the line.
   In a narrow band the bars shrink, then the reset times and bars drop out,
   and on a phone the switch and Compact show only when expanded.
-  Expanded, it lists every window with a pace note («On pace for about 92% by
-  reset – resets in 3d») and the context breakdown; the other providers are
+  Expanded, it lists every window with a pace note («At this pace lasts to
+  reset – about 92% used, resets in 3d», or «At this pace runs out Thu 4:00
+  AM – 8h before reset» with a budget line «to last: up to 13% a day») and the
+  context breakdown; the other providers are
   one line each («Codex · 5H 6% · W 56%») and the latest compacts one row,
   both opening on tap. The expanded part scrolls inside about half the screen
   height, so the header with its collapse button stays in view on a phone;
@@ -45,7 +47,13 @@ the context breakdown and one line per other provider.
   is kept per device.
 - **Forecast to the reset.** From the current pace of the window, and from
   the pace of past windows of the same kind once the server has seen enough of
-  them.
+  them. The current pace is the main forecast: the note, the colour, the tick
+  and the headline follow it. In the first 5 % of a window the band says «Too
+  early to judge» with the usual end from past windows, and does not warn.
+  When the limit runs out before the reset, the note gives the local time it
+  runs out, how long before the reset that is, and the rate that would last
+  (per day for weekly windows, per hour for five-hour ones). The tooltip shows
+  both paces and marks the main one.
 - **Context against a working limit.** The context bar, its percent and the
   auto-compact threshold are measured against a limit in tokens, not against
   the model window. The limit follows the provider: a thread's own limit,
