@@ -19,6 +19,7 @@ import { lastingBudget, mainProjection, type LastingBudget } from "../shared/for
 import { forecastWarns, formatPercent } from "../shared/thresholds";
 import { showsModelTag } from "../shared/windows";
 import type { PaceState } from "../shared/pace";
+import { accountBlocks } from "../shared/accounts";
 import { providerCompactsAtPercent } from "./threads";
 import type { Service } from "./rpc";
 
@@ -108,46 +109,6 @@ function hostName(h: HostLimits): string {
   return h.name ?? h.hostId ?? "default host";
 }
 
-interface StatusBlock {
-  /** The member whose answer is printed: the newest one, the primary host on a tie. */
-  provider: ProviderLimits;
-  /** Every host of the account, in snapshot order (primary first). */
-  members: { host: HostLimits; provider: ProviderLimits }[];
-}
-
-/**
- * One block per provider account: hosts whose answers share the account
- * (`sharedWith`, joined transitively) form one block.
- */
-function statusBlocks(hosts: readonly HostLimits[]): StatusBlock[] {
-  const blocks: StatusBlock[] = [];
-  const placed = new Set<string>();
-  const id = (h: HostLimits, providerId: string) => `${h.hostId ?? ""}\n${providerId}`;
-  for (const host of hosts) {
-    for (const provider of host.providers) {
-      if (placed.has(id(host, provider.providerId))) continue;
-      const members: StatusBlock["members"] = [];
-      const queue = [host];
-      while (queue.length > 0) {
-        const h = queue.shift()!;
-        const p = h.providers.find((x) => x.providerId === provider.providerId);
-        if (p === undefined || placed.has(id(h, p.providerId))) continue;
-        placed.add(id(h, p.providerId));
-        members.push({ host: h, provider: p });
-        for (const other of p.sharedWith ?? []) {
-          const o = hosts.find((x) => x.hostId === other);
-          if (o !== undefined) queue.push(o);
-        }
-      }
-      members.sort((a, b) => hosts.indexOf(a.host) - hosts.indexOf(b.host));
-      const time = (p: ProviderLimits) => p.measuredAt ?? p.checkedAt ?? -Infinity;
-      const best = members.reduce((a, b) => (time(b.provider) > time(a.provider) ? b : a));
-      blocks.push({ provider: best.provider, members });
-    }
-  }
-  return blocks;
-}
-
 function formatProvider(lines: string[], p: ProviderLimits, now: number, on: string): void {
   const plan = p.planLabel ? ` (${p.planLabel})` : "";
   const status = p.status === "error" && p.message ? `error: ${p.message}` : STATUS_WORDS[p.status];
@@ -166,7 +127,7 @@ export function formatStatus(s: LimitsSnapshot, now: number): string {
   if (s.hosts.length <= 1) {
     for (const p of s.hosts[0]?.providers ?? []) formatProvider(lines, p, now, "");
   } else {
-    for (const block of statusBlocks(s.hosts)) {
+    for (const block of accountBlocks(s.hosts)) {
       formatProvider(lines, block.provider, now, ` on ${block.members.map((m) => hostName(m.host)).join(", ")}`);
       for (const { host, provider } of block.members) {
         if (host.connected) continue;
