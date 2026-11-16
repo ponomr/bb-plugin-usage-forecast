@@ -183,7 +183,7 @@ describe("indicatorView: groups", () => {
     ]);
   });
 
-  it("AE4: a shared account appears once, under its first host, with the others in alsoOn", () => {
+  it("AE4: a shared account is listed under each of its hosts, with the others in alsoOn", () => {
     const view = indicatorView(
       snap([
         host("server", [
@@ -194,12 +194,12 @@ describe("indicatorView: groups", () => {
       ]),
       NOW,
     );
-    expect(view.groups.map((g) => g.hostName)).toEqual(["server"]);
+    expect(view.groups.map((g) => g.hostName)).toEqual(["server", "laptop"]);
     const claude = view.groups[0]!.providers.find((p) => p.provider.providerId === "claude-code")!;
     expect(claude.alsoOn).toEqual(["laptop"]);
-    // The newest answer of the account speaks for it, and it is counted once.
+    // The newest answer of the account speaks for it on both hosts.
     expect(claude.provider.windows[0]!.usedPercent).toBe(45);
-    expect(view.groups.flatMap((g) => g.providers).filter((p) => p.provider.providerId === "claude-code")).toHaveLength(1);
+    expect(view.groups[1]!.providers).toEqual([{ provider: claude.provider, alsoOn: ["server"] }]);
     expect(view.worst).toMatchObject({ hostName: "server", providerId: "claude-code", usedPercent: 45 });
   });
 

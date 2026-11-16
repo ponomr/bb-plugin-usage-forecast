@@ -108,9 +108,10 @@ the context breakdown and one line per other provider.
   Claude Code · 5 Hour: 92%, critical». Pressing the ring opens a compact card
   with every provider's windows, one line each: a short label, the bar, the
   percent and the reset. The window's note is the line's tooltip; only a
-  window that runs out before its reset spells it out. Windows are grouped
-  by host when there is more than one, with an account shared by several
-  hosts listed once («also laptop»).
+  window that runs out before its reset spells it out. With more than one
+  host the hosts are tabs and the card shows one host at a time, first the
+  host of the ring's worst window; an account shared by several hosts is in
+  each of their tabs («also laptop»).
 - **Plan multiplier.** When bb reports a plan multiplier above 1 (the
   host's `plan.multiplier`), the band, the sidebar card and the CLI show it
   after the plan name: «Claude Code · Max 5×». A label that already names a
