@@ -81,7 +81,7 @@ export const limitWindowSchema = z.object({
   forecast: windowForecastSchema.nullable(),
   /**
    * The pace state the server holds (see `src/shared/pace.ts`), or null with
-   * no current pace. Absent in windows stored before 0.5.
+   * no current pace. Absent in windows stored before 0.4.7.
    */
   pace: z.enum(PACE_STATES).nullable().default(null),
 });

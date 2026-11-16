@@ -4,7 +4,7 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
-## Unreleased
+## 0.4.7 — 2026-11-16
 
 - Pace-based status and colour (UF-7). Each window with a current pace has
   a state: calm (projection below 85 %), tight (85–100 %), will not last

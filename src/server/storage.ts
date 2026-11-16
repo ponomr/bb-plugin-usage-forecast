@@ -72,7 +72,7 @@ export interface StoredWindow {
   peakUsedPercent: number;
   /** Epoch ms of the first poll that saw this window. */
   firstSeenAt: number;
-  /** The pace state and its hold; absent with no current pace or before 0.5. */
+  /** The pace state and its hold; absent with no current pace or before 0.4.7. */
   pace?: HeldPace;
 }
 
