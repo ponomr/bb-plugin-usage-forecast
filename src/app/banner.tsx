@@ -214,7 +214,8 @@ function ResetTime({ resetsAt, now }: { resetsAt: number; now: number }) {
   const s = useStrings();
   const resetShow = useResetShow();
   const toggle = useToggleResetShow();
-  const text = resetShow === "time" ? formatResetAt(s, resetsAt, now) : formatSpan(s, Math.max(0, resetsAt - now));
+  // A reset that has passed has no time to name: both forms show the countdown's "<1m".
+  const text = resetShow === "time" && resetsAt > now ? formatResetAt(s, resetsAt, now) : formatSpan(s, Math.max(0, resetsAt - now));
   return (
     <button
       type="button"
