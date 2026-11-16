@@ -84,17 +84,6 @@ describe("IndicatorFeeder", () => {
     await waitFor(() => expect(getIndicatorState().title).toMatch(/^laptop · Claude Code · 5 часов: осталось 8%, критично$/));
   });
 
-  it("hides the ring and asks for nothing when the showSidebar setting is off", async () => {
-    const b = backend({ snapshot: critical() });
-    const { container } = rtl(<RingIcon />);
-    render(IndicatorFeeder, {}, b, { settings: { showSidebar: false } });
-    await waitFor(() => expect(getIndicatorState().hidden).toBe(true));
-    expect(container.querySelector("svg")).toBeNull();
-    expect(b.calls).toHaveLength(0);
-    act(() => setIndicatorState({ worst: null, title: "t" }));
-    expect(container.querySelector("svg")).not.toBeNull();
-  });
-
   it("is registered with the icon", async () => {
     const app = await loadPluginApp(() => import("../app"));
     expect(app.icons.map((i) => i.name)).toContain(RING_ICON);

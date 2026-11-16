@@ -4,6 +4,12 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.19 — 2026-11-16
+
+- Removed the «Sidebar ring and card» setting of 0.4.18: bb keeps the footer
+  button anyway, so the switch only emptied it. The ring is hidden through
+  More → Customize footer. «Band above the composer» stays.
+
 ## 0.4.18 — 2026-11-16
 
 - Two settings, both on by default: «Band above the composer» and «Sidebar

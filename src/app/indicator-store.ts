@@ -3,22 +3,20 @@
 // facts, Sidebar footer), so an app overlay that renders nothing reads the
 // snapshot and the settings and writes them here; the icon subscribes.
 
-import { createElement, useEffect, useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { en } from "./i18n";
 import { indicatorTitle, indicatorView, type WorstWindow } from "./indicator";
 import { createStore } from "./store";
-import { useHiddenProviders, useLimitsShow, useNow, useSidebarShown, useSnapshot, useStrings } from "./hooks";
+import { useHiddenProviders, useLimitsShow, useNow, useSnapshot, useStrings } from "./hooks";
 
 export interface IndicatorState {
   worst: WorstWindow | null;
   title: string;
-  /** True when the `showSidebar` setting is off: the icon draws nothing. */
-  hidden?: boolean;
 }
 
 /** Everything the ring draws; an equal state does not notify. */
 function drawn(s: IndicatorState): string {
-  return JSON.stringify([s.title, s.worst?.usedPercent ?? null, s.worst?.tone ?? null, s.hidden === true]);
+  return JSON.stringify([s.title, s.worst?.usedPercent ?? null, s.worst?.tone ?? null]);
 }
 
 const store = createStore<IndicatorState>({ worst: null, title: en.indicatorLabel }, (a, b) => drawn(a) === drawn(b));
@@ -32,15 +30,6 @@ export function useIndicatorState(): IndicatorState {
 
 /** The app overlay that feeds the store; it renders nothing. */
 export function IndicatorFeeder() {
-  const s = useStrings();
-  const shown = useSidebarShown();
-  useEffect(() => {
-    if (!shown) setIndicatorState({ worst: null, title: s.indicatorLabel, hidden: true });
-  });
-  return shown ? createElement(Feeder) : null;
-}
-
-function Feeder() {
   const s = useStrings();
   const show = useLimitsShow();
   const now = useNow();

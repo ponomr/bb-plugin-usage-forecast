@@ -152,12 +152,6 @@ export default async function plugin(bb: BbPluginApi) {
       description: "Show the limits and context band above the message field of every thread. Off: the band and its Compact button are gone; the thread context card, the sidebar ring, pushes and auto-compact work as before.",
       default: true,
     },
-    showSidebar: {
-      type: "boolean",
-      label: "Sidebar ring and card",
-      description: "Show the limits ring in the sidebar footer and the card it opens. Off: the ring is not drawn and the card is empty; bb keeps the item's empty button in the footer, More → Customize footer removes it.",
-      default: true,
-    },
     hiddenProviders: {
       type: "string",
       label: "Hidden providers",
