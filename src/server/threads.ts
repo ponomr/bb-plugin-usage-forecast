@@ -28,6 +28,7 @@ import {
   type ThreadState,
 } from "../shared/contract";
 import { parseLang, type Lang } from "../shared/language";
+import { parseHiddenProviders } from "../shared/hidden-providers";
 import type { Storage } from "./storage";
 
 export type LimitProvider = keyof typeof PROVIDER_LIMIT_SETTINGS;
@@ -46,6 +47,8 @@ export interface PluginSettings {
   limitNotifyEnabled: boolean;
   limitNotifyPercent: number;
   language: Lang;
+  /** Provider ids left out of the band, the sign, limit pushes and `headroom`. */
+  hiddenProviders: string[];
 }
 
 function clampInt(value: unknown, min: number, max: number, fallback: number): number {
@@ -94,6 +97,7 @@ export function parseSettings(raw: Record<string, unknown> | null | undefined): 
       LIMIT_NOTIFY_DEFAULT_PERCENT,
     ),
     language: parseLang(raw?.language),
+    hiddenProviders: parseHiddenProviders(raw?.hiddenProviders),
   };
 }
 

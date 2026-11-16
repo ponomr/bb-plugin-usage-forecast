@@ -8,7 +8,12 @@ import { ae1Providers, HIT, host, NOW, paced, provider, snap, win } from "./cli-
 import { DAY_MS, HOUR_MS, MIN_MS } from "../src/shared/windows";
 
 /** The CLI over a fixed snapshot; `threadHosts` answers `thread()` with a host id. */
-function cli(snapshot: LimitsSnapshot, threadHosts: Record<string, string | null> = {}) {
+function cli(
+  snapshot: LimitsSnapshot,
+  threadHosts: Record<string, string | null> = {},
+  hidden: string[] = [],
+  threadProviders: Record<string, string> = {},
+) {
   const calls = { refresh: 0 };
   const service = {
     snapshot: async () => snapshot,
@@ -16,10 +21,11 @@ function cli(snapshot: LimitsSnapshot, threadHosts: Record<string, string | null
       calls.refresh += 1;
       return snapshot;
     },
-    thread: async (threadId: string) => ({ threadId, hostId: threadHosts[threadId] ?? null }) as ThreadState,
+    thread: async (threadId: string) =>
+      ({ threadId, hostId: threadHosts[threadId] ?? null, providerId: threadProviders[threadId] ?? null }) as ThreadState,
   } as unknown as Service;
   const { bb, harness } = createFakePluginHost({ pluginId: "usage-forecast" });
-  bb.cli.register(createCli(service, () => NOW));
+  bb.cli.register(createCli(service, () => NOW, async () => hidden));
   return { calls, run: (...argv: string[]) => harness.runCli(argv) };
 }
 
@@ -48,7 +54,7 @@ describe("status --json verdict", () => {
       paceDeviationPercent: -4.7,
       resetsInMs: 100 * 60_000,
     });
-    const stripped = { ...out, hosts: out.hosts.map((h) => ({ ...h, providers: h.providers.map((p) => ({ ...p, windows: p.windows.map(({ verdict: _v, ...w }: any) => w) })) })) };
+    const stripped = { ...out, hosts: out.hosts.map((h) => ({ ...h, providers: h.providers.map(({ hidden: _h, ...p }: any) => ({ ...p, windows: p.windows.map(({ verdict: _v, ...w }: any) => w) })) })) };
     expect(stripped).toEqual(s);
     expect(keys(out).filter((k) => /account|email/i.test(k))).toEqual([]);
   });
@@ -197,7 +203,7 @@ describe("headroom", () => {
   it("says when nothing was polled yet", async () => {
     const never = snap([], null);
     expect((await cli(never).run("headroom")).stdout).toBe("Headroom: not polled yet.");
-    expect(JSON.parse((await cli(never).run("headroom", "--json")).stdout)).toEqual({ polledAt: null, ageMs: null, stale: false, entries: [] });
+    expect(JSON.parse((await cli(never).run("headroom", "--json")).stdout)).toEqual({ polledAt: null, ageMs: null, stale: false, entries: [], hidden: [] });
   });
 });
 
@@ -229,5 +235,66 @@ describe("plan multiplier (UF-11)", () => {
       ["claude-code", 5],
       ["codex", null],
     ]);
+  });
+});
+
+describe("hidden providers (UF-11)", () => {
+  const s = snap([
+    host("host_server", "server", [
+      provider("claude-code", [paced("Weekly limit", 20, 40)], { planLabel: "Max" }),
+      provider("codex", [paced("Weekly limit", 57, 69)], { planLabel: "Plus" }),
+      provider("acp-opencode", [], { status: "unauthenticated" }),
+    ]),
+  ]);
+
+  it("marks hidden providers in status and its JSON (AE3, R10)", async () => {
+    const status = (await cli(s, {}, ["acp-opencode"]).run("status")).stdout;
+    expect(status).toContain("  acp-opencode: not signed in [hidden]");
+    expect(status).toContain("  codex (Plus): ok\n");
+    const out = JSON.parse((await cli(s, {}, ["acp-opencode"]).run("status", "--json")).stdout);
+    expect(out.hosts[0].providers.map((p: { providerId: string; hidden: boolean }) => [p.providerId, p.hidden])).toEqual([
+      ["claude-code", false],
+      ["codex", false],
+      ["acp-opencode", true],
+    ]);
+  });
+
+  it("leaves hidden providers out of headroom and lists them (AE5, R9)", async () => {
+    const out = JSON.parse((await cli(s, {}, ["codex"]).run("headroom", "--json")).stdout);
+    expect(out.entries.map((e: { providerId: string }) => e.providerId)).toEqual(["claude-code", "acp-opencode"]);
+    expect(out.hidden).toEqual(["codex"]);
+    const text = (await cli(s, {}, ["codex"]).run("headroom")).stdout;
+    expect(text).not.toContain("codex (Plus)");
+    expect(text.split("\n").at(-1)).toBe("hidden: codex");
+    // Nothing hidden: no line, an empty list.
+    expect((await cli(s).run("headroom")).stdout).not.toContain("hidden:");
+    expect(JSON.parse((await cli(s).run("headroom", "--json")).stdout).hidden).toEqual([]);
+  });
+
+  it("ignores an id that matches no provider (AE7)", async () => {
+    const out = JSON.parse((await cli(s, {}, ["codex", "nope"]).run("headroom", "--json")).stdout);
+    expect(out.hidden).toEqual(["codex"]);
+    expect((await cli(s, {}, ["nope"]).run("status")).stdout).not.toContain("[hidden]");
+  });
+
+  it("with every provider hidden ranks nothing and says so", async () => {
+    const all = ["claude-code", "codex", "acp-opencode"];
+    const out = JSON.parse((await cli(s, {}, all).run("headroom", "--json")).stdout);
+    expect(out.entries).toEqual([]);
+    expect(out.hidden).toEqual(all);
+    const text = (await cli(s, {}, all).run("headroom")).stdout.split("\n");
+    expect(text.slice(1)).toEqual(["  No providers to rank.", "hidden: claude-code, codex, acp-opencode"]);
+  });
+
+  it("--thread keeps the thread's own provider when it is hidden, on one host and on several", async () => {
+    const one = JSON.parse((await cli(s, {}, ["codex", "acp-opencode"], { thr_c: "codex" }).run("headroom", "--json", "--thread", "thr_c")).stdout);
+    expect(one.entries.map((e: { providerId: string }) => e.providerId)).toEqual(["claude-code", "codex"]);
+    expect(one.hidden).toEqual(["acp-opencode"]);
+    const two = snap([...s.hosts, host("host_laptop", "laptop", [provider("codex", [paced("Weekly limit", 10, 20)])])]);
+    const out = JSON.parse(
+      (await cli(two, { thr_c: "host_laptop" }, ["codex"], { thr_c: "codex" }).run("headroom", "--json", "--thread", "thr_c")).stdout,
+    );
+    expect(out.entries.map((e: { providerId: string }) => e.providerId)).toEqual(["codex"]);
+    expect(out.hidden).toEqual([]);
   });
 });

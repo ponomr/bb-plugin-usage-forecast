@@ -546,3 +546,41 @@ describe("band, pace state", () => {
     expect(worstProvider(s.hosts[0]!.providers, Date.now())?.providerId).toBe("codex");
   });
 });
+
+describe("hidden providers (UF-11)", () => {
+  const expand = async () => fireEvent.click(await screen.findByRole("button", { name: "Show details" }));
+  const settings = (hiddenProviders: string) => ({ autoCompactEnabled: false, autoCompactThresholdPercent: 80, pollIntervalMinutes: 2, hiddenProviders });
+  const three = () =>
+    snapshot([
+      provider("claude-code", [win("Current session", 40)]),
+      provider("codex", [win("Weekly limit", 97)]),
+      provider("acp-opencode", [], { status: "unauthenticated" }),
+    ]);
+
+  it("leaves a hidden provider out of the other providers (AE3)", async () => {
+    render(Banner, {}, backend({ snapshot: three() }), { settings: settings("acp-opencode") });
+    await expand();
+    await waitFor(() => expect(providerBlock("codex")()).not.toBeNull());
+    expect(providerBlock("claude-code")()).not.toBeNull();
+    expect(providerBlock("acp-opencode")()).toBeNull();
+  });
+
+  it("keeps the thread's own provider when it is hidden (AE4)", async () => {
+    const b = backend({ snapshot: three(), thread: threadState({ providerId: "codex" }) });
+    render(Banner, {}, b, { settings: settings("codex") });
+    // The collapsed row draws the Codex window: Codex is the band's provider.
+    expect((await findWindow("Weekly limit")).textContent).toContain("97%");
+    expect(screen.getByTestId("collapsed-row").querySelector('[data-window="Current session"]')).toBeNull();
+    await expand();
+    await waitFor(() => expect(providerBlock("codex")()).not.toBeNull());
+    expect(providerBlock("claude-code")()).not.toBeNull();
+  });
+
+  it("with every provider hidden shows only the thread's own one; case and spaces do not matter (AE7)", async () => {
+    render(Banner, {}, backend({ snapshot: three() }), { settings: settings(" Claude-Code ,, CODEX acp-opencode nope") });
+    await expand();
+    await waitFor(() => expect(providerBlock("claude-code")()).not.toBeNull());
+    expect(providerBlock("codex")()).toBeNull();
+    expect(providerBlock("acp-opencode")()).toBeNull();
+  });
+});

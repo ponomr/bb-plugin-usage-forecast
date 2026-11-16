@@ -9,7 +9,8 @@
 // `notifications.send`. A failed send is logged and still counts as sent, so
 // a missing plugin or a host with no devices does not retry on every poll.
 // The push carries the provider name, the window label and percents only,
-// plus the host names when more than one host is known.
+// plus the host names when more than one host is known. A provider in the
+// `hiddenProviders` setting is checked and remembered as usual but not sent.
 //
 // With several hosts the check walks account groups: a provider on hosts that
 // share its account (`sharedWith`) is one group and gets one push. What was
@@ -19,6 +20,7 @@
 // before per-host polling, so pushes remembered then are not repeated.
 
 import { isNewWindow } from "../shared/forecast";
+import { isHidden } from "../shared/hidden-providers";
 import { formatPercent } from "../shared/thresholds";
 import { windowKey } from "../shared/windows";
 import { formatResetIn, providerName, windowLabel } from "../app/format";
@@ -147,7 +149,11 @@ export class LimitNotifier {
             title: named ? s.pushOnHosts(title, members.map((m) => m.name ?? m.hostId ?? "").join(", ")) : title,
             body: s.pushBody(formatResetIn(s, w.resetsAt, now)),
           };
-          await this.send(message, `${provider.providerId} ${w.label} ${level}`);
+          const what = `${provider.providerId} ${w.label} ${level}`;
+          // A hidden provider passes its steps as usual and only stays silent,
+          // so un-hiding it sends nothing for steps already passed.
+          if (isHidden(settings.hiddenProviders, provider.providerId)) this.deps.log.info(`limit push skipped, provider hidden (${what})`);
+          else await this.send(message, what);
           for (const k of memberKeys) sent[k] = { resetsAt: w.resetsAt, level, at: now };
           changed = true;
         }

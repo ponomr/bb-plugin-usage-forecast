@@ -3,7 +3,7 @@
 // server.ts). The intervals below are a backstop for hosts where realtime
 // does not reach the client (the phone on bb 0.49).
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   experimental_usePluginId,
   experimental_useRpcMutation,
@@ -15,6 +15,7 @@ import { STRINGS, type Strings } from "./i18n";
 import { parseLang } from "../shared/language";
 import { parseLimitsShow, type LimitsShow } from "../shared/limits-show";
 import { parseResetShow, type ResetShow } from "../shared/reset-show";
+import { parseHiddenProviders } from "../shared/hidden-providers";
 import { normalizeOverride, usageForecastContract, type CompactResult, type Display, type ThreadOverride } from "../shared/contract";
 
 export const SNAPSHOT_REFETCH_MS = 60_000;
@@ -115,6 +116,12 @@ export function useSetDisplay() {
     },
     [mutation, values],
   );
+}
+
+/** The `hiddenProviders` setting, parsed; none until the settings load. */
+export function useHiddenProviders(): string[] {
+  const raw = useSettings().values?.hiddenProviders;
+  return useMemo(() => parseHiddenProviders(raw), [raw]);
 }
 
 export function useSnapshot() {

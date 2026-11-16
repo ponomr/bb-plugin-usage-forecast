@@ -73,3 +73,16 @@ describe("SidebarCard", () => {
     expect(item).toMatchObject({ kind: "disclosure", label: "Usage limits", icon: "usage-forecast/ring" });
   });
 });
+
+describe("hidden providers (UF-11)", () => {
+  it("leaves hidden providers out of the card; all hidden is the empty state (AE4)", async () => {
+    const s = snapshot([provider("claude-code", [win("Current session", 30)]), provider("codex", [win("Weekly limit", 97)])]);
+    render(SidebarCard, props, backend({ snapshot: s }), { settings: { hiddenProviders: "codex" } });
+    await waitFor(() => expect(card().querySelector('[data-provider="claude-code"]')).not.toBeNull());
+    expect(card().querySelector('[data-provider="codex"]')).toBeNull();
+    cleanup();
+    render(SidebarCard, props, backend({ snapshot: s }), { settings: { hiddenProviders: "codex, claude-code" } });
+    await waitFor(() => expect(within(card()).getByText(en.noLimitsData)).toBeTruthy());
+    expect(card().querySelector("[data-provider]")).toBeNull();
+  });
+});

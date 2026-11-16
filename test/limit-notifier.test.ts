@@ -119,3 +119,54 @@ describe("limit push notifications", () => {
     expect(empty.logs).toEqual(["warn: limit push not delivered (claude-code Current session threshold)"]);
   });
 });
+
+describe("hidden providers (UF-11)", () => {
+  function hiddenSetup(hidden: string[]) {
+    const sent: PushMessage[] = [];
+    const logs: string[] = [];
+    const storage = makeStorage();
+    const current = { hidden };
+    const base = settingsOf();
+    const notifier = new LimitNotifier({
+      storage,
+      settings: async () => ({ ...(await base()), hiddenProviders: current.hidden }),
+      send: async (m) => {
+        sent.push(m);
+        return ["mobile"];
+      },
+      log: { info: (m) => logs.push(m), warn: (m) => logs.push(`warn: ${m}`) },
+    });
+    return { notifier, sent, logs, storage, current };
+  }
+  const codexSession = (usedPercent: number) => ({ ...session(usedPercent), providerId: "codex" });
+
+  it("sends no push for a hidden provider past the threshold, and sends for the others (AE4)", async () => {
+    const { notifier, sent, logs } = hiddenSetup(["codex"]);
+    await notifier.check([session(50), codexSession(95)], NOW);
+    expect(sent).toEqual([]);
+    expect(logs).toEqual(["limit push skipped, provider hidden (codex Current session threshold)"]);
+    await notifier.check([session(92), codexSession(95)], NOW + 60_000);
+    expect(sent.map((m) => m.title)).toEqual(["Claude Code: 5 Hour limit at 92%"]);
+  });
+
+  it("sends nothing late after un-hiding in the same period; the next step sends (R8)", async () => {
+    const { notifier, sent, current } = hiddenSetup(["codex"]);
+    await notifier.check([codexSession(95)], NOW);
+    current.hidden = [];
+    await notifier.check([codexSession(96)], NOW + 60_000);
+    expect(sent).toEqual([]);
+    await notifier.check([codexSession(100)], NOW + 120_000);
+    expect(sent.map((m) => m.title)).toEqual(["Codex: 5 Hour limit reached"]);
+  });
+
+  it("re-arms a hidden provider below the threshold as usual", async () => {
+    const { notifier, sent, current, storage } = hiddenSetup(["codex"]);
+    await notifier.check([codexSession(95)], NOW);
+    expect(Object.keys(await storage.notified())).toHaveLength(1);
+    await notifier.check([codexSession(40)], NOW + 60_000);
+    expect(await storage.notified()).toEqual({});
+    current.hidden = [];
+    await notifier.check([codexSession(93)], NOW + 120_000);
+    expect(sent.map((m) => m.title)).toEqual(["Codex: 5 Hour limit at 93%"]);
+  });
+});

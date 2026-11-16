@@ -28,6 +28,7 @@ import {
   useCompact,
   useComposerThreadId,
   useExpanded,
+  useHiddenProviders,
   useLimitsShow,
   useNow,
   useResetShow,
@@ -408,11 +409,12 @@ export function Banner() {
   const compact = useCompact(threadId);
   const [expanded, setExpanded] = useExpanded();
   const now = useNow();
+  const hidden = useHiddenProviders();
   const [askAt, setAskAt] = useState<number | null>(null);
   if (threadId === null) return null;
 
   const state = thread.data;
-  const view = bannerView(s, snapshot.data, snapshot.error?.message ?? null, state, now);
+  const view = bannerView(s, snapshot.data, snapshot.error?.message ?? null, state, now, hidden);
   const host = snapshot.data === undefined ? null : threadHost(snapshot.data.hosts, state?.hostId);
   const ownHost = host === null || typeof host === "string" ? null : host;
   const primary = view.kind === "limits" ? view.primary : null;

@@ -386,3 +386,12 @@ describe("bb usage-forecast", () => {
     expect(out.stderr).toContain("Thread id must be 1-128 characters");
   });
 });
+
+describe("hidden providers (UF-11, R12)", () => {
+  it("the snapshot is the same with and without the setting", async () => {
+    const plain = setup();
+    const hidden = setup({ hiddenProviders: ["claude-code"] });
+    expect(await hidden.service.refresh()).toEqual(await plain.service.refresh());
+    expect((await hidden.service.snapshot()).hosts[0]!.providers.map((p) => p.providerId)).toContain("claude-code");
+  });
+});

@@ -10,6 +10,7 @@ import type { ResetShow } from "../shared/reset-show";
 import { lastingBudget, mainProjection } from "../shared/forecast";
 import { paceRank, paceStateTone, rawPaceState, worsePace, type PaceState } from "../shared/pace";
 import { DAY_MS } from "../shared/windows";
+import { isHidden } from "../shared/hidden-providers";
 import { formatClock, formatResetIn, formatRunOut, formatSpan, formatTime, providerName, statusText } from "./format";
 import type { Strings } from "./i18n";
 
@@ -109,6 +110,7 @@ export function bannerView(
   errorMessage: string | null,
   thread: { providerId: string | null; hostId: string | null } | undefined,
   now: number,
+  hidden: readonly string[] = [],
 ): BannerView {
   if (snapshot === undefined) return errorMessage === null ? { kind: "loading" } : { kind: "error", message: errorMessage };
   if (snapshot.polledAt === null) return { kind: "empty" };
@@ -118,12 +120,14 @@ export function bannerView(
   if (host.polledAt === null) return { kind: "empty" };
   const stale = hostStale(host);
   // A stale host shows no forecast as current (the server drops them too).
+  // Hidden providers drop out; the thread's own provider always stays.
+  const own = thread?.providerId ?? null;
+  const shown = host.providers.filter((p) => p.providerId === own || !isHidden(hidden, p.providerId));
   const providers = stale
-    ? host.providers.map((p) => ({ ...p, windows: p.windows.map((w) => ({ ...w, forecast: null, pace: null })) }))
-    : host.providers;
+    ? shown.map((p) => ({ ...p, windows: p.windows.map((w) => ({ ...w, forecast: null, pace: null })) }))
+    : shown;
   const staleSince = stale ? dataTime(host) : null;
-  const primary =
-    providers.find((p) => p.providerId === (thread?.providerId ?? null) && p.windows.length > 0) ?? worstProvider(providers, now);
+  const primary = providers.find((p) => p.providerId === own && p.windows.length > 0) ?? worstProvider(providers, now);
   if (primary !== null) return { kind: "limits", primary, others: providers.filter((p) => p !== primary), staleSince };
   if (!host.connected) return { kind: "reasons", text: s.hostStale(formatClock(s, staleSince ?? host.polledAt, now)) };
   if (providers.length === 0) {

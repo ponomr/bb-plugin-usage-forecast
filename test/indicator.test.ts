@@ -247,3 +247,27 @@ describe("indicatorView: review fixes", () => {
     expect(view.unavailable).toEqual(["laptop"]);
   });
 });
+
+describe("indicatorView: hidden providers (UF-11)", () => {
+  const s = () =>
+    snap([
+      host("server", [
+        prov("claude-code", [win("Current session", 60, "tight"), win("Weekly limit", 30, "calm")]),
+        prov("codex", [win("Weekly limit", 98, "critical")]),
+      ]),
+    ]);
+
+  it("ranks the worst window without hidden providers and leaves them out of the card (AE4)", () => {
+    expect(indicatorView(s(), NOW).worst?.providerId).toBe("codex");
+    const view = indicatorView(s(), NOW, ["codex"]);
+    expect(view.worst).toMatchObject({ providerId: "claude-code", label: "Current session", usedPercent: 60 });
+    expect(view.groups.flatMap((g) => g.providers.map((p) => p.provider.providerId))).toEqual(["claude-code"]);
+  });
+
+  it("with every provider hidden is the empty state", () => {
+    const view = indicatorView(s(), NOW, ["codex", "claude-code"]);
+    expect(view.worst).toBeNull();
+    expect(view.groups).toEqual([]);
+    expect(indicatorTitle(en, view.worst)).toBe(`${en.indicatorLabel}: ${en.noLimitsData}`);
+  });
+});

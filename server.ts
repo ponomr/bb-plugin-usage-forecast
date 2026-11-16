@@ -144,6 +144,13 @@ export default async function plugin(bb: BbPluginApi) {
       experimental_optionLabels: { countdown: "Countdown", time: "Exact time" },
       default: DEFAULT_RESET_SHOW,
     },
+    hiddenProviders: {
+      type: "string",
+      label: "Hidden providers",
+      description:
+        "Provider ids to leave out of the band's other providers, the sidebar sign, limit pushes and `bb usage-forecast headroom`, separated by commas or spaces (for example: acp-opencode, codex). A thread's own provider is always shown. `bb usage-forecast status` prints the ids. Limits are still polled.",
+      default: "",
+    },
   });
   const settings = async () => parseSettings(await settingsHandle.get());
 
@@ -250,7 +257,7 @@ export default async function plugin(bb: BbPluginApi) {
     setDisplay: (input) => setDisplay((values) => settingsHandle.experimental_set(values), input),
   });
 
-  bb.cli.register(createCli(service));
+  bb.cli.register(createCli(service, Date.now, async () => (await settings()).hiddenProviders));
 
   bb.log.info("usage-forecast loaded");
 }

@@ -24,6 +24,7 @@ export function settingsOf(over: Partial<PluginSettings> = {}): () => Promise<Pl
     limitNotifyEnabled: true,
     limitNotifyPercent: 90,
     language: "en",
+    hiddenProviders: [],
     ...over,
   };
   return async () => value;
