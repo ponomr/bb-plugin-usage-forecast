@@ -4,6 +4,15 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.11 — 2026-11-16
+
+- The sidebar card is compact: a window is one line with a short label
+  («5H», «W»; a label with no short form, such as «Fable», stays whole), the
+  bar, the percent and the reset. The window's note moved into the line's
+  tooltip; a window that runs out before its reset still shows it in the
+  window's colour. The plan is a badge at the right of the provider's name,
+  and providers are divided by a rule.
+
 ## 0.4.10 — 2026-11-16
 
 - Token totals (UF-12). The server counts tokens from bb's

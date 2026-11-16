@@ -105,10 +105,12 @@ the context breakdown and one line per other provider.
   percent and coloured by its pace state. The worst window is the one with
   the worst state (a window without a state counts as calm), then the higher
   percent, then the nearer reset; its tooltip names it, for example «laptop ·
-  Claude Code · 5 Hour: 92%, critical». Pressing the ring opens a card with
-  every provider's windows and their notes, grouped by host when there is
-  more than one, with an account shared by several hosts listed once («also
-  laptop»).
+  Claude Code · 5 Hour: 92%, critical». Pressing the ring opens a compact card
+  with every provider's windows, one line each: a short label, the bar, the
+  percent and the reset. The window's note is the line's tooltip; only a
+  window that runs out before its reset spells it out. Windows are grouped
+  by host when there is more than one, with an account shared by several
+  hosts listed once («also laptop»).
 - **Plan multiplier.** When bb reports a plan multiplier above 1 (the
   host's `plan.multiplier`), the band, the sidebar card and the CLI show it
   after the plan name: «Claude Code · Max 5×». A label that already names a
