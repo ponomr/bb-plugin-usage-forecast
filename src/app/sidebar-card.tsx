@@ -2,15 +2,19 @@
 // when there is more than one, with shared accounts listed once.
 
 import type { ExperimentalSidebarFooterDisclosureProps } from "@get-bb/plugin-sdk/app";
+import type { Tokens } from "../shared/contract";
 import { planText } from "../shared/plan";
+import { formatTokenCount } from "../shared/tokens";
 import { WindowList } from "./banner";
 import { formatClock, providerName } from "./format";
-import { errorText, useHiddenProviders, useNow, useSnapshot, useStrings } from "./hooks";
+import { errorText, useHiddenProviders, useNow, useSnapshot, useStrings, useTokens } from "./hooks";
 import { indicatorView, type IndicatorProvider } from "./indicator";
 import { hostStale } from "./model";
 import { Toned } from "./ui";
 
-function ProviderSection({ entry, now }: { entry: IndicatorProvider; now: number }) {
+type ProviderTokens = Tokens["providers"][number];
+
+function ProviderSection({ entry, now, tokens }: { entry: IndicatorProvider; now: number; tokens: ProviderTokens | undefined }) {
   const s = useStrings();
   const { provider, alsoOn } = entry;
   const plan = planText(provider.planLabel, provider.planMultiplier);
@@ -26,6 +30,11 @@ function ProviderSection({ entry, now }: { entry: IndicatorProvider; now: number
         )}
       </span>
       <WindowList provider={provider} now={now} />
+      {tokens === undefined ? null : (
+        <span className="text-muted-foreground" data-testid="provider-tokens">
+          {s.tokensTodayMonth(formatTokenCount(tokens.today.work, s.lang), formatTokenCount(tokens.month.work, s.lang))}
+        </span>
+      )}
     </section>
   );
 }
@@ -35,12 +44,21 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
   const now = useNow();
   const hidden = useHiddenProviders();
   const query = useSnapshot();
+  const tokens = useTokens(null).data;
   const snapshot = query.data;
   let body: React.ReactNode;
   if (snapshot === undefined) {
     body = query.error ? <Toned tone="amber">{errorText(query.error)}</Toned> : <span className="text-muted-foreground">{s.loading}</span>;
   } else {
     const view = indicatorView(snapshot, now, hidden);
+    // UF-12 R9: the sums cover a provider's BB threads on every host, so a
+    // provider listed under several hosts carries them once, in its first section.
+    const withTokens = new Set<string>();
+    const tokensOf = (providerId: string) => {
+      if (withTokens.has(providerId)) return undefined;
+      withTokens.add(providerId);
+      return tokens?.providers.find((p) => p.providerId === providerId);
+    };
     const unavailable =
       view.unavailable.length === 0 ? null : (
         <span className="text-muted-foreground" data-testid="hosts-unavailable">
@@ -58,7 +76,7 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
               {view.showHosts ? <h3 className="font-semibold text-muted-foreground">{group.hostName}</h3> : null}
               {stale ? <Toned tone="amber">{s.hostStale(formatClock(s, host.polledAt!, now))}</Toned> : null}
               {group.providers.map((entry) => (
-                <ProviderSection key={entry.provider.providerId} entry={entry} now={now} />
+                <ProviderSection key={entry.provider.providerId} entry={entry} now={now} tokens={tokensOf(entry.provider.providerId)} />
               ))}
             </section>
           );

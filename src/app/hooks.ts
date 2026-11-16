@@ -16,11 +16,13 @@ import { parseLang } from "../shared/language";
 import { parseLimitsShow, type LimitsShow } from "../shared/limits-show";
 import { parseResetShow, type ResetShow } from "../shared/reset-show";
 import { parseHiddenProviders } from "../shared/hidden-providers";
+import { localPeriodStarts } from "../shared/tokens";
 import { normalizeOverride, usageForecastContract, type CompactResult, type Display, type ThreadOverride } from "../shared/contract";
 
 export const SNAPSHOT_REFETCH_MS = 60_000;
 export const THREAD_ACTIVE_REFETCH_MS = 30_000;
 export const THREAD_IDLE_REFETCH_MS = 60_000;
+export const TOKENS_REFETCH_MS = 5 * 60_000;
 
 function useInterval(callback: () => void, ms: number | null) {
   const saved = useRef(callback);
@@ -188,6 +190,22 @@ export function useThreadState(threadId: string | null) {
   });
   const ms = threadId === null ? null : query.data?.active ? THREAD_ACTIVE_REFETCH_MS : THREAD_IDLE_REFETCH_MS;
   useInterval(() => void query.refetch(), ms);
+  return query;
+}
+
+/**
+ * UF-12: the thread's token total (null for none) and each provider's sums for
+ * the local day and month. The starts change only at local midnight, so the
+ * query keeps its key between minutes; the server invalidates on every count.
+ */
+export function useTokens(threadId: string | null) {
+  const { dayStart, monthStart } = localPeriodStarts(useNow());
+  const query = experimental_useRpcQuery({
+    contract: usageForecastContract,
+    method: "tokens",
+    input: { threadId, dayStart, monthStart },
+  });
+  useInterval(() => void query.refetch(), TOKENS_REFETCH_MS);
   return query;
 }
 
