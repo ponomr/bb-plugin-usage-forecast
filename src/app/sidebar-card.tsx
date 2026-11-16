@@ -42,7 +42,8 @@ function WindowRow({ window: w, now }: { window: LimitWindow; now: number }) {
         <span className="w-12 shrink-0 truncate text-muted-foreground">{label}</span>
         <WindowBar view={v} className="min-w-0 flex-1" />
         <WindowPercent view={v} className="w-9 shrink-0 text-right font-medium tabular-nums" pressable />
-        <span className="w-16 shrink-0 text-right">
+        {/* A reset as a time ("Tue 10:00 AM") is longer than a countdown ("6d 9h"). */}
+        <span className={cn("shrink-0 whitespace-nowrap text-right", resetShow === "time" ? "w-24" : "w-16")} data-testid="window-reset">
           {w.resetsAt === null ? <span className="text-muted-foreground">–</span> : <ResetTime resetsAt={w.resetsAt} now={now} className="" />}
         </span>
       </span>
