@@ -84,6 +84,12 @@ describe("SidebarCard", () => {
     expect(screen.queryByTestId("window-runs-out")).toBeNull();
   });
 
+  it("keeps a reset shown as a time on the window's line", async () => {
+    render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [win("Weekly limit", 40)])]) }), { settings: { resetShow: "time" } });
+    await waitFor(() => expect(screen.getByTestId("window-reset").className).toContain("whitespace-nowrap"));
+    expect(screen.getByTestId("window-reset").className).toContain("w-24");
+  });
+
   it("spells out a window that runs out before its reset", async () => {
     const w = win("Current session", 80, {
       forecast: { status: "running", current: { projectedPercent: 140, runOutAt: Date.now() + HOUR_MS }, learned: null, main: "current", early: false, warning: true },

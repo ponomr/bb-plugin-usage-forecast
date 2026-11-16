@@ -4,6 +4,11 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.14 — 2026-11-16
+
+- Sidebar card: a reset shown as a time («Tue 10:00 AM») no longer wraps
+  onto three lines; its column is wider in that mode and never wraps.
+
 ## 0.4.13 — 2026-11-16
 
 - The sidebar card fits bb's footer popover: tighter lines, the run-out note
