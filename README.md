@@ -192,6 +192,7 @@ Auto-compact rules:
 
 ```sh
 bb usage-forecast status [--refresh] [--json]
+bb usage-forecast headroom [--refresh] [--json] [--host <id or name> | --thread <threadId>]
 bb usage-forecast thread <threadId> [--json]
 bb usage-forecast compact <threadId>
 bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95] [--limit <tokens>|0]
@@ -200,6 +201,24 @@ bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95] [--limi
 `status` puts the state after the percent, for example
 `Weekly limit: 60% [will not last], resets in 3d 0h, …` (`calm`, `tight`,
 `will not last`, `critical`, `used up`; no bracket without a state).
+In `status --json` every window also has a `verdict`, computed at the moment
+of the call: `state` (the pace state, `early` or `unknown`), `lasts`,
+`runsOutAt`, `projectedPercent`, `paceDeviationPercent` (used percent minus
+an even spend so far) and `resetsInMs`.
+
+`headroom` ranks provider accounts from the most headroom to the tightest by
+their tightest window, for agents choosing where to send a job:
+
+```text
+Headroom, polled 2026-11-16 00:09 UTC (1m ago)
+  1. codex (Plus): headroom – Weekly limit 57%, on pace for 69% at reset in 1d 6h
+  2. claude-code (Max): tight – Current session 62%, on pace for 95% at reset in 1h 40m
+  3. acp-x: unknown – not installed
+```
+
+Verdicts: `headroom` (every window calm), `tight`, `short`, `critical`,
+`hit` (with when it is available again), `unknown`. `--host` or `--thread`
+keeps one host's accounts; data older than 30 minutes is marked stale.
 
 Agents in bb threads get the same reference from
 [skills/usage-forecast/SKILL.md](skills/usage-forecast/SKILL.md).

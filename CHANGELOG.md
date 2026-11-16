@@ -4,6 +4,19 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## Unreleased
+
+- CLI for agents (UF-10). `bb usage-forecast headroom` ranks provider
+  accounts from the most headroom to the tightest, one line each with the
+  tightest window: `headroom` (every window calm), `tight`, `short`,
+  `critical`, `hit` (with when it is available again) or `unknown`. Options
+  `--json`, `--refresh`, `--host <id or name>` and `--thread <threadId>`;
+  data polled more than 30 minutes ago is marked stale. In
+  `status --json` every window gains a `verdict` object (`state`, `lasts`,
+  `runsOutAt`, `projectedPercent`, `paceDeviationPercent`, `resetsInMs`),
+  computed at the moment of the call; the other fields and the text of
+  `status` are unchanged. The agent skill says when to use them.
+
 ## 0.4.7 — 2026-11-16
 
 - Pace-based status and colour (UF-7). Each window with a current pace has
