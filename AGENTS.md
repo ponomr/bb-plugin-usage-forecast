@@ -14,7 +14,9 @@ auto-compact without open clients.
 - `src/server/` — poller, KV storage, auto-compact, limit push notifications
   (through the `push-notifications` plugin), CLI.
 - `src/app/` — composer band (design after `claude-code-usage-quota-mod`),
-  context card section, settings section; UI strings in `i18n.ts`.
+  context card section, settings section, the sidebar-footer ring
+  (`indicator.ts` model, `ring-icon.tsx`, `indicator-store.ts` with its
+  overlay feeder, `sidebar-card.tsx`); UI strings in `i18n.ts`.
 - `components/`, `lib/`, `hooks/` — vendored BB UI components; import them by
   relative path and keep them unchanged.
 

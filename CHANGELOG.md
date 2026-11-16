@@ -4,6 +4,15 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## Unreleased
+
+- Limits ring in the sidebar footer (UF-8). A ring next to bb's footer
+  buttons shows the worst window across every host, filled to its used
+  percent and coloured by its pace state; its tooltip names the window.
+  Pressing it opens a card with every provider's windows, grouped by host
+  when there are several, with a shared account listed once. To hide it, use
+  More → Customize footer in the sidebar.
+
 ## 0.4.7 — 2026-11-16
 
 - Pace-based status and colour (UF-7). Each window with a current pace has
