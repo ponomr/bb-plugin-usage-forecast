@@ -2,7 +2,7 @@
 // status, the headline, and the context bar segments. The headline and pace
 // rules follow the band of claude-code-usage-quota-mod (see NOTICE).
 
-import type { LimitsSnapshot, LimitWindow, ProviderLimits, ThreadContext } from "../shared/contract";
+import type { HostLimits, LimitsSnapshot, LimitWindow, ProviderLimits, ThreadContext } from "../shared/contract";
 import { contextTone, forecastWarns, limitTone, paceTone, worseTone, type Tone } from "../shared/thresholds";
 import { shownPercent, type LimitsShow } from "../shared/limits-show";
 import { DAY_MS } from "../shared/windows";
@@ -50,6 +50,13 @@ export function reasonsLine(s: Strings, providers: readonly ProviderLimits[]): s
     .join(" · ");
 }
 
+/** Every provider of the hosts once, as the first host (the default one) reports it. */
+export function providersOfHosts(hosts: readonly HostLimits[]): ProviderLimits[] {
+  const seen = new Map<string, ProviderLimits>();
+  for (const h of hosts) for (const p of h.providers) if (!seen.has(p.providerId)) seen.set(p.providerId, p);
+  return [...seen.values()];
+}
+
 export function bannerView(
   s: Strings,
   snapshot: LimitsSnapshot | undefined,
@@ -58,7 +65,7 @@ export function bannerView(
 ): BannerView {
   if (snapshot === undefined) return errorMessage === null ? { kind: "loading" } : { kind: "error", message: errorMessage };
   if (snapshot.polledAt === null) return { kind: "empty" };
-  const providers = snapshot.providers;
+  const providers = snapshot.hosts[0]?.providers ?? [];
   const primary =
     providers.find((p) => p.providerId === threadProviderId && p.windows.length > 0) ?? worstProvider(providers);
   if (primary !== null) return { kind: "limits", primary, others: providers.filter((p) => p !== primary) };

@@ -174,10 +174,12 @@ export default async function plugin(bb: BbPluginApi) {
 
   const poller = new Poller({
     usageLimits: (args) => bb.sdk.system.usageLimits(args),
+    hosts: () => bb.sdk.hosts.list(),
+    primaryHostId: async () => (await bb.sdk.system.config()).primaryHostId,
     storage,
     intervalMinutes: async () => (await settings()).pollIntervalMinutes,
     invalidate: invalidateLimits,
-    afterPoll: (providers, now) => notifier.check(providers, now),
+    afterPoll: (hosts, now) => notifier.check(hosts.find((h) => h.primary)?.latest.providers ?? [], now),
   });
 
   const compactor = new AutoCompactor({ threads, storage, settings, invalidate: invalidateThread, log: bb.log });

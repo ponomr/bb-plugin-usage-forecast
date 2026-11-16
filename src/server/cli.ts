@@ -75,7 +75,7 @@ export function formatStatus(s: LimitsSnapshot, now: number): string {
   if (s.polledAt === null) lines.push("Limits: not polled yet.");
   else lines.push(`Limits, polled ${formatTime(s.polledAt)} (${formatDuration(now - s.polledAt)} ago)`);
   if (s.pollError) lines.push(`Last poll failed: ${s.pollError}`);
-  for (const p of s.providers) {
+  for (const p of s.hosts.flatMap((h) => h.providers)) {
     const plan = p.planLabel ? ` (${p.planLabel})` : "";
     const status = p.status === "error" && p.message ? `error: ${p.message}` : STATUS_WORDS[p.status];
     lines.push(`  ${p.providerId}${plan}: ${status}`);
