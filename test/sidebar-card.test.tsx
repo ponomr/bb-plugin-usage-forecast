@@ -52,10 +52,10 @@ describe("SidebarCard", () => {
       snapshot: snapshot([], { hosts: [host("server", [shared("laptop")], { primary: true }), host("laptop", [shared("server")])] }),
     });
     render(SidebarCard, props, b);
-    await waitFor(() => expect(screen.getByTestId("also-on").textContent).toBe("also laptop"));
+    await waitFor(() => expect(screen.getByTestId("also-on").getAttribute("title")).toBe("also laptop"));
     expect(card().querySelectorAll('[data-provider="claude-code"]')).toHaveLength(1);
     fireEvent.click(screen.getByRole("tab", { name: "laptop" }));
-    expect(screen.getByTestId("also-on").textContent).toBe("also server");
+    expect(screen.getByTestId("also-on").getAttribute("title")).toBe("also server");
     expect(card().querySelectorAll('[data-provider="claude-code"]')).toHaveLength(1);
   });
 
@@ -89,7 +89,7 @@ describe("SidebarCard", () => {
       forecast: { status: "running", current: { projectedPercent: 140, runOutAt: Date.now() + HOUR_MS }, learned: null, main: "current", early: false, warning: true },
     });
     render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [w])]) }));
-    await waitFor(() => expect(screen.getByTestId("window-runs-out").textContent).toMatch(/\d/));
+    await waitFor(() => expect(screen.getByTestId("window-runs-out").textContent).toMatch(/^runs out at \d/));
   });
 
   it("keeps a label with no short form whole", async () => {
@@ -132,7 +132,8 @@ describe("SidebarCard, tokens (UF-12 R9)", () => {
       tokens,
     });
     render(SidebarCard, props, b);
-    await waitFor(() => expect(screen.getByTestId("provider-tokens").textContent).toBe("today 310k · month 4.2M"));
+    await waitFor(() => expect(screen.getByTestId("provider-tokens").textContent).toBe("310k · 4.2M"));
+    expect(screen.getByTestId("provider-tokens").getAttribute("title")).toBe("today 310k · month 4.2M");
     expect(card().querySelector('[data-provider="codex"] [data-testid="provider-tokens"]')).not.toBeNull();
     expect(card().querySelector('[data-provider="claude-code"] [data-testid="provider-tokens"]')).toBeNull();
     expect(callsTo(b, "tokens")[0]!.input).toMatchObject({ threadId: null });
@@ -140,7 +141,7 @@ describe("SidebarCard, tokens (UF-12 R9)", () => {
 
   it("speaks Russian", async () => {
     render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [win("Weekly limit", 40)])]), tokens }), { settings: { language: "ru" } });
-    await waitFor(() => expect(screen.getByTestId("provider-tokens").textContent).toBe("сегодня 310 тыс. · месяц 4,2 млн"));
+    await waitFor(() => expect(screen.getByTestId("provider-tokens").getAttribute("title")).toBe("сегодня 310 тыс. · месяц 4,2 млн"));
   });
 
   it("shows a provider listed under two hosts with its sums in each tab", async () => {

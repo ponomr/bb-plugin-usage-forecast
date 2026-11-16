@@ -35,6 +35,8 @@ export interface Strings {
   hitNote(resetIn: string | null): string;
   /** When the limit runs out: the local time, the short weekday when not today, and the span before the reset. */
   runsOut(time: string, weekday: string | null, beforeReset: string): string;
+  /** The sidebar card's one-line form of `runsOut`. */
+  runsOutShort(time: string, weekday: string | null): string;
   /** A window that lasts, with the projected percent used at the reset. */
   lastsUsed(percent: number, resetIn: string | null): string;
   /** The same when the band shows what is left. */
@@ -207,6 +209,7 @@ export const en: Strings = {
   shortWindow: { "Current session": "5H", "Weekly limit": "W" },
   fullWindow: { "Current session": "5 Hour", "Weekly limit": "Weekly" },
   hitNote: (reset) => (reset === null ? "Limit reached" : `Limit reached – ${reset}`),
+  runsOutShort: (time, day) => `runs out ${day === null ? `at ${time}` : `${day} ${time}`}`,
   runsOut: (time, day, before) => `At this pace runs out ${day === null ? `at ${time}` : `${day} ${time}`} – ${before} before reset`,
   lastsUsed: (p, reset) => `At this pace lasts to reset – about ${p}% used${reset === null ? "" : `, ${reset}`}`,
   lastsLeft: (p, reset) => `At this pace lasts to reset – about ${p}% left${reset === null ? "" : `, ${reset}`}`,
@@ -387,6 +390,7 @@ export const ru: Strings = {
   shortWindow: { "Current session": "5ч", "Weekly limit": "Нед" },
   fullWindow: { "Current session": "5 часов", "Weekly limit": "Неделя" },
   hitNote: (reset) => (reset === null ? "Лимит исчерпан" : `Лимит исчерпан – ${reset}`),
+  runsOutShort: (time, day) => `кончится ${day === null ? `в ${time}` : `в ${day} ${time}`}`,
   runsOut: (time, day, before) => `При текущем темпе кончится ${day === null ? `в ${time}` : `в ${day} ${time}`} – за ${before} до сброса`,
   lastsUsed: (p, reset) => `При текущем темпе хватит до сброса – будет использовано примерно ${p}%${reset === null ? "" : `, ${reset}`}`,
   lastsLeft: (p, reset) => `При текущем темпе хватит до сброса – останется примерно ${p}%${reset === null ? "" : `, ${reset}`}`,

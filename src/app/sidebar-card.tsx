@@ -3,7 +3,8 @@
 // of the ring's worst window. Compact: one
 // line per window (label, bar, percent, reset); the forecast is the bar's
 // colour and tick, its words are the row's tooltip, and only a window that
-// runs out before its reset spells them out.
+// runs out before its reset names the time. A provider's token sums and the
+// other hosts of its account share its heading line.
 
 import { useState } from "react";
 import type { ExperimentalSidebarFooterDisclosureProps } from "@get-bb/plugin-sdk/app";
@@ -11,14 +12,20 @@ import type { LimitWindow, Tokens } from "../shared/contract";
 import { planText } from "../shared/plan";
 import { formatTokenCount } from "../shared/tokens";
 import { ResetTime, WindowBar, WindowPercent } from "./banner";
-import { formatClock, providerName, shortWindowLabel, windowLabel } from "./format";
+import { formatClock, formatRunOut, providerName, shortWindowLabel, windowLabel } from "./format";
 import { errorText, useHiddenProviders, useLimitsShow, useNow, useResetShow, useSnapshot, useStrings, useTokens } from "./hooks";
+import type { Strings } from "./i18n";
 import { indicatorView, type IndicatorProvider } from "./indicator";
 import { hostStale, paceDetails, windowNote, windowView } from "./model";
 import { cn } from "../../lib/utils";
 import { Toned } from "./ui";
 
 type ProviderTokens = Tokens["providers"][number];
+
+function runOutParts(s: Strings, at: number, now: number): [string, string | null] {
+  const { time, weekday } = formatRunOut(s, at, now);
+  return [time, weekday];
+}
 
 function WindowRow({ window: w, now }: { window: LimitWindow; now: number }) {
   const s = useStrings();
@@ -39,9 +46,9 @@ function WindowRow({ window: w, now }: { window: LimitWindow; now: number }) {
           {w.resetsAt === null ? <span className="text-muted-foreground">–</span> : <ResetTime resetsAt={w.resetsAt} now={now} className="" />}
         </span>
       </span>
-      {v.status === "out" ? (
+      {v.status === "out" && v.runOutAt !== null ? (
         <Toned tone={v.tone}>
-          <span data-testid="window-runs-out">{note}</span>
+          <span data-testid="window-runs-out">{s.runsOutShort(...runOutParts(s, v.runOutAt, now))}</span>
         </Toned>
       ) : null}
     </li>
@@ -52,27 +59,34 @@ function ProviderSection({ entry, now, tokens }: { entry: IndicatorProvider; now
   const s = useStrings();
   const { provider, alsoOn } = entry;
   const plan = planText(provider.planLabel, provider.planMultiplier);
+  const name = providerName(s, provider.providerId);
+  const also = alsoOn.length === 0 ? undefined : s.alsoOn(alsoOn.join(", "));
+  const today = tokens === undefined ? "" : formatTokenCount(tokens.today.work, s.lang);
+  const month = tokens === undefined ? "" : formatTokenCount(tokens.month.work, s.lang);
+  const tokensFull = s.tokensTodayMonth(today, month);
   return (
-    <section className="flex flex-col gap-1" data-provider={provider.providerId}>
+    <section className="flex flex-col gap-0.5" data-provider={provider.providerId}>
       <span className="flex items-baseline gap-x-2">
-        <span className="font-semibold">{providerName(s, provider.providerId)}</span>
-        {alsoOn.length === 0 ? null : (
-          <span className="min-w-0 truncate text-muted-foreground" data-testid="also-on">
-            {s.alsoOn(alsoOn.join(", "))}
+        <span
+          className="shrink-0 font-semibold"
+          data-testid={also === undefined ? undefined : "also-on"}
+          title={also}
+          aria-label={also === undefined ? undefined : `${name}, ${also}`}
+        >
+          {name}
+        </span>
+        {plan === null ? null : <span className="shrink-0 rounded bg-muted px-1.5 text-muted-foreground">{plan}</span>}
+        {tokens === undefined ? null : (
+          <span className="ml-auto min-w-0 truncate text-muted-foreground tabular-nums" data-testid="provider-tokens" title={tokensFull}>
+            {today} · {month}
           </span>
         )}
-        {plan === null ? null : <span className="ml-auto shrink-0 rounded bg-muted px-1.5 text-muted-foreground">{plan}</span>}
       </span>
-      <ul className="flex flex-col gap-0.5">
+      <ul className="flex flex-col">
         {provider.windows.map((w) => (
           <WindowRow key={`${w.label}:${w.model ?? ""}`} window={w} now={now} />
         ))}
       </ul>
-      {tokens === undefined ? null : (
-        <span className="text-muted-foreground" data-testid="provider-tokens">
-          {s.tokensTodayMonth(formatTokenCount(tokens.today.work, s.lang), formatTokenCount(tokens.month.work, s.lang))}
-        </span>
-      )}
     </section>
   );
 }
@@ -128,9 +142,9 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
           </div>
         ) : null}
         {shown === undefined ? null : (
-          <section className="flex flex-col gap-2" data-host={shown.hostId ?? ""}>
+          <section className="flex flex-col gap-1.5" data-host={shown.hostId ?? ""}>
             {stale ? <Toned tone="amber">{s.hostStale(formatClock(s, host!.polledAt!, now))}</Toned> : null}
-            <div className="flex flex-col gap-2 [&>section+section]:border-border [&>section+section]:border-t [&>section+section]:pt-2">
+            <div className="flex flex-col gap-1.5 [&>section+section]:border-border [&>section+section]:border-t [&>section+section]:pt-1.5">
               {shown.providers.map((entry) => (
                 <ProviderSection key={entry.provider.providerId} entry={entry} now={now} tokens={tokensOf(entry.provider.providerId)} />
               ))}
@@ -142,7 +156,7 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
     );
   }
   return (
-    <div className="flex max-h-96 flex-col gap-2 overflow-y-auto p-3 text-xs" data-testid="limits-card">
+    <div className="flex max-h-[19rem] flex-col gap-1.5 overflow-y-auto px-3 py-2 text-xs leading-4" data-testid="limits-card">
       {body}
     </div>
   );
