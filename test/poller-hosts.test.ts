@@ -48,6 +48,7 @@ function setup(options: Options, kvFrom?: ReturnType<typeof makeKv>) {
   const storage = new Storage(kv);
   const calls: Array<string | undefined> = [];
   const afterPoll: HostRecord[][] = [];
+  const warnings: string[] = [];
   let hosts = options.hosts ?? [];
   const o = {
     clock,
@@ -55,6 +56,7 @@ function setup(options: Options, kvFrom?: ReturnType<typeof makeKv>) {
     storage,
     calls,
     afterPoll,
+    warnings,
     setHosts: (next: HostInfo[]) => {
       hosts = next;
     },
@@ -79,6 +81,7 @@ function setup(options: Options, kvFrom?: ReturnType<typeof makeKv>) {
       },
       now: clock.now,
       hostTimeoutMs: 50,
+      log: { warn: (message) => warnings.push(message) },
     }),
   };
   return o;
@@ -158,7 +161,9 @@ describe("poll every host", () => {
     await t.poller.tick();
     macFails = true;
     t.clock.advance(2 * MIN);
-    await expect(t.poller.tick()).rejects.toThrow("MacBook: host offline");
+    // The server answered, so the tick does not fail: the Mac's error is logged.
+    await t.poller.tick();
+    expect(t.warnings).toEqual(["limits poll: MacBook: host offline"]);
     const mac = await t.storage.latest(MAC);
     expect(mac).toMatchObject({ polledAt: t.clock.value, pollError: "host offline" });
     expect(mac.providers[0]!.windows.map((w) => w.usedPercent)).toEqual([2, 5]);
@@ -168,14 +173,45 @@ describe("poll every host", () => {
     // Two minutes on: the server is due, the Mac waits 5 minutes.
     t.calls.length = 0;
     t.clock.advance(2 * MIN);
-    await expect(t.poller.tick()).rejects.toThrow(/MacBook: Polling paused until .* after 1 failed polls: host offline/);
+    await t.poller.tick();
     expect(t.calls).toEqual([SERVER]);
-    t.clock.advance(3 * MIN);
+    expect(t.warnings).toHaveLength(2);
+    expect(t.warnings[1]).toMatch(/^limits poll: MacBook: Polling paused until .* after 1 failed polls: host offline$/);
+    // The pause is logged once, not on every tick.
+    t.clock.advance(MIN);
+    await t.poller.tick();
+    expect(t.warnings).toHaveLength(2);
+    t.clock.advance(2 * MIN);
     t.calls.length = 0;
     macFails = false;
     await t.poller.tick();
     expect(t.calls.sort()).toEqual([MAC, SERVER]);
     expect(t.poller.consecutiveFailures).toBe(0);
+  });
+
+  it("fails the tick while no connected host answers", async () => {
+    let down = false;
+    const answer = (account: string) => () => {
+      if (down) throw new Error("host offline");
+      return codex(account, 1, 2);
+    };
+    const t = setup({ hosts: twoHosts, answers: { [SERVER]: answer("a"), [MAC]: answer("b") } });
+    await t.poller.tick();
+    down = true;
+    t.clock.advance(2 * MIN);
+    await expect(t.poller.tick()).rejects.toThrow("server: host offline; MacBook: host offline");
+    // Both back off: the tick that polls nothing still fails.
+    t.clock.advance(2 * MIN);
+    await expect(t.poller.tick()).rejects.toThrow(/server: Polling paused .*; MacBook: Polling paused/);
+    expect(t.warnings).toEqual([]);
+    // A disconnected host that answered before does not make the plugin healthy.
+    down = false;
+    t.clock.advance(3 * MIN);
+    await t.poller.tick();
+    down = true;
+    t.setHosts([hostInfo(SERVER, "server"), hostInfo(MAC, "MacBook", "disconnected")]);
+    t.clock.advance(2 * MIN);
+    await expect(t.poller.tick()).rejects.toThrow("server: host offline");
   });
 
   it("does not wait for a host that never answers", async () => {

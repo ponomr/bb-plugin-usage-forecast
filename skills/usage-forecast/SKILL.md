@@ -150,8 +150,9 @@ asks for it.
 - Every attempt is logged with the fill before and after; `status` shows the
   last five.
 - After a failed poll the next one waits 5 minutes, after two failures in a row
-  15 minutes; `bb plugin list` shows the last error on the `poll-limits`
-  schedule.
+  15 minutes, counted per host. `bb plugin list` shows the `poll-limits`
+  schedule as failed only while no connected host answers; one host's error
+  is on that host in `status` and in the plugin log.
 
 ## Troubleshooting
 

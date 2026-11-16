@@ -207,6 +207,7 @@ export default async function plugin(bb: BbPluginApi) {
     intervalMinutes: async () => (await settings()).pollIntervalMinutes,
     invalidate: invalidateLimits,
     afterPoll: (hosts, now) => notifier.checkHosts(hosts, now),
+    log: bb.log,
   });
 
   const compactor = new AutoCompactor({ threads, storage, settings, invalidate: invalidateThread, log: bb.log });

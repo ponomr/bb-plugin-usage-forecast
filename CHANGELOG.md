@@ -4,6 +4,15 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.21 — 2026-11-16
+
+- One host that does not answer no longer marks the whole plugin as failed:
+  `bb plugin list` shows `schedule poll-limits failed` only while no
+  connected host answers. A failing or paused host is written to the plugin
+  log once per change and stays on that host in the band and in `status`.
+- CI: GitHub Actions runs typecheck, tests and the build on every PR and on
+  `main`.
+
 ## 0.4.20 — 2026-11-16
 
 - Docs only. The agent skill lists the `showBand` setting, says that the

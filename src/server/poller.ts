@@ -5,8 +5,10 @@
 // poll in a row, 15 minutes after two or more. A host's poll fails when the bb
 // call or plugin storage fails, or when every provider reports an error. A
 // success resets it, and so does a restart: the counts live in memory. A tick
-// throws, naming the hosts, when a polled host failed or a host is paused, so
-// `bb plugin list` keeps showing it.
+// throws, naming the hosts, only while no connected host's last poll
+// succeeded, so `bb plugin list` shows a plugin without fresh limits as
+// failed. While another host answers, a failing or paused host is a log
+// warning (written once per change) and stays on that host's `pollError`.
 //
 // Hosts: until the plugin knows which host owns the data stored before 0.4.6
 // (the host bb answers for when no host is named), it makes that single call
@@ -147,6 +149,8 @@ export interface PollResult {
 interface RunResult extends PollResult {
   /** The backoff of hosts skipped by this run, or null. */
   paused: string | null;
+  /** True when the last poll of at least one connected host succeeded. */
+  healthy: boolean;
 }
 
 export interface PollerDeps {
@@ -162,6 +166,8 @@ export interface PollerDeps {
   afterPoll?: (hosts: readonly HostRecord[], now: number) => Promise<void>;
   now?: () => number;
   hostTimeoutMs?: number;
+  /** Receives a failing host's text while another host still answers. */
+  log?: { warn(message: string): void };
 }
 
 interface Backoff {
@@ -193,6 +199,8 @@ export class Poller {
   /** By host id; LEGACY_KEY while the hosts are unknown. */
   private readonly backoff = new Map<string, Backoff>();
   private inFlight: Promise<RunResult> | null = null;
+  /** The last text written to the log by `tick`, so a pause is logged once. */
+  private warned: string | null = null;
   private readonly now: () => number;
 
   constructor(private readonly deps: PollerDeps) {
@@ -204,12 +212,24 @@ export class Poller {
     return Math.max(0, ...[...this.backoff.values()].map((b) => b.failures));
   }
 
-  /** Schedule entry. Throws when a host's poll fails, or while a host backs off after one. */
+  /**
+   * Schedule entry. Throws while no connected host's last poll succeeded;
+   * a host that fails or backs off while another answers is only logged.
+   */
   async tick(): Promise<void> {
     const interval = await this.deps.intervalMinutes();
-    const { error, paused } = await this.share(interval);
+    const { error, paused, healthy } = await this.share(interval);
     const problems = [error, paused].filter((p): p is string => p !== null);
-    if (problems.length > 0) throw new Error(problems.join("; "));
+    if (problems.length === 0) {
+      this.warned = null;
+      return;
+    }
+    const text = problems.join("; ");
+    if (!healthy) throw new Error(text);
+    if (text !== this.warned) {
+      this.warned = text;
+      this.deps.log?.warn(`limits poll: ${text}`);
+    }
   }
 
   /** Polls every connected host now. Concurrent calls share one request. Never throws. */
@@ -278,7 +298,7 @@ export class Poller {
       const error = cleanMessage(cause);
       this.record(LEGACY_KEY, error, now);
       this.deps.invalidate();
-      return { latest: { ...EMPTY_LATEST, polledAt: now, pollError: error }, error, hosts: [], paused: null };
+      return { latest: { ...EMPTY_LATEST, polledAt: now, pollError: error }, error, hosts: [], paused: null, healthy: false };
     }
     const listed = await this.listHosts();
     const owner = index?.legacyOwner ?? (listed === null ? null : await this.findOwner(listed));
@@ -290,7 +310,7 @@ export class Poller {
   private async runSingle(index: HostIndex | null, owner: string | null, interval: number | null, now: number): Promise<RunResult> {
     const key = owner ?? LEGACY_KEY;
     if (!this.due(key, interval, now)) {
-      return { latest: EMPTY_LATEST, error: null, hosts: [], paused: this.pausedText(key, interval!) };
+      return { latest: EMPTY_LATEST, error: null, hosts: [], paused: this.pausedText(key, interval!), healthy: false };
     }
     const fetched = await this.fetch({ key, hostId: undefined, scope: null, label: null }, now);
     await this.save(fetched, null, now);
@@ -314,7 +334,7 @@ export class Poller {
     };
     if (fetched.answered) await this.deps.afterPoll?.([record], now);
     this.deps.invalidate();
-    return { latest: fetched.latest, error: fetched.error, hosts: [record], paused: null };
+    return { latest: fetched.latest, error: fetched.error, hosts: [record], paused: null, healthy: fetched.error === null };
   }
 
   private async runHosts(
@@ -331,6 +351,7 @@ export class Poller {
     const connected = (h: HostInfo) => h.status === "connected" && h.lifecycle.phase === "active";
     const liveIds = new Set(live.map((h) => h.id));
     for (const key of [...this.backoff.keys()]) if (!liveIds.has(key)) this.backoff.delete(key);
+    const healthy = () => live.some((h) => connected(h) && this.backoff.get(h.id)?.failures === 0);
 
     const targets = live.filter((h) => connected(h) && this.due(h.id, interval, now));
     const paused =
@@ -368,7 +389,7 @@ export class Poller {
     });
     const indexChanged = index === null || JSON.stringify(index.hosts) !== JSON.stringify(entries);
     if (targets.length === 0 && !indexChanged) {
-      return { latest: EMPTY_LATEST, error: null, hosts: [], paused };
+      return { latest: EMPTY_LATEST, error: null, hosts: [], paused, healthy: healthy() };
     }
     if (indexChanged) {
       try {
@@ -417,6 +438,7 @@ export class Poller {
       error: errors.length > 0 ? errors.join("; ") : null,
       hosts,
       paused,
+      healthy: healthy(),
     };
   }
 
