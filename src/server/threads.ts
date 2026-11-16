@@ -335,6 +335,8 @@ export interface ThreadsSdk {
   output(args: { threadId: string }): Promise<unknown>;
   /** Drops the model context of an idle thread; its history stays visible. */
   clearContext(args: { threadId: string }): Promise<unknown>;
+  /** `environments.get`: the environment a thread runs in, with its `hostId`. */
+  environment(args: { environmentId: string }): Promise<unknown>;
 }
 
 export interface ThreadReaderDeps {
@@ -342,6 +344,22 @@ export interface ThreadReaderDeps {
   storage: Storage;
   settings: () => Promise<PluginSettings>;
   now?: () => number;
+}
+
+/**
+ * The host a thread runs on: `environmentId` from `threads.get`, then `hostId`
+ * from `environments.get`. Null when either is missing or the call fails, so a
+ * failure never fails the thread state.
+ */
+export async function threadHostId(threads: ThreadsSdk, info: unknown): Promise<string | null> {
+  const environmentId = (info as { environmentId?: unknown } | null)?.environmentId;
+  if (typeof environmentId !== "string" || environmentId === "") return null;
+  try {
+    const hostId = ((await threads.environment({ environmentId })) as { hostId?: unknown } | null)?.hostId;
+    return typeof hostId === "string" && hostId !== "" ? hostId : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function readThreadState(deps: ThreadReaderDeps, threadId: string): Promise<ThreadState> {
@@ -356,12 +374,16 @@ export async function readThreadState(deps: ThreadReaderDeps, threadId: string):
   ]);
   const { providerId, active } = readThreadInfo(info);
   const override = parseOverride(metadata);
-  const ctx = await measureThread(deps.storage, context, providerId, override, settings, now);
+  const [ctx, hostId] = await Promise.all([
+    measureThread(deps.storage, context, providerId, override, settings, now),
+    threadHostId(deps.threads, info),
+  ]);
   const policy = effectivePolicy(override, settings);
   const compactSupported = providerId === null || !unsupported.includes(providerId);
   return {
     threadId,
     providerId,
+    hostId,
     active,
     context: ctx,
     override,

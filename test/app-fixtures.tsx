@@ -90,6 +90,7 @@ export function threadState(over: Partial<ThreadState> = {}): ThreadState {
   return {
     threadId: T,
     providerId: "claude-code",
+    hostId: null,
     active: false,
     context: {
       usedTokens: 90_000,

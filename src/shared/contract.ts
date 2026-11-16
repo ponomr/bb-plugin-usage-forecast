@@ -223,6 +223,8 @@ export type ThreadContext = z.infer<typeof threadContextSchema>;
 export const threadStateSchema = z.object({
   threadId: z.string(),
   providerId: z.string().nullable(),
+  /** The host the thread runs on, or null when it could not be resolved. */
+  hostId: z.string().nullable(),
   /** True while the agent is answering. */
   active: z.boolean(),
   /** Null when the host has no measurement yet. */

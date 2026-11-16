@@ -155,6 +155,7 @@ export default async function plugin(bb: BbPluginApi) {
     send: ({ input, ...rest }) => bb.sdk.threads.send({ ...rest, input: input.map((item) => ({ ...item, mentions: [] })) }),
     output: (args) => bb.sdk.threads.output(args),
     clearContext: (args) => bb.sdk.threads.clearContext(args),
+    environment: (args) => bb.sdk.environments.get(args),
   };
 
   const notifier = new LimitNotifier({
