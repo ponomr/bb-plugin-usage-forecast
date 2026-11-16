@@ -18,7 +18,10 @@ identified by provider and label (`claude-code` / `Current session`).
   `N% until reset` when less than one day or hour is left). In the first 5 %
   of a window it says `too early to judge`. After enough history it adds the
   past windows as a reference (`usual pace N% (K windows)`). `[over 100%]` means
-  the current pace runs out before the reset. `--refresh` polls now. With more than
+  the current pace runs out before the reset. The bracket after the percent is
+  the pace state: `[calm]`, `[tight]` (85–100 % at reset), `[will not last]`,
+  `[critical]` (runs out within a tenth of the window) or `[used up]`; early
+  windows have none. `--refresh` polls now. With more than
   one bb host each block names its host (`codex (Plus) on MacBook: ok`); hosts
   signed in to one account share a block, and a host that is not connected
   says from when its data is. `--json` has the same data per host in `hosts`.

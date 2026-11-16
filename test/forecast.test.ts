@@ -9,7 +9,7 @@ import {
   typicalPeak,
 } from "../src/shared/forecast";
 import { windowForecastSchema } from "../src/shared/contract";
-import { contextTone, forecastTone, forecastWarns, limitTone, worseTone } from "../src/shared/thresholds";
+import { contextTone, forecastTone, forecastWarns, limitTone } from "../src/shared/thresholds";
 import { DAY_MS, HOUR_MS, windowDurationMs, windowKey } from "../src/shared/windows";
 
 const NOW = Date.UTC(2026, 10, 8, 12, 0, 0);
@@ -294,11 +294,5 @@ describe("thresholds", () => {
     expect(forecastWarns(100.1)).toBe(true);
     expect(forecastTone(101)).toBe("red");
     expect(forecastTone(99)).toBe("normal");
-  });
-
-  it("picks the worse tone", () => {
-    expect(worseTone("amber", "red")).toBe("red");
-    expect(worseTone("normal", "amber")).toBe("amber");
-    expect(worseTone("normal", "normal")).toBe("normal");
   });
 });

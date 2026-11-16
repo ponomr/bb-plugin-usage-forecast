@@ -22,7 +22,7 @@ function prov(providerId: string, weekly: number, plan: string, sharedWith?: str
     planLabel: plan,
     checkedAt: measuredAt,
     measuredAt,
-    windows: [{ label: "Weekly limit", usedPercent: weekly, resetsAt: RESET, model: null, cost: null, durationMs: 7 * 24 * HOUR_MS, forecast: null }],
+    windows: [{ label: "Weekly limit", usedPercent: weekly, resetsAt: RESET, model: null, cost: null, durationMs: 7 * 24 * HOUR_MS, forecast: null, pace: null }],
     open: {},
     ...(sharedWith ? { sharedWith } : {}),
   };

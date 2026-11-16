@@ -4,8 +4,22 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
-## Unreleased
+## 0.4.7 — 2026-11-16
 
+- Pace-based status and colour (UF-7). Each window with a current pace has
+  a state: calm (projection below 85 %), tight (85–100 %), will not last
+  (above 100 %), critical (runs out within a tenth of the window from now)
+  or used up. Colour follows the state instead of the used percent: calm is
+  normal, tight and will not last amber, critical and used up red, so 80 %
+  on an even pace is no longer amber and 92 % that lasts is no longer red. A
+  worse state applies at once, a calmer one after ten minutes of calmer
+  polls (the worst of them). The headline adds «Tight. At this pace about N%
+  will be used by …» and «At this pace you'll run out in 20m.»; a tight
+  window's note starts with «Tight». Early windows and windows without a
+  forecast keep the used-percent colours. `bb usage-forecast status` prints
+  the state after the percent (`60% [will not last]`). The snapshot window
+  gains `pace` (null for older stored values). Push notifications are
+  unchanged.
 - Worded forecast (UF-6). The current pace is now the main forecast; the
   usual pace from past windows speaks only in the first 5 % of a window, as
   «Too early to judge – usually ends at about N%», and such a window never

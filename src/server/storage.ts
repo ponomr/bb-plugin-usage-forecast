@@ -3,6 +3,7 @@
 
 import type { PluginKvStorage } from "@get-bb/plugin-sdk";
 import type { ClosedWindow } from "../shared/forecast";
+import type { HeldPace } from "../shared/pace";
 import type { CompactLogEntry, ProviderLimits } from "../shared/contract";
 
 /** Upper bound for any serialized value, in bytes. */
@@ -71,6 +72,8 @@ export interface StoredWindow {
   peakUsedPercent: number;
   /** Epoch ms of the first poll that saw this window. */
   firstSeenAt: number;
+  /** The pace state and its hold; absent with no current pace or before 0.4.7. */
+  pace?: HeldPace;
 }
 
 export interface StoredProvider extends ProviderLimits {

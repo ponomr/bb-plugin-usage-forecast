@@ -35,6 +35,7 @@ export function win(label: string, usedPercent: number, over: Partial<LimitWindo
       early: false,
       warning: false,
     },
+    pace: null,
     ...over,
   };
 }

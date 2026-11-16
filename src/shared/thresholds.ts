@@ -1,7 +1,8 @@
 // Colour thresholds shared by the app and the CLI. Values follow
 // claude-code-usage-quota-mod: context amber from 50 %, red from 80 %; limits
-// amber from 75 %, red from 90 %; a forecast above 100 % is red in the CLI,
-// and in the band amber up to 130 % and red above.
+// amber from 75 %, red from 90 %. A limit window with a current pace is
+// coloured by its pace state instead (`src/shared/pace.ts`); the limit
+// thresholds apply only early in a window and to windows without a forecast.
 
 export type Tone = "normal" | "amber" | "red";
 
@@ -39,18 +40,4 @@ export function forecastWarns(projectedPercent: number): boolean {
 
 export function forecastTone(projectedPercent: number): Tone {
   return forecastWarns(projectedPercent) ? "red" : "normal";
-}
-
-/** Pace colour of a window on course to run out: amber above 100 %, red above 130 %. */
-export const PACE_RED_PERCENT = 130;
-
-export function paceTone(projectedPercent: number): Tone {
-  if (projectedPercent > PACE_RED_PERCENT) return "red";
-  return forecastWarns(projectedPercent) ? "amber" : "normal";
-}
-
-const RANK: Record<Tone, number> = { normal: 0, amber: 1, red: 2 };
-
-export function worseTone(a: Tone, b: Tone): Tone {
-  return RANK[a] >= RANK[b] ? a : b;
 }

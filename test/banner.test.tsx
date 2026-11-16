@@ -47,14 +47,17 @@ async function findWindow(label: string, root: () => HTMLElement | null = () => 
 const providerBlock = (id: string) => () => document.querySelector<HTMLElement>(`[data-provider="${id}"]`);
 
 describe("band, collapsed", () => {
-  it("AE1: shows the thread's provider as 5H and W bars, the weekly one red at 92%", async () => {
+  it("AE1: shows the thread's provider as 5H and W bars, the weekly one tight and amber at 92%", async () => {
     render(Banner, {}, backend({ snapshot: twoProviders() }));
     const weekly = await findWindow("Weekly limit");
     expect(weekly.textContent).toBe("W3d92%");
-    expect(within(weekly).getByText("92%").getAttribute("data-tone")).toBe("red");
+    expect(within(weekly).getByText("92%").getAttribute("data-tone")).toBe("amber");
     expect(weekly.querySelector("[data-marker]")).toBeNull();
     expect((await findWindow("Current session")).textContent).toBe("5H2h40%");
-    expect((await screen.findByTestId("headline")).textContent).toMatch(/^On track\. You should reach \w+'s reset with room to spare\.$/);
+    // AE8: the tight weekly window speaks over the calm session.
+    const head = await screen.findByTestId("headline");
+    expect(head.textContent).toMatch(/^Tight\. At this pace about 92% will be used by \w+'s reset\.$/);
+    expect(head.firstElementChild!.getAttribute("data-tone")).toBe("amber");
   });
 
   it("without a thread provider shows the worst one: 60% heading for 110% beats 70% heading for 75%", async () => {
@@ -62,7 +65,7 @@ describe("band, collapsed", () => {
       provider("claude-code", [win("Current session", 70, { forecast: forecastOf(75) })]),
       provider("codex", [win("Weekly limit", 60, { forecast: forecastOf(110), resetsAt: Date.now() + 5 * HOUR_MS })]),
     ]);
-    expect(worstProvider(s.hosts[0]!.providers)?.providerId).toBe("codex");
+    expect(worstProvider(s.hosts[0]!.providers, Date.now())?.providerId).toBe("codex");
     render(Banner, {}, backend({ snapshot: s, thread: threadState({ providerId: null }) }));
     const weekly = await findWindow("Weekly limit");
     expect(weekly.querySelector("[data-marker]")!.getAttribute("data-marker")).toBe("100");
@@ -83,7 +86,7 @@ describe("band, collapsed", () => {
       provider("claude-code", [win("Current session", 50, { resetsAt: Date.now() + HOUR_MS })]),
       provider("codex", [win("Weekly limit", 50, { resetsAt: Date.now() + 5 * 24 * HOUR_MS })]),
     ]);
-    expect(worstProvider(s.hosts[0]!.providers)?.providerId).toBe("codex");
+    expect(worstProvider(s.hosts[0]!.providers, Date.now())?.providerId).toBe("codex");
   });
 
   it("says the limit is reached, in red", async () => {
@@ -256,7 +259,7 @@ describe("band, expanded", () => {
     const claude = providerBlock("claude-code");
     expect(claude()!.textContent).toContain("Max");
     expect((await findWindow("Current session", claude)).textContent).toContain("5 Hour40%");
-    expect((await findWindow("Weekly limit", claude)).textContent).toContain("At this pace lasts to reset – about 92% used, resets in 3d");
+    expect((await findWindow("Weekly limit", claude)).textContent).toContain("Tight – at this pace about 92% used, resets in 3d");
     const codex = providerBlock("codex");
     fireEvent.click(within(codex()!).getByRole("button"));
     const session = await findWindow("Current session", codex);
@@ -276,7 +279,8 @@ describe("band, expanded", () => {
     await expand();
     const session = await findWindow("Current session", providerBlock("claude-code"));
     expect(session.textContent).toMatch(/At this pace runs out (at|\w{3}) .+ – 1h before reset/);
-    expect(within(session).getByText(/runs out/).getAttribute("data-tone")).toBe("red");
+    // Runs out in 1 h, more than a tenth of five hours: will not last, amber.
+    expect(within(session).getByText(/runs out/).getAttribute("data-tone")).toBe("amber");
     // 30 % left over 2 h.
     expect(within(session).getByTestId("window-budget").textContent).toBe("to last: up to 15% an hour");
   });
@@ -410,7 +414,7 @@ describe("band, limits shown as left", () => {
     render(Banner, {}, backend({ snapshot: twoProviders() }), remaining);
     const weekly = await findWindow("Weekly limit");
     expect(weekly.textContent).toBe("W3d8%");
-    expect(within(weekly).getByText("8%").getAttribute("data-tone")).toBe("red");
+    expect(within(weekly).getByText("8%").getAttribute("data-tone")).toBe("amber");
     expect(fillWidth(weekly)).toBe("8%");
     expect(weekly.title).toBe("Weekly – 8% left");
     expect((await findWindow("Current session")).textContent).toBe("5H2h60%");
@@ -430,7 +434,7 @@ describe("band, limits shown as left", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Show details" }));
     const claude = providerBlock("claude-code");
     expect((await findWindow("Current session", claude)).textContent).toContain("5 Hour60%");
-    expect((await findWindow("Weekly limit", claude)).textContent).toContain("At this pace lasts to reset – about 8% left, resets in 3d");
+    expect((await findWindow("Weekly limit", claude)).textContent).toContain("Tight – at this pace about 8% left, resets in 3d");
     const codex = providerBlock("codex");
     expect(within(codex()!).getByRole("button").textContent).toBe("▸Codex5H 90%");
     fireEvent.click(within(codex()!).getByRole("button"));
@@ -442,7 +446,7 @@ describe("band, limits shown as left", () => {
   it("speaks Russian", async () => {
     render(Banner, {}, backend({ snapshot: twoProviders() }), { settings: { limitsShow: "remaining", language: "ru" } });
     fireEvent.click(await screen.findByRole("button", { name: "Подробнее" }));
-    expect((await findWindow("Weekly limit", providerBlock("claude-code"))).textContent).toContain("При текущем темпе хватит до сброса – останется примерно 8%");
+    expect((await findWindow("Weekly limit", providerBlock("claude-code"))).textContent).toContain("Впритык – при текущем темпе останется примерно 8%");
   });
 });
 
@@ -450,10 +454,76 @@ describe("band, Russian", () => {
   it("follows the language setting", async () => {
     render(Banner, {}, backend({ snapshot: twoProviders() }), { settings: { language: "ru" } });
     expect((await findWindow("Weekly limit")).textContent).toBe("Нед3д92%");
-    expect((await screen.findByTestId("headline")).textContent).toMatch(/^Всё в порядке\. Лимита с запасом хватит до сброса .+\.$/);
+    expect((await screen.findByTestId("headline")).textContent).toMatch(/^Впритык\. При таком темпе до сброса .+ уйдёт примерно 92% лимита\.$/);
     expect(await screen.findByRole("button", { name: "Сжать" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Авто-компакт" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Подробнее" }));
     expect((await screen.findByTestId("context-details")).textContent).toContain("Контекст занято 60%");
+  });
+});
+
+describe("band, pace state", () => {
+  const expand = async () => fireEvent.click(await screen.findByRole("button", { name: "Show details" }));
+  const fill = (el: HTMLElement) => el.querySelector<HTMLElement>("[aria-hidden] > span")!.className;
+  const one = (w: ReturnType<typeof win>) => snapshot([provider("claude-code", [w])]);
+  const runsOut = (projectedPercent: number, inMs: number) => ({
+    ...forecastOf(projectedPercent)!,
+    current: { projectedPercent, runOutAt: Date.now() + inMs },
+  });
+
+  it("AE1: a calm window at 80 % is normal on its bar, percent and note", async () => {
+    render(Banner, {}, backend({ snapshot: one(win("Current session", 80, { forecast: forecastOf(83), pace: "calm" })) }));
+    const session = await findWindow("Current session");
+    expect(within(session).getByText("80%").getAttribute("data-tone")).toBe("normal");
+    expect(fill(session)).toContain("bg-[#22b856]");
+    await expand();
+    const row = await findWindow("Current session", providerBlock("claude-code"));
+    const note = within(row).getByText(/At this pace lasts to reset – about 83% used/);
+    expect(note.getAttribute("data-tone")).toBeNull();
+    expect(note.className).toContain("text-muted-foreground");
+  });
+
+  it("AE3: a tight window at 92 % is amber, its note too", async () => {
+    render(Banner, {}, backend({ snapshot: one(win("Current session", 92, { forecast: forecastOf(94), pace: "tight" })) }));
+    const session = await findWindow("Current session");
+    expect(within(session).getByText("92%").getAttribute("data-tone")).toBe("amber");
+    expect(fill(session)).toContain("bg-[#ea8a0c]");
+    await expand();
+    const row = await findWindow("Current session", providerBlock("claude-code"));
+    expect(within(row).getByText(/^Tight – at this pace about 94% used/).getAttribute("data-tone")).toBe("amber");
+  });
+
+  it("a held will-not-last window stays amber while its note says it lasts", async () => {
+    render(Banner, {}, backend({ snapshot: one(win("Current session", 40, { forecast: forecastOf(80), pace: "short" })) }));
+    expect(within(await findWindow("Current session")).getByText("40%").getAttribute("data-tone")).toBe("amber");
+    expect((await screen.findByTestId("headline")).textContent).toMatch(/^On track/);
+    await expand();
+    const row = await findWindow("Current session", providerBlock("claude-code"));
+    expect(within(row).getByText(/At this pace lasts to reset – about 80% used/).getAttribute("data-tone")).toBe("amber");
+    expect(screen.queryByTestId("window-budget")).toBeNull();
+  });
+
+  it("a held will-not-last window whose run-out is now close is red with the critical headline", async () => {
+    const w = win("Current session", 50, { forecast: runsOut(200, 20 * 60_000), pace: "short" });
+    render(Banner, {}, backend({ snapshot: one(w) }));
+    expect(within(await findWindow("Current session")).getByText("50%").getAttribute("data-tone")).toBe("red");
+    const head = await screen.findByTestId("headline");
+    expect(head.textContent).toBe("At this pace you'll run out in 20m.");
+    expect(head.firstElementChild!.getAttribute("data-tone")).toBe("red");
+  });
+
+  it("a window from an older server without pace renders from its forecast", async () => {
+    const { pace: _pace, ...old } = win("Current session", 40, { forecast: runsOut(200, 90 * 60_000) });
+    render(Banner, {}, backend({ snapshot: one(old as ReturnType<typeof win>) }));
+    expect(within(await findWindow("Current session")).getByText("40%").getAttribute("data-tone")).toBe("amber");
+    expect((await screen.findByTestId("headline")).textContent).toMatch(/^At this pace you'll run out before/);
+  });
+
+  it("without a thread provider shows the one with the worst state, not the highest projection", () => {
+    const s = snapshot([
+      provider("claude-code", [win("Current session", 60, { forecast: forecastOf(95), pace: "tight" })]),
+      provider("codex", [win("Current session", 30, { forecast: forecastOf(60), pace: "short" })]),
+    ]);
+    expect(worstProvider(s.hosts[0]!.providers, Date.now())?.providerId).toBe("codex");
   });
 });

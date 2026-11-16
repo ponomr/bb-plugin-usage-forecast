@@ -23,6 +23,7 @@
 
 import { z } from "zod";
 import { forecastWindow, isNewWindow, type ClosedWindow } from "../shared/forecast";
+import { nextPace, rawPaceState } from "../shared/pace";
 import { windowDurationMs, windowKey } from "../shared/windows";
 import type { HostLimits, LimitsSnapshot, LimitWindow, ProviderStatus } from "../shared/contract";
 import { PROVIDER_STATUSES, RECENT_COMPACTIONS } from "../shared/contract";
@@ -517,7 +518,8 @@ export class Poller {
       const prevOpen = before?.open[w.label];
 
       let closedWindows: ClosedWindow[] | null = null;
-      if (prevWindow && prevOpen && isNewWindow(prevWindow.resetsAt, resetsAt)) {
+      const reset = prevWindow && prevOpen && isNewWindow(prevWindow.resetsAt, resetsAt);
+      if (reset) {
         if (prevWindow.resetsAt !== null) {
           closedWindows = await storage.appendClosedWindow(key, {
             startedAt: durationMs !== null ? prevWindow.resetsAt - durationMs : prevOpen.firstSeenAt,
@@ -534,6 +536,10 @@ export class Poller {
       }
 
       closedWindows ??= await storage.closedWindows(key, scope);
+      const forecast = forecastWindow({ usedPercent: w.usedPercent, resetsAt, durationMs, now, closedWindows });
+      // A new window starts without a held state.
+      const pace = nextPace(reset ? null : prevOpen?.pace, rawPaceState({ usedPercent: w.usedPercent, durationMs, forecast }, now), now);
+      if (pace !== null) open[w.label]!.pace = pace;
       windows.push({
         label: w.label,
         usedPercent: w.usedPercent,
@@ -541,7 +547,8 @@ export class Poller {
         model: typeof w.model === "string" ? w.model : null,
         cost: w.cost ? { usedUsdCents: w.cost.usedUsdCents, limitUsdCents: w.cost.limitUsdCents } : null,
         durationMs,
-        forecast: forecastWindow({ usedPercent: w.usedPercent, resetsAt, durationMs, now, closedWindows }),
+        forecast,
+        pace: pace?.state ?? null,
       });
       samples.push({ at: now, label: w.label, usedPercent: w.usedPercent, resetsAt });
     }
@@ -605,7 +612,8 @@ export async function readHosts(storage: Storage): Promise<StoredHost[]> {
 /**
  * The client view of the stored state. A window whose reset has passed loses
  * its forecast, and so does every window of a host that is not connected or
- * whose last poll failed: its numbers are stale.
+ * whose last poll failed: its numbers are stale. Such a window loses its pace
+ * too; a window stored before the pace state existed gets a null pace.
  */
 export function toSnapshot(hosts: readonly StoredHost[], log: LimitsSnapshot["recentCompactions"], now: number): LimitsSnapshot {
   const several = hosts.length > 1;
@@ -621,7 +629,7 @@ export function toSnapshot(hosts: readonly StoredHost[], log: LimitsSnapshot["re
       providers: h.latest.providers.map(({ open: _open, ...provider }) => ({
         ...provider,
         windows: provider.windows.map((w) =>
-          stale || (w.resetsAt !== null && w.resetsAt <= now) ? { ...w, forecast: null } : w,
+          stale || (w.resetsAt !== null && w.resetsAt <= now) ? { ...w, forecast: null, pace: null } : { ...w, pace: w.pace ?? null },
         ),
       })),
     };
