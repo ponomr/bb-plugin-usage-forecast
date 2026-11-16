@@ -68,6 +68,7 @@ function provider(providerId: string, windows: LimitWindow[], over: Partial<Prov
     status: "ok",
     message: null,
     planLabel: providerId === "codex" ? "Plus" : "Max",
+    planMultiplier: null,
     checkedAt: NOW,
     measuredAt: NOW,
     windows,

@@ -85,6 +85,8 @@ export type WorstWindow = Pick<LimitWindow, "label" | "model" | "usedPercent" | 
 export interface HeadroomEntry {
   providerId: string;
   planLabel: string | null;
+  /** The plan's multiplier, or null (see `src/shared/plan.ts`). */
+  planMultiplier: number | null;
   /** Every host signed in to this account, primary first. */
   hosts: { hostId: string | null; hostName: string | null }[];
   verdict: ProviderVerdict;
@@ -131,6 +133,7 @@ export function providerHeadroom(snapshot: LimitsSnapshot, now: number, options:
     const base = {
       providerId: p.providerId,
       planLabel: p.planLabel,
+      planMultiplier: p.planMultiplier ?? null,
       hosts: block.members.map((m) => ({ hostId: m.host.hostId, hostName: m.host.name })),
       status: p.status,
       measuredAt: p.measuredAt,

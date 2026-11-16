@@ -20,6 +20,7 @@ import { forecastWarns, formatPercent } from "../shared/thresholds";
 import { showsModelTag } from "../shared/windows";
 import type { PaceState } from "../shared/pace";
 import { accountBlocks } from "../shared/accounts";
+import { planText } from "../shared/plan";
 import { headroomReport, windowVerdict, type HeadroomEntry, type HeadroomReport } from "../shared/headroom";
 import { providerCompactsAtPercent } from "./threads";
 import type { Service } from "./rpc";
@@ -111,7 +112,8 @@ function hostName(h: HostLimits): string {
 }
 
 function formatProvider(lines: string[], p: ProviderLimits, now: number, on: string): void {
-  const plan = p.planLabel ? ` (${p.planLabel})` : "";
+  const name = planText(p.planLabel, p.planMultiplier);
+  const plan = name === null ? "" : ` (${name})`;
   const status = p.status === "error" && p.message ? `error: ${p.message}` : STATUS_WORDS[p.status];
   lines.push(`  ${p.providerId}${plan}${on}: ${status}`);
   if (p.windows.length && p.status !== "ok" && p.measuredAt !== null) {
@@ -183,7 +185,8 @@ export function formatHeadroom(r: HeadroomReport, s: LimitsSnapshot, now: number
   const several = s.hosts.length > 1;
   r.entries.forEach((e, i) => {
     const on = several ? ` on ${e.hosts.map((h) => h.hostName ?? h.hostId ?? "default host").join(", ")}` : "";
-    const plan = e.planLabel ? ` (${e.planLabel})` : "";
+    const name = planText(e.planLabel, e.planMultiplier);
+    const plan = name === null ? "" : ` (${name})`;
     // The whole report's stale line already covers an old poll; this marks one old account, as on a host that is not connected.
     const old = e.stale && !r.stale && e.measuredAt !== null ? `; measured ${formatDuration(now - e.measuredAt)} ago` : "";
     lines.push(`  ${i + 1}. ${e.providerId}${on}${plan}: ${e.verdict} – ${formatWorst(e, now)}${old}`);

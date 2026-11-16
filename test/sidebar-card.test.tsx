@@ -48,6 +48,12 @@ describe("SidebarCard", () => {
     expect(card().querySelectorAll('[data-provider="claude-code"]')).toHaveLength(1);
   });
 
+  it("shows the plan with its multiplier", async () => {
+    const b = backend({ snapshot: snapshot([provider("claude-code", [win("Current session", 30)], { planLabel: "Max", planMultiplier: 20 })]) });
+    render(SidebarCard, props, b);
+    await waitFor(() => expect(within(card()).getByText("Max 20×")).toBeTruthy());
+  });
+
   it("without any ok provider says there is no data", async () => {
     render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [], { status: "not_installed" })]) }));
     await waitFor(() => expect(card().textContent).toBe(en.noLimitsData));

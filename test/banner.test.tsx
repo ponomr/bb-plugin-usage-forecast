@@ -104,6 +104,12 @@ describe("band, collapsed", () => {
     expect(screen.queryByTestId("headline")).toBeNull();
   });
 
+  it("joins the plan multiplier to the plan name (UF-11 AE1)", async () => {
+    const s = snapshot([provider("claude-code", [win("Current session", 30, { forecast: null })], { planLabel: "Max", planMultiplier: 5 })]);
+    render(Banner, {}, backend({ snapshot: s }));
+    expect(await screen.findByText("Claude Code · Max 5×")).toBeTruthy();
+  });
+
   it("says when no data has arrived yet", async () => {
     render(Banner, {}, backend({ snapshot: snapshot([], { polledAt: null }) }));
     expect(await screen.findByText("No limit data yet")).toBeTruthy();
@@ -271,6 +277,19 @@ describe("band, expanded", () => {
     expect(within(screen.getByRole("list", { name: "Recent compacts" })).getAllByRole("listitem")).toHaveLength(5);
     expect(screen.getAllByText(/\(Codex\), auto: 85% → 30%, compacted/)).toHaveLength(5);
     expect(screen.queryByTestId("collapsed-row")).toBeNull();
+  });
+
+  it("shows the plan multiplier in the provider headers (UF-11 AE1, AE2)", async () => {
+    const s = snapshot([
+      provider("claude-code", [win("Current session", 40)], { planLabel: "Max", planMultiplier: 5 }),
+      provider("codex", [win("Current session", 10)], { planLabel: "Plus", planMultiplier: 1 }),
+    ]);
+    render(Banner, {}, backend({ snapshot: s }));
+    await expand();
+    await waitFor(() => expect(providerBlock("claude-code")()).not.toBeNull());
+    expect(within(providerBlock("claude-code")()!).getByText("Max 5×")).toBeTruthy();
+    expect(within(providerBlock("codex")()!).getByText("Plus")).toBeTruthy();
+    expect(providerBlock("codex")()!.textContent).not.toContain("×");
   });
 
   it("says when a window will run out before the reset, and the budget that lasts", async () => {

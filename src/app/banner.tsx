@@ -8,6 +8,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import type { ProviderLimits, ThreadState } from "../shared/contract";
+import { planText } from "../shared/plan";
 import { formatPercent } from "../shared/thresholds";
 import { CompactButton, ContextPanel } from "./context-row";
 import {
@@ -70,12 +71,13 @@ function Status({ view, now }: { view: BannerView; now: number }) {
       const { primary } = view;
       const head = headline(s, primary.windows.map((w) => windowView(w, now)), now);
       const reason = statusText(s, primary.status, primary.message);
+      const plan = planText(primary.planLabel, primary.planMultiplier);
       return (
         <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
           {head === null ? (
             <span className="text-muted-foreground">
               {providerName(s, primary.providerId)}
-              {primary.planLabel ? ` · ${primary.planLabel}` : ""}
+              {plan === null ? "" : ` · ${plan}`}
             </span>
           ) : (
             <span data-testid="headline">
@@ -329,10 +331,11 @@ function ProviderHeader({ provider, now }: { provider: ProviderLimits; now: numb
   const reason = statusText(s, provider.status, provider.message);
   // Windows kept from an earlier answer while the latest poll failed.
   const keptFrom = provider.status === "ok" || provider.windows.length === 0 ? null : provider.measuredAt;
+  const plan = planText(provider.planLabel, provider.planMultiplier);
   return (
     <span className="flex flex-wrap items-baseline gap-x-2">
       <span className="font-semibold">{providerName(s, provider.providerId)}</span>
-      {provider.planLabel ? <span className="text-muted-foreground">{provider.planLabel}</span> : null}
+      {plan === null ? null : <span className="text-muted-foreground">{plan}</span>}
       {reason === null ? null : <Toned tone="amber">{reason}</Toned>}
       {keptFrom === null ? null : <span className="text-muted-foreground">{s.dataFrom(formatClock(s, keptFrom, now))}</span>}
     </span>

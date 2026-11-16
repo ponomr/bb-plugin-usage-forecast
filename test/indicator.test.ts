@@ -34,7 +34,7 @@ function win(label: string, usedPercent: number, state: PaceState | null, over: 
 }
 
 function prov(providerId: string, windows: LimitWindow[], over: Partial<ProviderLimits> = {}): ProviderLimits {
-  return { providerId, status: "ok", message: null, planLabel: null, checkedAt: NOW, measuredAt: NOW, windows, ...over };
+  return { providerId, status: "ok", message: null, planLabel: null, planMultiplier: null, checkedAt: NOW, measuredAt: NOW, windows, ...over };
 }
 
 function host(hostId: string, providers: ProviderLimits[], over: Partial<HostLimits> = {}): HostLimits {

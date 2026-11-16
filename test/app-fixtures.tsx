@@ -59,6 +59,7 @@ export function provider(providerId: string, windows: LimitWindow[], over: Parti
     status: "ok",
     message: null,
     planLabel: null,
+    planMultiplier: null,
     checkedAt: Date.now(),
     measuredAt: Date.now(),
     windows,

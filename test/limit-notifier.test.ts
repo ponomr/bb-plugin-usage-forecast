@@ -11,6 +11,7 @@ function provider(windows: { label: string; usedPercent: number; resetsAt: numbe
     status,
     message: null,
     planLabel: null,
+    planMultiplier: null,
     checkedAt: NOW,
     measuredAt: NOW,
     windows: windows.map((w) => ({ ...w, model: null, cost: null, durationMs: 5 * HOUR_MS, forecast: null, pace: null })),

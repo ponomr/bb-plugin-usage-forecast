@@ -42,7 +42,7 @@ export function paced(label: string, usedPercent: number, projected: number, ove
 }
 
 export function provider(providerId: string, windows: LimitWindow[], over: Partial<ProviderLimits> = {}): ProviderLimits {
-  return { providerId, status: "ok", message: null, planLabel: null, checkedAt: NOW, measuredAt: NOW, windows, ...over };
+  return { providerId, status: "ok", message: null, planLabel: null, planMultiplier: null, checkedAt: NOW, measuredAt: NOW, windows, ...over };
 }
 
 export function host(hostId: string | null, name: string | null, providers: ProviderLimits[], over: Partial<HostLimits> = {}): HostLimits {

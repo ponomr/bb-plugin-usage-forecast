@@ -122,6 +122,7 @@ describe("headroom", () => {
     expect(out.entries[0]).toEqual({
       providerId: "codex",
       planLabel: "Plus",
+      planMultiplier: null,
       hosts: [{ hostId: "host_server", hostName: "server" }],
       verdict: "headroom",
       availableAt: null,
@@ -197,5 +198,36 @@ describe("headroom", () => {
     const never = snap([], null);
     expect((await cli(never).run("headroom")).stdout).toBe("Headroom: not polled yet.");
     expect(JSON.parse((await cli(never).run("headroom", "--json")).stdout)).toEqual({ polledAt: null, ageMs: null, stale: false, entries: [] });
+  });
+});
+
+describe("plan multiplier (UF-11)", () => {
+  const s = snap([
+    host("host_server", "server", [
+      provider("claude-code", [paced("Weekly limit", 20, 40)], { planLabel: "Max", planMultiplier: 5 }),
+      provider("codex", [paced("Weekly limit", 57, 69)], { planLabel: "Plus" }),
+    ]),
+  ]);
+
+  it("prints it after the plan name in status and headroom (AE1, AE2)", async () => {
+    const status = (await cli(s).run("status")).stdout;
+    expect(status).toContain("  claude-code (Max 5×): ok");
+    expect(status).toContain("  codex (Plus): ok");
+    const headroom = (await cli(s).run("headroom")).stdout;
+    expect(headroom).toContain("claude-code (Max 5×): headroom");
+    expect(headroom).toContain("codex (Plus): headroom");
+  });
+
+  it("adds planMultiplier to the JSON of status and headroom (R4)", async () => {
+    const status = JSON.parse((await cli(s).run("status", "--json")).stdout) as LimitsSnapshot;
+    expect(status.hosts[0]!.providers.map((p) => [p.providerId, p.planMultiplier])).toEqual([
+      ["claude-code", 5],
+      ["codex", null],
+    ]);
+    const headroom = JSON.parse((await cli(s).run("headroom", "--json")).stdout);
+    expect(headroom.entries.map((e: { providerId: string; planMultiplier: number | null }) => [e.providerId, e.planMultiplier])).toEqual([
+      ["claude-code", 5],
+      ["codex", null],
+    ]);
   });
 });

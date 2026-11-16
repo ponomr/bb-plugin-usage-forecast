@@ -99,6 +99,12 @@ export const providerLimitsSchema = z.object({
   /** Error text when `status` is `error`. */
   message: z.string().nullable(),
   planLabel: z.string().nullable(),
+  /**
+   * The plan's multiplier from the host's undocumented `plan` object when it
+   * is a finite number above 1, kept like `planLabel` while later polls fail.
+   * Null otherwise and in records stored before it existed.
+   */
+  planMultiplier: z.number().nullable().default(null),
   /** Epoch ms of the latest poll that reached this provider. */
   checkedAt: z.number(),
   /** Epoch ms of the latest `ok` answer; `windows` come from it. */

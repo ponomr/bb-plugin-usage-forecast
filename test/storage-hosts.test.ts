@@ -33,6 +33,7 @@ const latestOf = (usedPercent: number): StoredLatest => ({
       status: "ok",
       message: null,
       planLabel: "Plus",
+      planMultiplier: null,
       checkedAt: NOW,
       measuredAt: NOW,
       windows: [{ label: "Weekly limit", usedPercent, resetsAt: NOW + HOUR_MS, model: null, cost: null, durationMs: null, forecast: null, pace: null }],
