@@ -34,7 +34,18 @@ import {
   type CompactState,
   useStrings,
 } from "./hooks";
-import { bannerView, contextView, headline, paceDetails, windowBudget, windowNote, windowView, type BannerView, type WindowView } from "./model";
+import {
+  bannerView,
+  contextView,
+  headline,
+  paceDetails,
+  threadHost,
+  windowBudget,
+  windowNote,
+  windowView,
+  type BannerView,
+  type WindowView,
+} from "./model";
 import { shownPercent } from "../shared/limits-show";
 import { RecentCompacts } from "./settings-section";
 import { Bar, Ink, SegmentBar, Switch, Toned } from "./ui";
@@ -70,6 +81,11 @@ function Status({ view, now }: { view: BannerView; now: number }) {
             </span>
           )}
           {reason === null ? null : <Toned tone="amber">{reason}</Toned>}
+          {view.staleSince === null ? null : (
+            <span data-testid="stale">
+              <Toned tone="amber">{s.hostStale(formatClock(s, view.staleSince, now))}</Toned>
+            </span>
+          )}
         </span>
       );
     }
@@ -324,7 +340,9 @@ export function Banner() {
   if (threadId === null) return null;
 
   const state = thread.data;
-  const view = bannerView(s, snapshot.data, snapshot.error?.message ?? null, state?.providerId ?? null);
+  const view = bannerView(s, snapshot.data, snapshot.error?.message ?? null, state, now);
+  const host = snapshot.data === undefined ? null : threadHost(snapshot.data.hosts, state?.hostId);
+  const ownHost = host === null || typeof host === "string" ? null : host;
   const primary = view.kind === "limits" ? view.primary : null;
   const ctx = state?.context ? contextView(state.context) : null;
   const asking = askAt !== null && ctx !== null && Math.round(ctx.percent) >= askAt;
@@ -406,7 +424,7 @@ export function Banner() {
               ))}
             </div>
           ) : null}
-          {data?.pollError && view.kind !== "error" ? <Toned tone="amber">{s.pollFailed(data.pollError)}</Toned> : null}
+          {ownHost?.pollError && view.kind !== "error" ? <Toned tone="amber">{s.pollFailed(ownHost.pollError)}</Toned> : null}
           {data === undefined || data.recentCompactions.length === 0 ? null : (
             <Disclosure summary={<span className="font-medium">{s.recentCompactsCount(data.recentCompactions.length)}</span>}>
               <RecentCompacts entries={data.recentCompactions} now={now} heading={false} />
@@ -414,7 +432,7 @@ export function Banner() {
           )}
           <div className="flex items-center justify-between gap-2">
             <span className="text-muted-foreground">
-              {data?.polledAt == null ? null : s.updated(formatAgo(s, data.polledAt, now))}
+              {ownHost?.polledAt == null ? null : s.updated(formatAgo(s, ownHost.polledAt, now))}
             </span>
             <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setExpanded(false)}>
               ▲ {s.collapse}

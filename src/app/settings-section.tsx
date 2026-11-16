@@ -14,6 +14,7 @@ import {
 } from "../shared/contract";
 import { compactEntryText, formatAgo, providerName, shortTokens, statusText } from "./format";
 import { errorText, useNow, useSnapshot, useStrings } from "./hooks";
+import { providersOfHosts } from "./model";
 import { Toned } from "./ui";
 import { Button } from "../../components/ui/button";
 
@@ -63,6 +64,7 @@ export function SettingsSection() {
     return Number.isFinite(value) && value > 0 ? shortTokens(value) : null;
   };
   const data = snapshot.data;
+  const providers = providersOfHosts(data?.hosts ?? []);
 
   const refresh = () => {
     setRefreshing(true);
@@ -97,9 +99,9 @@ export function SettingsSection() {
         </div>
         {data?.pollError ? <Toned tone="amber">{s.pollError(data.pollError)}</Toned> : null}
         {refreshError === null ? null : <Toned tone="red">{refreshError}</Toned>}
-        {data?.providers.length ? (
+        {providers.length ? (
           <ul className="flex flex-col">
-            {data.providers.map((p) => (
+            {providers.map((p) => (
               <li key={p.providerId}>
                 {providerName(s, p.providerId)}: {statusText(s, p.status, p.message) ?? "ok"}
               </li>

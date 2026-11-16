@@ -2,12 +2,12 @@
 // status, the headline, and the context bar segments. The headline and pace
 // rules follow the band of claude-code-usage-quota-mod (see NOTICE).
 
-import type { LimitsSnapshot, LimitWindow, ProviderLimits, ThreadContext } from "../shared/contract";
+import type { HostLimits, LimitsSnapshot, LimitWindow, ProviderLimits, ThreadContext } from "../shared/contract";
 import { contextTone, forecastWarns, limitTone, paceTone, worseTone, type Tone } from "../shared/thresholds";
 import { shownPercent, type LimitsShow } from "../shared/limits-show";
 import { lastingBudget, mainProjection } from "../shared/forecast";
 import { DAY_MS } from "../shared/windows";
-import { formatResetIn, formatRunOut, formatSpan, formatTime, providerName, statusText } from "./format";
+import { formatClock, formatResetIn, formatRunOut, formatSpan, formatTime, providerName, statusText } from "./format";
 import type { Strings } from "./i18n";
 
 // --- Which provider --------------------------------------------------------
@@ -41,8 +41,12 @@ export type BannerView =
   | { kind: "error"; message: string }
   | { kind: "empty" }
   | { kind: "reasons"; text: string }
-  /** `primary` is the thread's provider when it has windows, else the worst one. */
-  | { kind: "limits"; primary: ProviderLimits; others: ProviderLimits[] };
+  /**
+   * `primary` is the thread's provider when it has windows, else the worst
+   * one. `staleSince` is the time of the host's last good data while the host
+   * is disconnected or its last poll failed, else null.
+   */
+  | { kind: "limits"; primary: ProviderLimits; others: ProviderLimits[]; staleSince: number | null };
 
 /** One line of reasons, e.g. "Claude Code: sign-in expired · Codex: not installed". */
 export function reasonsLine(s: Strings, providers: readonly ProviderLimits[]): string {
@@ -51,20 +55,68 @@ export function reasonsLine(s: Strings, providers: readonly ProviderLimits[]): s
     .join(" · ");
 }
 
+/** Every provider of the hosts once, as the first host (the default one) reports it. */
+export function providersOfHosts(hosts: readonly HostLimits[]): ProviderLimits[] {
+  const seen = new Map<string, ProviderLimits>();
+  for (const h of hosts) for (const p of h.providers) if (!seen.has(p.providerId)) seen.set(p.providerId, p);
+  return [...seen.values()];
+}
+
+/**
+ * The host record a thread reads its limits from, `"unknown"` when no record
+ * may be shown, or `"loading"` while the thread's host is not known yet and
+ * several hosts are. `threadHostId` is undefined while the thread state loads.
+ * A single record without a host id (hosts not known yet) serves every thread;
+ * a thread whose host did not resolve uses the only host when there is one; a
+ * resolved host without a record is unknown, never another host's windows.
+ */
+export function threadHost(
+  hosts: readonly HostLimits[],
+  threadHostId: string | null | undefined,
+): HostLimits | "unknown" | "loading" {
+  const only = hosts.length === 1 ? hosts[0]! : null;
+  if (only !== null && only.hostId === null) return only;
+  if (threadHostId === undefined) return only ?? (hosts.length === 0 ? "unknown" : "loading");
+  if (threadHostId === null) return only ?? "unknown";
+  return hosts.find((h) => h.hostId === threadHostId) ?? "unknown";
+}
+
+/** True when a host's values are not current: it is disconnected or its last poll failed. */
+export function hostStale(host: HostLimits): boolean {
+  return !host.connected || host.pollError !== null;
+}
+
+/** The time of a host's newest measured data, else its last poll. */
+function dataTime(host: HostLimits): number | null {
+  const measured = host.providers.map((p) => p.measuredAt).filter((t): t is number => t !== null);
+  return measured.length > 0 ? Math.max(...measured) : host.polledAt;
+}
+
 export function bannerView(
   s: Strings,
   snapshot: LimitsSnapshot | undefined,
   errorMessage: string | null,
-  threadProviderId: string | null,
+  thread: { providerId: string | null; hostId: string | null } | undefined,
+  now: number,
 ): BannerView {
   if (snapshot === undefined) return errorMessage === null ? { kind: "loading" } : { kind: "error", message: errorMessage };
   if (snapshot.polledAt === null) return { kind: "empty" };
-  const providers = snapshot.providers;
+  const host = threadHost(snapshot.hosts, thread?.hostId);
+  if (host === "loading") return { kind: "loading" };
+  if (host === "unknown") return { kind: "reasons", text: s.hostUnknown };
+  if (host.polledAt === null) return { kind: "empty" };
+  const stale = hostStale(host);
+  // A stale host shows no forecast as current (the server drops them too).
+  const providers = stale
+    ? host.providers.map((p) => ({ ...p, windows: p.windows.map((w) => ({ ...w, forecast: null })) }))
+    : host.providers;
+  const staleSince = stale ? dataTime(host) : null;
   const primary =
-    providers.find((p) => p.providerId === threadProviderId && p.windows.length > 0) ?? worstProvider(providers);
-  if (primary !== null) return { kind: "limits", primary, others: providers.filter((p) => p !== primary) };
+    providers.find((p) => p.providerId === (thread?.providerId ?? null) && p.windows.length > 0) ?? worstProvider(providers);
+  if (primary !== null) return { kind: "limits", primary, others: providers.filter((p) => p !== primary), staleSince };
+  if (!host.connected) return { kind: "reasons", text: s.hostStale(formatClock(s, staleSince ?? host.polledAt, now)) };
   if (providers.length === 0) {
-    return snapshot.pollError === null ? { kind: "reasons", text: s.noProviders } : { kind: "error", message: snapshot.pollError };
+    return host.pollError === null ? { kind: "reasons", text: s.noProviders } : { kind: "error", message: host.pollError };
   }
   return { kind: "reasons", text: reasonsLine(s, providers) };
 }
