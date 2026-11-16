@@ -1,9 +1,11 @@
-// The card the footer ring opens: every provider's windows, grouped by host
-// when there is more than one, with shared accounts listed once. Compact: one
+// The card the footer ring opens: every provider's windows. With more than
+// one host the hosts are tabs and the card shows one of them, first the host
+// of the ring's worst window. Compact: one
 // line per window (label, bar, percent, reset); the forecast is the bar's
 // colour and tick, its words are the row's tooltip, and only a window that
 // runs out before its reset spells them out.
 
+import { useState } from "react";
 import type { ExperimentalSidebarFooterDisclosureProps } from "@get-bb/plugin-sdk/app";
 import type { LimitWindow, Tokens } from "../shared/contract";
 import { planText } from "../shared/plan";
@@ -13,6 +15,7 @@ import { formatClock, providerName, shortWindowLabel, windowLabel } from "./form
 import { errorText, useHiddenProviders, useLimitsShow, useNow, useResetShow, useSnapshot, useStrings, useTokens } from "./hooks";
 import { indicatorView, type IndicatorProvider } from "./indicator";
 import { hostStale, paceDetails, windowNote, windowView } from "./model";
+import { cn } from "../../lib/utils";
 import { Toned } from "./ui";
 
 type ProviderTokens = Tokens["providers"][number];
@@ -80,20 +83,19 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
   const hidden = useHiddenProviders();
   const query = useSnapshot();
   const tokens = useTokens(null).data;
+  // The tab the user picked; until then, and when its host is gone, the worst window's host.
+  const [picked, setPicked] = useState<string | null>(null);
   const snapshot = query.data;
   let body: React.ReactNode;
   if (snapshot === undefined) {
     body = query.error ? <Toned tone="amber">{errorText(query.error)}</Toned> : <span className="text-muted-foreground">{s.loading}</span>;
   } else {
     const view = indicatorView(snapshot, now, hidden);
-    // UF-12 R9: the sums cover a provider's BB threads on every host, so a
-    // provider listed under several hosts carries them once, in its first section.
-    const withTokens = new Set<string>();
-    const tokensOf = (providerId: string) => {
-      if (withTokens.has(providerId)) return undefined;
-      withTokens.add(providerId);
-      return tokens?.providers.find((p) => p.providerId === providerId);
-    };
+    const shown =
+      view.groups.find((g) => g.hostId === picked) ?? view.groups.find((g) => g.hostName === view.worst?.hostName) ?? view.groups[0];
+    const tokensOf = (providerId: string) => tokens?.providers.find((p) => p.providerId === providerId);
+    const host = shown === undefined ? undefined : snapshot.hosts.find((h) => h.hostId === shown.hostId);
+    const stale = host !== undefined && hostStale(host) && host.polledAt !== null;
     const unavailable =
       view.unavailable.length === 0 ? null : (
         <span className="text-muted-foreground" data-testid="hosts-unavailable">
@@ -103,21 +105,38 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
     body = (
       <>
         {view.groups.length === 0 ? <span className="text-muted-foreground">{s.noLimitsData}</span> : null}
-        {view.groups.map((group) => {
-          const host = snapshot.hosts.find((h) => h.hostId === group.hostId);
-          const stale = host !== undefined && hostStale(host) && host.polledAt !== null;
-          return (
-            <section key={group.hostId ?? ""} className="flex flex-col gap-2 border-border border-t pt-2 first:border-t-0 first:pt-0" data-host={group.hostId ?? ""}>
-              {view.showHosts ? <h3 className="text-[11px] text-muted-foreground">{group.hostName}</h3> : null}
-              {stale ? <Toned tone="amber">{s.hostStale(formatClock(s, host.polledAt!, now))}</Toned> : null}
-              <div className="flex flex-col gap-2 [&>section+section]:border-border [&>section+section]:border-t [&>section+section]:pt-2">
-                {group.providers.map((entry) => (
-                  <ProviderSection key={entry.provider.providerId} entry={entry} now={now} tokens={tokensOf(entry.provider.providerId)} />
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        {view.showHosts && shown !== undefined ? (
+          <div role="tablist" className="flex flex-wrap gap-1">
+            {view.groups.map((group) => {
+              const selected = group === shown;
+              return (
+                <button
+                  key={group.hostId ?? ""}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  className={cn(
+                    "cursor-pointer rounded-md px-2 py-0.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                    selected ? "bg-muted font-semibold" : "text-muted-foreground",
+                  )}
+                  onClick={() => setPicked(group.hostId)}
+                >
+                  {group.hostName}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+        {shown === undefined ? null : (
+          <section className="flex flex-col gap-2" data-host={shown.hostId ?? ""}>
+            {stale ? <Toned tone="amber">{s.hostStale(formatClock(s, host!.polledAt!, now))}</Toned> : null}
+            <div className="flex flex-col gap-2 [&>section+section]:border-border [&>section+section]:border-t [&>section+section]:pt-2">
+              {shown.providers.map((entry) => (
+                <ProviderSection key={entry.provider.providerId} entry={entry} now={now} tokens={tokensOf(entry.provider.providerId)} />
+              ))}
+            </div>
+          </section>
+        )}
         {unavailable}
       </>
     );

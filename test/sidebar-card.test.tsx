@@ -3,7 +3,7 @@
 // shared account once with the hosts it is also on, and the band's rows.
 
 import { loadPluginApp } from "@get-bb/plugin-sdk/testing/app";
-import { act, cleanup, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { en } from "../src/app/i18n";
 import { windowNote, windowView } from "../src/app/model";
@@ -18,7 +18,7 @@ const props = { dismiss: () => {} };
 const card = () => screen.getByTestId("limits-card");
 
 describe("SidebarCard", () => {
-  it("with two hosts heads each group with its host", async () => {
+  it("with two hosts shows one host at a time, picked by tabs", async () => {
     const b = backend({
       snapshot: snapshot([], {
         hosts: [
@@ -28,24 +28,34 @@ describe("SidebarCard", () => {
       }),
     });
     render(SidebarCard, props, b);
-    await waitFor(() => expect(card().querySelectorAll("[data-host]")).toHaveLength(2));
-    expect(Array.from(card().querySelectorAll("h3")).map((h) => h.textContent)).toEqual(["server", "laptop"]);
+    await waitFor(() => expect(screen.getAllByRole("tab")).toHaveLength(2));
+    expect(screen.getAllByRole("tab").map((t) => t.textContent)).toEqual(["server", "laptop"]);
+    // It opens on the host of the ring's worst window.
+    expect(screen.getByRole("tab", { selected: true }).textContent).toBe("laptop");
+    expect(card().querySelectorAll("[data-host]")).toHaveLength(1);
     expect(within(card().querySelector('[data-host="laptop"]')!).getByText("Claude Code")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "server" }));
+    expect(screen.getByRole("tab", { selected: true }).textContent).toBe("server");
+    expect(card().querySelector('[data-host="laptop"]')).toBeNull();
+    expect(within(card().querySelector('[data-host="server"]')!).getByText("Codex")).toBeTruthy();
   });
 
-  it("with one host has no host heading", async () => {
+  it("with one host has no tabs", async () => {
     render(SidebarCard, props, backend());
     await waitFor(() => expect(card().querySelector("[data-provider]")).not.toBeNull());
-    expect(card().querySelector("h3")).toBeNull();
+    expect(screen.queryByRole("tab")).toBeNull();
   });
 
-  it("lists a shared account once, with the other hosts", async () => {
+  it("lists a shared account in each host's tab, with the other hosts", async () => {
     const shared = (sharedWith: string) => provider("claude-code", [win("Current session", 30)], { sharedWith: [sharedWith] });
     const b = backend({
       snapshot: snapshot([], { hosts: [host("server", [shared("laptop")], { primary: true }), host("laptop", [shared("server")])] }),
     });
     render(SidebarCard, props, b);
     await waitFor(() => expect(screen.getByTestId("also-on").textContent).toBe("also laptop"));
+    expect(card().querySelectorAll('[data-provider="claude-code"]')).toHaveLength(1);
+    fireEvent.click(screen.getByRole("tab", { name: "laptop" }));
+    expect(screen.getByTestId("also-on").textContent).toBe("also server");
     expect(card().querySelectorAll('[data-provider="claude-code"]')).toHaveLength(1);
   });
 
@@ -133,7 +143,7 @@ describe("SidebarCard, tokens (UF-12 R9)", () => {
     await waitFor(() => expect(screen.getByTestId("provider-tokens").textContent).toBe("сегодня 310 тыс. · месяц 4,2 млн"));
   });
 
-  it("shows a provider listed under two hosts with its sums once", async () => {
+  it("shows a provider listed under two hosts with its sums in each tab", async () => {
     const b = backend({
       snapshot: snapshot([], {
         hosts: [
@@ -145,7 +155,10 @@ describe("SidebarCard, tokens (UF-12 R9)", () => {
     });
     render(SidebarCard, props, b);
     await waitFor(() => expect(screen.getAllByTestId("provider-tokens")).toHaveLength(1));
+    fireEvent.click(screen.getByRole("tab", { name: "server" }));
     expect(card().querySelector('[data-host="server"] [data-testid="provider-tokens"]')).not.toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "laptop" }));
+    expect(card().querySelector('[data-host="laptop"] [data-testid="provider-tokens"]')).not.toBeNull();
   });
 
   it("leaves a hidden provider out with its sums", async () => {

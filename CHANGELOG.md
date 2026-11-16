@@ -4,6 +4,13 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.12 — 2026-11-16
+
+- The sidebar card shows one host at a time: with more than one host the
+  hosts are tabs above the list, and the card opens on the host of the ring's
+  worst window. An account shared by several hosts is listed in each of
+  their tabs, and so are a provider's token sums.
+
 ## 0.4.11 — 2026-11-16
 
 - The sidebar card is compact: a window is one line with a short label

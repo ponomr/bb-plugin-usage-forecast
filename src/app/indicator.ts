@@ -1,7 +1,8 @@
 // Pure view logic for the sidebar-footer indicator: the worst window across
 // every host, which the ring draws, and the providers grouped by host, which
-// the card lists. A provider shared by several hosts (`sharedWith`) is one
-// account: it appears once, under its first host, from its newest answer.
+// the card lists, one host per tab. A provider shared by several hosts
+// (`sharedWith`) is one account: every one of its hosts lists it, from its
+// newest answer, and the ring counts it once.
 
 import type { HostLimits, LimitsSnapshot, ProviderLimits } from "../shared/contract";
 import { shownPercent, type LimitsShow } from "../shared/limits-show";
@@ -40,7 +41,7 @@ export interface IndicatorGroup {
 export interface IndicatorView {
   worst: WorstWindow | null;
   groups: IndicatorGroup[];
-  /** True when more than one host is known: the card heads each group with its host. */
+  /** True when more than one host is known: the card shows one host at a time, picked by tabs. */
   showHosts: boolean;
   /** Hosts that cannot be read now and have nothing listed, by name. */
   unavailable: string[];
@@ -102,7 +103,9 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number,
       }
       if (best === null || best.windows.length === 0) continue;
       for (const i of ordered) listed.add(i);
-      groups[ordered[0]!]!.push({ provider: best, alsoOn: ordered.slice(1).map((i) => hostName(hosts[i]!)) });
+      for (const i of ordered) {
+        groups[i]!.push({ provider: best, alsoOn: ordered.filter((j) => j !== i).map((j) => hostName(hosts[j]!)) });
+      }
     }
   });
 
