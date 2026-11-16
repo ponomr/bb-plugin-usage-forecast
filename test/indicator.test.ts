@@ -217,7 +217,33 @@ describe("indicatorView: groups", () => {
   });
 
   it("no snapshot yet, or one never polled, gives no data", () => {
-    expect(indicatorView(undefined, NOW)).toEqual({ worst: null, groups: [], showHosts: false });
+    expect(indicatorView(undefined, NOW)).toEqual({ worst: null, groups: [], showHosts: false, unavailable: [] });
     expect(indicatorView({ ...snap([]), polledAt: null }, NOW).worst).toBeNull();
+  });
+});
+
+describe("indicatorView: review fixes", () => {
+  it("a window whose reset has passed is not the worst window", () => {
+    const view = indicatorView(
+      snap([
+        host("server", [
+          prov("codex", [win("Current session", 100, null, { resetsAt: NOW - HOUR_MS }), win("Weekly limit", 40, "calm")]),
+        ]),
+      ]),
+      NOW,
+    );
+    expect(view.worst).toMatchObject({ label: "Weekly limit", usedPercent: 40 });
+  });
+
+  it("names a host that cannot be read and has nothing listed", () => {
+    const view = indicatorView(
+      snap([
+        host("server", [prov("codex", [win("Weekly limit", 40, "calm")])]),
+        host("laptop", [prov("codex", [], { status: "error", measuredAt: null })], { connected: false }),
+      ]),
+      NOW,
+    );
+    expect(view.groups.map((g) => g.hostName)).toEqual(["server"]);
+    expect(view.unavailable).toEqual(["laptop"]);
   });
 });

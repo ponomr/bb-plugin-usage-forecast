@@ -41,6 +41,8 @@ export interface IndicatorView {
   groups: IndicatorGroup[];
   /** True when more than one host is known: the card heads each group with its host. */
   showHosts: boolean;
+  /** Hosts that cannot be read now and have nothing listed, by name. */
+  unavailable: string[];
 }
 
 type Ranked = Pick<WorstWindow, "state" | "usedPercent" | "resetsAt">;
@@ -64,7 +66,7 @@ function currentProviders(host: HostLimits): ProviderLimits[] {
   return host.providers.map((p) => ({ ...p, windows: p.windows.map((w) => ({ ...w, forecast: null, pace: null })) }));
 }
 
-const EMPTY: IndicatorView = { worst: null, groups: [], showHosts: false };
+const EMPTY: IndicatorView = { worst: null, groups: [], showHosts: false, unavailable: [] };
 
 export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number): IndicatorView {
   if (snapshot === undefined || snapshot.polledAt === null) return EMPTY;
@@ -74,6 +76,7 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number)
   const indexOf = new Map(hosts.map((h, i) => [h.hostId, i]));
   const groups: IndicatorProvider[][] = hosts.map(() => []);
   const done = new Set<string>();
+  const listed = new Set<number>();
 
   hosts.forEach((_, start) => {
     for (const { providerId } of providersOf[start]!) {
@@ -96,6 +99,7 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number)
         if (best === null || (p.measuredAt ?? -Infinity) > (best.measuredAt ?? -Infinity)) best = p;
       }
       if (best === null || best.windows.length === 0) continue;
+      for (const i of ordered) listed.add(i);
       groups[ordered[0]!]!.push({ provider: best, alsoOn: ordered.slice(1).map((i) => hostName(hosts[i]!)) });
     }
   });
@@ -104,6 +108,8 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number)
   groups.forEach((entries, i) => {
     for (const { provider } of entries) {
       for (const window of provider.windows) {
+        // A passed reset: the percent belongs to the finished window.
+        if (window.resetsAt !== null && window.resetsAt <= now) continue;
         const view = windowView(window, now);
         const candidate: WorstWindow = {
           hostName: showHosts ? hostName(hosts[i]!) : null,
@@ -126,6 +132,7 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number)
       providers.length === 0 ? [] : [{ hostId: hosts[i]!.hostId, hostName: hostName(hosts[i]!), providers }],
     ),
     showHosts,
+    unavailable: hosts.filter((h, i) => hostStale(h) && !listed.has(i)).map(hostName),
   };
 }
 

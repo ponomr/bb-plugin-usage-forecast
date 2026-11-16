@@ -50,10 +50,10 @@ The limits band lives in the composer of a thread. On the thread list, in settin
 
 ### Acceptance Examples
 
-- AE1. Clovis: Codex weekly 60 % `short`; Mac: Claude Code session 92 % `critical`. Ring is red, filled to 92 %. Title, where the host shows it: "Sky Blue M4 · Claude Code · Current session: 92%, critical".
+- AE1. server: Codex weekly 60 % `short`; Mac: Claude Code session 92 % `critical`. Ring is red, filled to 92 %. Title, where the host shows it: "laptop · Claude Code · Current session: 92%, critical".
 - AE2. Every window calm, highest 34 %. Ring has the normal colour, filled to 34 %.
 - AE3. Two windows `short`, 60 % and 71 %. The 71 % window is the worst.
-- AE4. Claude Code is one account on both hosts (`sharedWith`). The card shows its windows once under the first host, heading "Claude Code · also Sky Blue M4".
+- AE4. Claude Code is one account on both hosts (`sharedWith`). The card shows its windows once under the first host, heading "Claude Code · also laptop".
 - AE5. Snapshot has no host with an `ok` provider. Ring is empty and neutral; the card says there is no limits data and offers nothing else.
 - AE6. The setting is off. The footer has no item of this plugin.
 - AE7. A window turns `critical` between two polls (the render-time `rawPaceState` of UF-7). The ring turns red on the next minute tick of `useNow`, without a new snapshot.

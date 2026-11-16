@@ -38,11 +38,16 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
     body = query.error ? <Toned tone="amber">{errorText(query.error)}</Toned> : <span className="text-muted-foreground">{s.loading}</span>;
   } else {
     const view = indicatorView(snapshot, now);
-    body =
-      view.groups.length === 0 ? (
-        <span className="text-muted-foreground">{s.noLimitsData}</span>
-      ) : (
-        view.groups.map((group) => {
+    const unavailable =
+      view.unavailable.length === 0 ? null : (
+        <span className="text-muted-foreground" data-testid="hosts-unavailable">
+          {s.hostsUnavailable(view.unavailable.join(", "))}
+        </span>
+      );
+    body = (
+      <>
+        {view.groups.length === 0 ? <span className="text-muted-foreground">{s.noLimitsData}</span> : null}
+        {view.groups.map((group) => {
           const host = snapshot.hosts.find((h) => h.hostId === group.hostId);
           const stale = host !== undefined && hostStale(host) && host.polledAt !== null;
           return (
@@ -54,8 +59,10 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
               ))}
             </section>
           );
-        })
-      );
+        })}
+        {unavailable}
+      </>
+    );
   }
   return (
     <div className="flex max-h-96 flex-col gap-3 overflow-y-auto p-3 text-xs" data-testid="limits-card">

@@ -72,6 +72,8 @@ export interface Strings {
   noDataYet: string;
   /** The thread's host is disconnected or its last poll failed. */
   hostStale(clock: string): string;
+  /** In the sidebar card: hosts that cannot be read and have no data to show. */
+  hostsUnavailable(hosts: string): string;
   /** The thread's host could not be determined, or has no data yet. */
   hostUnknown: string;
   pollFailed(message: string): string;
@@ -222,6 +224,7 @@ export const en: Strings = {
   unavailable: (m) => `Limits unavailable: ${m}`,
   noDataYet: "No limit data yet",
   hostStale: (clock) => `Host unavailable, data from ${clock}`,
+  hostsUnavailable: (hosts) => `Unavailable: ${hosts}`,
   hostUnknown: "Limits unknown: this thread's host has no data",
   pollFailed: (m) => `Last poll failed: ${m}`,
   updated: (ago) => `Updated ${ago}`,
@@ -378,6 +381,7 @@ export const ru: Strings = {
   unavailable: (m) => `Лимиты недоступны: ${m}`,
   noDataYet: "Данные ещё не получены",
   hostStale: (clock) => `Хост недоступен, данные от ${clock}`,
+  hostsUnavailable: (hosts) => `Недоступны: ${hosts}`,
   hostUnknown: "Лимиты неизвестны: нет данных хоста этого треда",
   pollFailed: (m) => `Последний опрос не удался: ${m}`,
   updated: (ago) => `Обновлено ${ago}`,
