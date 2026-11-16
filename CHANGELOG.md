@@ -4,6 +4,19 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## Unreleased
+
+- Press to switch (UF-9). A press on a reset time in the band switches every
+  row between the countdown («3d», «resets in 3d») and the local time of the
+  reset («Thu 19:59», «resets at 19:59» today, «resets Thu 19:59»); a press on
+  a window's percent switches every window between used and left. Both
+  choices are plugin settings, the new «Reset shows» (countdown by default)
+  and «Limits show», saved on the server through the new RPC method
+  `setDisplay`, so a press on one device reaches the others. The band shows
+  the press at once and returns to the previous form if the save fails. The
+  run-out wording, the budget line, the context bar, push texts and the CLI
+  are unchanged.
+
 ## 0.4.7 — 2026-11-16
 
 - Pace-based status and colour (UF-7). Each window with a current pace has

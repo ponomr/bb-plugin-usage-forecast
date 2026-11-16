@@ -10,7 +10,8 @@ auto-compact without open clients.
 - `server.ts` — wires storage, schedule, events, RPC contract and CLI.
 - `src/shared/` — RPC contract, window table, thresholds, the forecast
   (`forecast.ts`, adapted from `claude-code-usage-quota-mod`, see `NOTICE`)
-  and the window's pace state with its hold (`pace.ts`).
+  and the window's pace state with its hold (`pace.ts`), the display
+  settings (`limits-show.ts`, `reset-show.ts`).
 - `src/server/` — poller, KV storage, auto-compact, limit push notifications
   (through the `push-notifications` plugin), CLI.
 - `src/app/` — composer band (design after `claude-code-usage-quota-mod`),

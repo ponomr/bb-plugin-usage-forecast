@@ -58,6 +58,7 @@ Usage Forecast.
 | `pollIntervalMinutes` | 2 | 1–10 |
 | `language` | `en` | `en`, `ru` (UI language) |
 | `limitsShow` | `used` | `used`, `remaining` (band only; CLI output stays in percent used) |
+| `resetShow` | `countdown` | `countdown`, `time` (band only: the reset as a countdown or as the local time) |
 
 The thread's working limit is, in order: the thread's own limit, the provider
 setting, the point where the provider compacts on its own (Claude Code reports
