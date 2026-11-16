@@ -4,6 +4,14 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.13 — 2026-11-16
+
+- The sidebar card fits bb's footer popover: tighter lines, the run-out note
+  on one line («runs out at 3:39 PM»), a provider's token sums as two numbers
+  in its heading line («310k · 4.2M», today and month; the words are the
+  tooltip), and the other hosts of a shared account in the name's tooltip.
+  A card that still does not fit scrolls instead of being cut off.
+
 ## 0.4.12 — 2026-11-16
 
 - The sidebar card shows one host at a time: with more than one host the

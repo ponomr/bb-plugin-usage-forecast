@@ -108,7 +108,8 @@ the context breakdown and one line per other provider.
   Claude Code · 5 Hour: 92%, critical». Pressing the ring opens a compact card
   with every provider's windows, one line each: a short label, the bar, the
   percent and the reset. The window's note is the line's tooltip; only a
-  window that runs out before its reset spells it out. With more than one
+  window that runs out before its reset names the time under its line
+  («runs out at 3:39 PM»). With more than one
   host the hosts are tabs and the card shows one host at a time, first the
   host of the ring's worst window; an account shared by several hosts is in
   each of their tabs («also laptop»).
@@ -139,8 +140,8 @@ the context breakdown and one line per other provider.
   and month. The expanded band has one line below the limit windows,
   «Tokens: thread 86k · today 310k · month 4.2M», where today and month are
   the thread's provider across all its BB threads; the tooltip gives the full
-  sums with cache reads. The sidebar card adds «today 310k · month 4.2M» under
-  each provider that has any. The main number leaves cache reads out (they
+  sums with cache reads. The sidebar card adds today's and the month's sum
+  («310k · 4.2M») to the heading of each provider that has any. The main number leaves cache reads out (they
   dominate long threads); the number in brackets is the provider's
   `totalTokens`. Only BB threads are counted: use of the same account outside
   BB is not, and Hermes ACP agents write no token events. After the first
