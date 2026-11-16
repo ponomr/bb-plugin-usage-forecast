@@ -4,8 +4,12 @@
 import { createFakePluginHost, makeThreadResponse } from "@get-bb/plugin-sdk/testing";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import plugin, { CONTEXT_INVALIDATE_MIN_MS, POLL_SCHEDULE } from "../server";
-import { LIMITS_TAG, threadTag, type LimitsSnapshot, type ThreadState } from "../src/shared/contract";
+import { LIMITS_TAG, threadTag, TOKENS_TAG, type LimitsSnapshot, type ThreadState, type Tokens } from "../src/shared/contract";
+import { HOUR_MS } from "../src/shared/windows";
 import { claudeContext, claudeLimits, codexContext, FakeThreads, NOW } from "./helpers";
+
+/** Lets the background listeners and the first collection finish. */
+const settle = (ms = 20) => new Promise((r) => setTimeout(r, ms));
 
 const T = "thr_a";
 
@@ -30,6 +34,8 @@ async function load(settings: Record<string, boolean | number> = {}, limits: () 
         getPluginMetadata: (args) => threads.getPluginMetadata(args),
         updatePluginMetadata: (args) => threads.updatePluginMetadata(args as never),
         compact: (args) => threads.compact(args),
+        list: ((args: never) => threads.list(args ?? {})) as never,
+        events: { list: ((args: never) => threads.events(args)) as never },
       },
     },
   });
@@ -246,6 +252,83 @@ describe("plugin wiring", () => {
     threads.thread(T, "claude-code", claudeContext(23_400));
     const result = await harness.callRpc("compact", { threadId: T });
     expect(result).toMatchObject({ ok: true, entry: { trigger: "manual", beforePercent: 20 } });
+    await harness.lifecycle.dispose();
+  });
+});
+
+describe("token totals wiring", () => {
+  const idle = (harness: Awaited<ReturnType<typeof load>>["harness"], id = T) =>
+    harness.emitThreadEvent("thread.idle", { thread: makeThreadResponse({ id }) } as never);
+
+  it("counts a thread on idle, invalidates the tokens tag and serves the sums from the given starts", async () => {
+    const { harness, threads, invalidations } = await load();
+    await settle();
+    threads.thread(T, "codex", codexContext(1000));
+    threads.tokenEvent(T, NOW - 2 * 24 * HOUR_MS, { totalTokens: 1_000 });
+    threads.tokenEvent(T, NOW - 30 * 60_000, { totalTokens: 9_000, cacheReadInputTokens: 6_000 });
+    await idle(harness);
+    await settle();
+    expect(invalidations()).toContainEqual([TOKENS_TAG]);
+    const dayStart = NOW - 12 * HOUR_MS;
+    const monthStart = NOW - 7 * 24 * HOUR_MS;
+    const tokens = (await harness.callRpc("tokens", { threadId: T, dayStart, monthStart })) as Tokens;
+    expect(tokens.thread).toEqual({ work: 3_000, all: 9_000 });
+    expect(tokens.providers).toEqual([{ providerId: "codex", today: { work: 2_000, all: 8_000 }, month: { work: 3_000, all: 9_000 } }]);
+    expect(tokens.backfillDone).toBe(true);
+    await harness.lifecycle.dispose();
+  });
+
+  it("answers null for an unknown thread, leaves out providers without buckets and rejects bad starts", async () => {
+    const { harness, threads } = await load();
+    await settle();
+    threads.thread("thr_h", "acp-hera", null);
+    await idle(harness, "thr_h");
+    await settle();
+    expect(await harness.callRpc("tokens", { threadId: "thr_h", dayStart: NOW, monthStart: NOW })).toEqual({
+      thread: null,
+      providers: [],
+      backfillDone: true,
+    });
+    expect(await harness.callRpc("tokens", { dayStart: NOW, monthStart: NOW })).toMatchObject({ thread: null });
+    await expect(harness.callRpc("tokens", { dayStart: Number.POSITIVE_INFINITY, monthStart: NOW })).rejects.toThrow();
+    await expect(harness.callRpc("tokens", { dayStart: Number.NaN, monthStart: NOW })).rejects.toThrow();
+    await expect(harness.callRpc("tokens", { monthStart: NOW })).rejects.toThrow();
+    await harness.lifecycle.dispose();
+  });
+
+  it("auto-compact still runs on idle when the token count throws", async () => {
+    const { harness, threads } = await load({ autoCompactEnabled: true });
+    await settle();
+    threads.thread(T, "codex", codexContext(0.95 * 258_400));
+    threads.eventErrors.add(T);
+    const { errors } = await idle(harness);
+    expect(errors).toEqual([]);
+    await settle();
+    expect(threads.compactCalls).toEqual([T]);
+    await harness.lifecycle.dispose();
+  });
+
+  it("runs the first collection at load over the listed threads", async () => {
+    const threads = new FakeThreads();
+    threads.thread("thr_x", "claude-code", null).tokenEvent("thr_x", NOW - HOUR_MS, { totalTokens: 500 });
+    const { bb, harness } = createFakePluginHost({
+      pluginId: "usage-forecast",
+      sdk: {
+        subscribe: (() => () => undefined) as never,
+        system: { usageLimits: () => ({}) },
+        threads: {
+          get: (args) => threads.get(args),
+          list: ((args: never) => threads.list(args ?? {})) as never,
+          events: { list: ((args: never) => threads.events(args)) as never },
+        },
+      },
+    });
+    await plugin(bb);
+    // The collection pauses BACKFILL_PAUSE_MS after each thread.
+    await settle(150);
+    const tokens = (await harness.callRpc("tokens", { threadId: "thr_x", dayStart: 0, monthStart: 0 })) as Tokens;
+    expect(tokens).toMatchObject({ thread: { work: 500, all: 500 }, backfillDone: true });
+    expect(threads.listCalls[0]).toMatchObject({ includeHidden: true });
     await harness.lifecycle.dispose();
   });
 });

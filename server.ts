@@ -276,7 +276,7 @@ export default async function plugin(bb: BbPluginApi) {
     tokens: ({ threadId, dayStart, monthStart }) => counter.view(threadId ?? null, dayStart, monthStart),
   });
 
-  bb.cli.register(createCli(service, Date.now, async () => (await settings()).hiddenProviders));
+  bb.cli.register(createCli(service, Date.now, async () => (await settings()).hiddenProviders, { counter }));
 
   bb.log.info("usage-forecast loaded");
   // The first token collection runs once, in the background; it returns at
