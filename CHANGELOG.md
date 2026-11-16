@@ -4,7 +4,7 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
-## Unreleased
+## 0.4.10 — 2026-11-16
 
 - Token totals (UF-12). The server counts tokens from bb's
   `thread/tokenUsage/updated` events, per thread and per provider in hourly
@@ -19,8 +19,10 @@ listed here.
   `bb usage-forecast tokens [--json]` the provider sums for the server's day
   and month and the ten latest threads. New RPC query `tokens`. Because bb
   keeps only a thread's newest token event and Claude Code restarts its
-  count with each runtime run, the totals are lower bounds: the first
-  collection books each thread's last total in the hour of its last turn.
+  count with each runtime run, the totals are approximate: the first
+  collection books each thread's last total in the hour of its last turn, so
+  a thread's lifetime total is a lower bound, while the day and month of the
+  first collection also hold what such a thread spent earlier.
 
 ## 0.4.9 — 2026-11-16
 

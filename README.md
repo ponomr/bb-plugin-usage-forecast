@@ -315,11 +315,12 @@ e-mail addresses in error texts are masked.
   never stored.
 - When a provider answers that it cannot compact, the plugin stops trying it
   for 24 hours; a successful manual compact lifts the mark earlier.
-- Token totals are lower bounds. bb keeps only a thread's newest token-usage
+- Token totals are approximate. bb keeps only a thread's newest token-usage
   event, so the first collection books each thread's last known total in the
-  hour of its last turn, and for Claude Code that total covers only the
-  provider's latest runtime run of the thread (it restarts its count with
-  each run). From then on each idle thread adds what it grew; a count that
+  hour of its last turn: the day and month of the first collection also hold
+  what a long-running thread spent before them. For Claude Code that total
+  covers only the provider's latest runtime run of the thread (it restarts
+  its count with each run), so a thread's own total is a lower bound. From then on each idle thread adds what it grew; a count that
   dropped is a new run and counts in full, but a run that ends above the
   count remembered from the run before is counted only for the excess.
   Hourly sums and threads are kept for 40 days, under 200 KB each.
