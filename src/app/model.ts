@@ -1,11 +1,13 @@
 // Pure view logic for the band: which provider it shows, each window's pace
-// status, the headline, and the context bar segments. The headline and pace
-// rules follow the band of claude-code-usage-quota-mod (see NOTICE).
+// status, the headline, and the context bar segments. The headline follows the
+// band of claude-code-usage-quota-mod (see NOTICE); the colours follow the pace
+// state of `src/shared/pace.ts`.
 
 import type { LimitsSnapshot, LimitWindow, ProviderLimits, ThreadContext } from "../shared/contract";
-import { contextTone, forecastWarns, limitTone, paceTone, worseTone, type Tone } from "../shared/thresholds";
+import { contextTone, limitTone, type Tone } from "../shared/thresholds";
 import { shownPercent, type LimitsShow } from "../shared/limits-show";
 import { lastingBudget, mainProjection } from "../shared/forecast";
+import { paceRank, paceStateTone, rawPaceState, worsePace, type PaceState } from "../shared/pace";
 import { DAY_MS } from "../shared/windows";
 import { formatResetIn, formatRunOut, formatSpan, formatTime, providerName, statusText } from "./format";
 import type { Strings } from "./i18n";
@@ -18,19 +20,27 @@ function windowScore(window: LimitWindow): number {
   return projected === null ? window.usedPercent : Math.max(window.usedPercent, projected);
 }
 
+/** A window without a pace state ranks as the state of its threshold colour. */
+const TONE_STATE: Record<Tone, PaceState> = { normal: "calm", amber: "tight", red: "critical" };
+
 /**
- * The provider of the worst window: the highest score, and on a tie the window
- * that resets later, since it stays a problem longer.
+ * The provider of the worst window: the worst shown pace state, then the
+ * highest score, and on a tie the window that resets later, since it stays a
+ * problem longer.
  */
-export function worstProvider(providers: readonly ProviderLimits[]): ProviderLimits | null {
-  let worst: { provider: ProviderLimits; score: number; resetsAt: number } | null = null;
+export function worstProvider(providers: readonly ProviderLimits[], now: number): ProviderLimits | null {
+  let worst: { provider: ProviderLimits; rank: number; score: number; resetsAt: number } | null = null;
   for (const provider of providers) {
     for (const window of provider.windows) {
+      const view = windowView(window, now);
+      const rank = paceRank(view.pace ?? TONE_STATE[view.tone]);
       const score = windowScore(window);
       const resetsAt = window.resetsAt ?? -Infinity;
-      if (worst === null || score > worst.score || (score === worst.score && resetsAt > worst.resetsAt)) {
-        worst = { provider, score, resetsAt };
-      }
+      const worse =
+        worst === null ||
+        rank > worst.rank ||
+        (rank === worst.rank && (score > worst.score || (score === worst.score && resetsAt > worst.resetsAt)));
+      if (worse) worst = { provider, rank, score, resetsAt };
     }
   }
   return worst?.provider ?? null;
@@ -56,12 +66,13 @@ export function bannerView(
   snapshot: LimitsSnapshot | undefined,
   errorMessage: string | null,
   threadProviderId: string | null,
+  now: number,
 ): BannerView {
   if (snapshot === undefined) return errorMessage === null ? { kind: "loading" } : { kind: "error", message: errorMessage };
   if (snapshot.polledAt === null) return { kind: "empty" };
   const providers = snapshot.providers;
   const primary =
-    providers.find((p) => p.providerId === threadProviderId && p.windows.length > 0) ?? worstProvider(providers);
+    providers.find((p) => p.providerId === threadProviderId && p.windows.length > 0) ?? worstProvider(providers, now);
   if (primary !== null) return { kind: "limits", primary, others: providers.filter((p) => p !== primary) };
   if (providers.length === 0) {
     return snapshot.pollError === null ? { kind: "reasons", text: s.noProviders } : { kind: "error", message: snapshot.pollError };
@@ -72,36 +83,59 @@ export function bannerView(
 // --- Windows -----------------------------------------------------------------
 
 /**
- * `hit`: the limit is used up. `out`: on course to run out before the reset.
- * `ok`: on course to reach the reset. `early`: too early in the window to
- * judge; it never warns. `idle`: no forecast (unknown duration or no reset time).
+ * What the note says, from the pace read now. `hit`: the limit is used up.
+ * `out`: on course to run out before the reset (`short` or `critical`).
+ * `ok`: on course to reach the reset (`tight` or `calm`). `early`: too early
+ * in the window to judge; it never warns. `idle`: no forecast (unknown
+ * duration or no reset time).
  */
 export type WindowStatus = "hit" | "out" | "ok" | "early" | "idle";
 
 export interface WindowView {
   window: LimitWindow;
   status: WindowStatus;
+  /** The pace state read now from the window's forecast; every text follows it. */
+  raw: PaceState | null;
+  /**
+   * The state shown: the worse of `raw` and the state the server holds while
+   * the window calms down. Colour and ranking follow it. Null when `raw` is.
+   */
+  pace: PaceState | null;
   /** Projected percent at the reset by the main projection; for `early`, the learned one. */
   projected: number | null;
   runOutAt: number | null;
+  /** From `pace`; without one, from the used percent. */
   tone: Tone;
   /** Where the bar's forecast tick sits, in percent, or null for none. */
   marker: number | null;
 }
 
-export function windowView(window: LimitWindow): WindowView {
+export function windowView(window: LimitWindow, now: number): WindowView {
   const used = window.usedPercent;
   const f = window.forecast;
-  const base = { window, projected: null, runOutAt: null, marker: null };
-  if (used >= 100 || f?.status === "hit") return { ...base, status: "hit", tone: "red" };
-  if (f?.early) return { ...base, status: "early", projected: f.learned?.projectedPercent ?? null, tone: limitTone(used) };
-  const pace = f ? mainProjection(f) : null;
-  if (pace === null) return { ...base, status: "idle", tone: limitTone(used) };
-  const projected = pace.projectedPercent;
+  const raw = rawPaceState(window, now);
+  const base = { window, raw, projected: null, runOutAt: null, marker: null };
+  if (raw === "hit") return { ...base, status: "hit", pace: "hit", tone: "red" };
+  const main = f ? mainProjection(f) : null;
+  if (raw === null) {
+    // No current pace: early (the learned pace, if any, speaks) or no forecast.
+    const early = f?.early || main !== null;
+    const status = early ? "early" : "idle";
+    return { ...base, status, pace: null, projected: early ? (f?.learned?.projectedPercent ?? null) : null, tone: limitTone(used) };
+  }
+  const pace = worsePace(raw, window.pace);
+  const projected = main!.projectedPercent;
   const at = Math.min(100, projected);
-  const view = { window, projected, runOutAt: pace.runOutAt, marker: at - used >= 1 ? at : null };
-  if (forecastWarns(projected)) return { ...view, status: "out", tone: worseTone(limitTone(used), paceTone(projected)) };
-  return { ...view, status: "ok", tone: limitTone(used) };
+  const status = raw === "short" || raw === "critical" ? "out" : "ok";
+  return {
+    ...base,
+    status,
+    pace,
+    projected,
+    runOutAt: main!.runOutAt,
+    tone: paceStateTone(pace),
+    marker: at - used >= 1 ? at : null,
+  };
 }
 
 export function isWeekly(window: LimitWindow): boolean {
@@ -114,6 +148,7 @@ export function windowNote(s: Strings, view: WindowView, now: number, show: Limi
   // A projection as the note shows it: capped at 100 %, used or left.
   const shown = (projected: number) => Math.round(shownPercent(show, Math.min(100, projected)));
   const lasts = (projected: number) => (show === "used" ? s.lastsUsed : s.lastsLeft)(shown(projected), reset);
+  const tight = (projected: number) => (show === "used" ? s.tightUsed : s.tightLeft)(shown(projected), reset);
   const idle = reset === null ? s.noReset : `${s.noForecast} – ${reset}`;
   switch (view.status) {
     case "hit":
@@ -126,7 +161,7 @@ export function windowNote(s: Strings, view: WindowView, now: number, show: Limi
       return s.runsOut(time, weekday, formatSpan(s, Math.max(0, resetsAt - view.runOutAt)));
     }
     case "ok":
-      return lasts(view.projected!);
+      return (view.raw === "tight" ? tight : lasts)(view.projected!);
     case "early": {
       const usual = view.projected === null ? null : (show === "used" ? s.usuallyUsed : s.usuallyLeft)(shown(view.projected));
       return s.tooEarly(usual, reset);
@@ -180,23 +215,35 @@ function resumesAt(s: Strings, at: number, now: number): string {
 }
 
 /**
- * Limit reached (when usage resumes), else the window that runs out first,
- * else on track to the weekly reset. Null when no window has a forecast.
+ * From the worst pace read now among the windows: limit reached (when usage
+ * resumes), runs out soon (critical), runs out before the reset (short),
+ * tight, else on track to the weekly reset. The colour is the lead window's.
+ * Null when no window has a pace.
  */
 export function headline(s: Strings, views: readonly WindowView[], now: number): Headline | null {
-  const hit = views.filter((v) => v.status === "hit");
+  const hit = views.filter((v) => v.raw === "hit");
   if (hit.length > 0) {
     const resets = hit.map((v) => v.window.resetsAt).filter((at): at is number => at !== null);
     const at = resets.length === hit.length ? Math.max(...resets) : null;
     return { text: s.limitReached(at === null ? null : resumesAt(s, at, now)), tone: "red" };
   }
-  const out = views
-    .filter((v) => v.status === "out" && v.window.resetsAt !== null)
-    .sort((a, b) => (a.runOutAt ?? Infinity) - (b.runOutAt ?? Infinity));
-  if (out.length > 0) return { text: s.willRunOut(resetName(s, out[0]!.window.resetsAt!, now)), tone: out[0]!.tone };
-  const ok = views.filter((v) => v.status === "ok" && v.window.resetsAt !== null);
-  const lead = ok.find((v) => isWeekly(v.window)) ?? ok[0];
-  return lead === undefined ? null : { text: s.onTrack(resetName(s, lead.window.resetsAt!, now)), tone: "normal" };
+  const withReset = (state: PaceState) => views.filter((v) => v.raw === state && v.window.resetsAt !== null);
+  const firstOut = (list: WindowView[]) => [...list].sort((a, b) => (a.runOutAt ?? Infinity) - (b.runOutAt ?? Infinity))[0];
+  const critical = firstOut(withReset("critical"));
+  if (critical !== undefined) {
+    const left = Math.max(0, (critical.runOutAt ?? now) - now);
+    return { text: s.runOutIn(formatSpan(s, left)), tone: critical.tone };
+  }
+  const short = firstOut(withReset("short"));
+  if (short !== undefined) return { text: s.willRunOut(resetName(s, short.window.resetsAt!, now)), tone: short.tone };
+  const tight = [...withReset("tight")].sort((a, b) => b.projected! - a.projected!)[0];
+  if (tight !== undefined) {
+    const percent = Math.round(Math.min(100, tight.projected!));
+    return { text: s.tightHeadline(percent, resetName(s, tight.window.resetsAt!, now)), tone: tight.tone };
+  }
+  const calm = withReset("calm");
+  const lead = calm.find((v) => isWeekly(v.window)) ?? calm[0];
+  return lead === undefined ? null : { text: s.onTrack(resetName(s, lead.window.resetsAt!, now)), tone: lead.tone };
 }
 
 // --- Context -----------------------------------------------------------------

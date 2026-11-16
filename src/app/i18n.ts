@@ -16,6 +16,10 @@ export interface Strings {
   // Headline
   limitReached(resumesAt: string | null): string;
   willRunOut(resetName: string): string;
+  /** A window that runs out within a tenth of its length: the span until then. */
+  runOutIn(span: string): string;
+  /** A window that lasts with little to spare: the projected percent used at the reset. */
+  tightHeadline(percent: number, resetName: string): string;
   onTrack(resetName: string): string;
   /** A reset less than a day away: "the 4:30 PM reset". */
   resetAtTime(time: string): string;
@@ -34,6 +38,9 @@ export interface Strings {
   lastsUsed(percent: number, resetIn: string | null): string;
   /** The same when the band shows what is left. */
   lastsLeft(percent: number, resetIn: string | null): string;
+  /** A window that lasts with little to spare, as used and as left. */
+  tightUsed(percent: number, resetIn: string | null): string;
+  tightLeft(percent: number, resetIn: string | null): string;
   /** Too early in the window; `usual` from usuallyUsed or usuallyLeft, or null without past windows. */
   tooEarly(usual: string | null, resetIn: string | null): string;
   usuallyUsed(percent: number): string;
@@ -154,6 +161,8 @@ export const en: Strings = {
 
   limitReached: (at) => (at === null ? "Limit reached." : `Limit reached. Usage resumes at ${at}.`),
   willRunOut: (reset) => `At this pace you'll run out before ${reset}.`,
+  runOutIn: (span) => `At this pace you'll run out in ${span}.`,
+  tightHeadline: (p, reset) => `Tight. At this pace about ${p}% will be used by ${reset}.`,
   onTrack: (reset) => `On track. You should reach ${reset} with room to spare.`,
   resetAtTime: (time) => `the ${time} reset`,
   resetOnDay: (day) => `${EN_WEEKDAYS[day]}'s reset`,
@@ -165,6 +174,8 @@ export const en: Strings = {
   runsOut: (time, day, before) => `At this pace runs out ${day === null ? `at ${time}` : `${day} ${time}`} – ${before} before reset`,
   lastsUsed: (p, reset) => `At this pace lasts to reset – about ${p}% used${reset === null ? "" : `, ${reset}`}`,
   lastsLeft: (p, reset) => `At this pace lasts to reset – about ${p}% left${reset === null ? "" : `, ${reset}`}`,
+  tightUsed: (p, reset) => `Tight – at this pace about ${p}% used${reset === null ? "" : `, ${reset}`}`,
+  tightLeft: (p, reset) => `Tight – at this pace about ${p}% left${reset === null ? "" : `, ${reset}`}`,
   tooEarly: (usual, reset) =>
     `Too early to judge${usual === null ? "" : ` – ${usual}`}${reset === null ? "" : `${usual === null ? " – " : ", "}${reset}`}`,
   usuallyUsed: (p) => `usually ends at about ${p}%`,
@@ -298,6 +309,8 @@ export const ru: Strings = {
 
   limitReached: (at) => (at === null ? "Лимит исчерпан." : `Лимит исчерпан. Работа возобновится ${at}.`),
   willRunOut: (reset) => `При таком темпе лимит закончится до ${reset}.`,
+  runOutIn: (span) => `При таком темпе лимит закончится через ${span}.`,
+  tightHeadline: (p, reset) => `Впритык. При таком темпе до ${reset} уйдёт примерно ${p}% лимита.`,
   onTrack: (reset) => `Всё в порядке. Лимита с запасом хватит до ${reset}.`,
   resetAtTime: (time) => `сброса в ${time}`,
   resetOnDay: (day) => `сброса ${RU_WEEKDAYS_ACC[day]}`,
@@ -309,6 +322,8 @@ export const ru: Strings = {
   runsOut: (time, day, before) => `При текущем темпе кончится ${day === null ? `в ${time}` : `в ${day} ${time}`} – за ${before} до сброса`,
   lastsUsed: (p, reset) => `При текущем темпе хватит до сброса – будет использовано примерно ${p}%${reset === null ? "" : `, ${reset}`}`,
   lastsLeft: (p, reset) => `При текущем темпе хватит до сброса – останется примерно ${p}%${reset === null ? "" : `, ${reset}`}`,
+  tightUsed: (p, reset) => `Впритык – при текущем темпе будет использовано примерно ${p}%${reset === null ? "" : `, ${reset}`}`,
+  tightLeft: (p, reset) => `Впритык – при текущем темпе останется примерно ${p}%${reset === null ? "" : `, ${reset}`}`,
   tooEarly: (usual, reset) =>
     `Пока рано судить${usual === null ? "" : ` – ${usual}`}${reset === null ? "" : `${usual === null ? " – " : ", "}${reset}`}`,
   usuallyUsed: (p) => `обычно к сбросу примерно ${p}%`,

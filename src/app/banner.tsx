@@ -53,7 +53,7 @@ function Status({ view, now }: { view: BannerView; now: number }) {
       return <span className="text-muted-foreground">{view.text}</span>;
     case "limits": {
       const { primary } = view;
-      const head = headline(s, primary.windows.map(windowView), now);
+      const head = headline(s, primary.windows.map((w) => windowView(w, now)), now);
       const reason = statusText(s, primary.status, primary.message);
       return (
         <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
@@ -167,7 +167,7 @@ function CollapsedRow({ provider, state, now }: { provider: ProviderLimits | nul
     // context size drop out below 36rem and the bars below 24rem (a phone).
     <div className="flex min-w-0 flex-nowrap items-center gap-x-4 overflow-hidden" data-testid="collapsed-row">
       {provider?.windows.map((w) => {
-        const v = windowView(w);
+        const v = windowView(w, now);
         return (
           <span
             key={`${w.label}:${w.model ?? ""}`}
@@ -204,13 +204,16 @@ function CollapsedRow({ provider, state, now }: { provider: ProviderLimits | nul
   );
 }
 
+/** A note in the window's colour: one with a pace state that is not calm. Others stay muted. */
+const paceToned = (v: WindowView) => v.pace !== null && v.tone !== "normal";
+
 function WindowList({ provider, now }: { provider: ProviderLimits; now: number }) {
   const s = useStrings();
   const show = useLimitsShow();
   return (
     <ul className="flex flex-col gap-2">
       {provider.windows.map((w) => {
-        const v = windowView(w);
+        const v = windowView(w, now);
         const budget = windowBudget(s, v, now);
         return (
           <li key={`${w.label}:${w.model ?? ""}`} className="flex flex-col gap-0.5" data-window={w.label} title={paceDetails(s, w, show)}>
@@ -219,8 +222,8 @@ function WindowList({ provider, now }: { provider: ProviderLimits; now: number }
               <WindowBar view={v} className="flex-1" />
               <WindowPercent view={v} className="w-9 text-right font-medium tabular-nums" />
             </span>
-            <span className={v.status === "out" || v.status === "hit" ? "" : "text-muted-foreground"}>
-              {v.status === "out" || v.status === "hit" ? (
+            <span className={paceToned(v) ? "" : "text-muted-foreground"}>
+              {paceToned(v) ? (
                 <Toned tone={v.tone}>{windowNote(s, v, now, show)}</Toned>
               ) : (
                 windowNote(s, v, now, show)
@@ -293,7 +296,7 @@ function OtherProvider({ provider, now }: { provider: ProviderLimits; now: numbe
       {provider.windows.map((w) => (
         <span key={`${w.label}:${w.model ?? ""}`} className="tabular-nums">
           <span className="text-muted-foreground">{shortWindowLabel(s, w.label, w.model)} </span>
-          <WindowPercent view={windowView(w)} />
+          <WindowPercent view={windowView(w, now)} />
         </span>
       ))}
     </span>
@@ -324,7 +327,7 @@ export function Banner() {
   if (threadId === null) return null;
 
   const state = thread.data;
-  const view = bannerView(s, snapshot.data, snapshot.error?.message ?? null, state?.providerId ?? null);
+  const view = bannerView(s, snapshot.data, snapshot.error?.message ?? null, state?.providerId ?? null, now);
   const primary = view.kind === "limits" ? view.primary : null;
   const ctx = state?.context ? contextView(state.context) : null;
   const asking = askAt !== null && ctx !== null && Math.round(ctx.percent) >= askAt;
