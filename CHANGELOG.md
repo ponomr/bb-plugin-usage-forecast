@@ -4,6 +4,13 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.15 — 2026-11-16
+
+- Sidebar card: an account shared with a host that went offline was listed
+  twice under the host still answering. The offline host keeps its link to
+  the account while the answering one drops its own; the card now reads the
+  link from either side.
+
 ## 0.4.14 — 2026-11-16
 
 - Sidebar card: a reset shown as a time («Tue 10:00 AM») no longer wraps
