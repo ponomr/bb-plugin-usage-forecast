@@ -26,7 +26,9 @@ the context breakdown and one line per other provider.
 
 - **Band above the composer.** Its design follows the band of
   `claude-code-usage-quota-mod`. The header has a headline («On track…»,
-  «At this pace you'll run out before the … reset.», «Limit reached…»), an
+  «Tight. At this pace about 92% will be used by …», «At this pace you'll run
+  out before the … reset.», «At this pace you'll run out in 20m.», «Limit
+  reached…»), an
   auto-compact switch that names the threshold it acts at, and a Compact
   button. The collapsed
   row has a bar per limit window of the thread's provider (or of the worst
@@ -54,6 +56,17 @@ the context breakdown and one line per other provider.
   runs out, how long before the reset that is, and the rate that would last
   (per day for weekly windows, per hour for five-hour ones). The tooltip shows
   both paces and marks the main one.
+- **Pace state and colour.** A window with a current pace has a state: calm
+  (the projection at the reset is below 85 %), tight (85 % to 100 %), will
+  not last (above 100 %), critical (it runs out within a tenth of the
+  window's length from now) or used up. Calm is the normal colour, tight and
+  will not last are amber, critical and used up are red; the bar, the
+  percent, the note, the collapsed row and the choice of the provider shown
+  follow it, and the headline speaks for the worst one. A worse state shows
+  at once; a calmer one only after ten minutes of calmer polls, so the colour
+  does not flicker while the text already says what the pace reads now. A
+  window in its first 5 % or without a forecast has no state and is coloured
+  by the percent used (amber from 75 %, red from 90 %).
 - **Context against a working limit.** The context bar, its percent and the
   auto-compact threshold are measured against a limit in tokens, not against
   the model window. The limit follows the provider: a thread's own limit,
@@ -172,6 +185,10 @@ bb usage-forecast thread <threadId> [--json]
 bb usage-forecast compact <threadId>
 bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95] [--limit <tokens>|0]
 ```
+
+`status` puts the state after the percent, for example
+`Weekly limit: 60% [will not last], resets in 3d 0h, …` (`calm`, `tight`,
+`will not last`, `critical`, `used up`; no bracket without a state).
 
 Agents in bb threads get the same reference from
 [skills/usage-forecast/SKILL.md](skills/usage-forecast/SKILL.md).
