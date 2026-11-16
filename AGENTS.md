@@ -76,6 +76,13 @@ Usage limits:
 - Every window has `resetsAt` (ISO) and an integer `usedPercent`; none had
   `cost`. The response also carries undocumented `plan: {id, multiplier}` and
   `accountKey`.
+- `plan` (checked 2026-11-16 with a throwaway plugin, `refresh: true`, one
+  connected host): `claude-code` `planLabel: "Max"` with `plan: {id: "max",
+  multiplier: null}`, `codex` `planLabel: "Plus"` with `{id: "plus",
+  multiplier: null}`; an `unauthenticated` provider (`acp-opencode`) has no
+  `plan`. No provider sent a non-null multiplier, so its type when present is
+  unseen; `planLabel` carried no multiplier. The plugin reads only a finite
+  number above 1.
 
 Hosts (checked 2026-11-16 from the bb CLI on the server, a two-host install):
 
