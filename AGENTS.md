@@ -12,8 +12,9 @@ auto-compact without open clients.
   (`forecast.ts`, adapted from `claude-code-usage-quota-mod`, see `NOTICE`)
   and the window's pace state with its hold (`pace.ts`), the display
   settings (`limits-show.ts`, `reset-show.ts`), account grouping across hosts
-  (`accounts.ts`) and the CLI's window verdict and provider headroom
-  (`headroom.ts`).
+  (`accounts.ts`), the CLI's window verdict and provider headroom
+  (`headroom.ts`), the plan multiplier and its text (`plan.ts`) and the
+  `hiddenProviders` setting's parser (`hidden-providers.ts`).
 - `src/server/` — poller, KV storage, auto-compact, limit push notifications
   (through the `push-notifications` plugin), CLI.
 - `src/app/` — composer band (design after `claude-code-usage-quota-mod`),

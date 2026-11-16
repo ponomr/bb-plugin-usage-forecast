@@ -109,6 +109,19 @@ the context breakdown and one line per other provider.
   every provider's windows and their notes, grouped by host when there is
   more than one, with an account shared by several hosts listed once («also
   laptop»).
+- **Plan multiplier.** When bb reports a plan multiplier above 1 (the
+  host's `plan.multiplier`), the band, the sidebar card and the CLI show it
+  after the plan name: «Claude Code · Max 5×». A label that already names a
+  multiplier is left as it is. On bb 0.49.0 no provider sent one yet, so the
+  plan name shows alone.
+- **Hide providers you do not use.** The «Hidden providers» setting lists
+  provider ids (`acp-opencode, codex`). A hidden provider drops out of the
+  band's other providers, the sidebar ring and its card, limit pushes and
+  `bb usage-forecast headroom`; a thread's own provider is always shown.
+  Each other provider in the expanded band has a Hide button that adds it
+  to the setting; to show it again, remove the id in the settings. Limits
+  are still polled, and `bb usage-forecast status` lists every provider,
+  hidden ones marked `[hidden]`.
 - **Push before a limit runs out.** After each poll the server checks every
   limit window. When one reaches the threshold (90 % by default) it sends one
   push through bb's `push-notifications` plugin («Claude Code: 5 Hour limit at
@@ -167,6 +180,7 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Language | English | English, Русский | Language of the plugin UI |
 | Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used. A press on a percent in the band switches it |
 | Reset shows | Countdown | Countdown, Exact time | When a limit window resets: the time left until it, or the local time of the reset (the short weekday when not today). A press on a reset time in the band switches it |
+| Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |
 
 Auto-compact rules:
 
@@ -218,7 +232,9 @@ bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95] [--limi
 In `status --json` every window also has a `verdict`, computed at the moment
 of the call: `state` (the pace state, `early` or `unknown`), `lasts`,
 `runsOutAt`, `projectedPercent`, `paceDeviationPercent` (used percent minus
-an even spend so far) and `resetsInMs`.
+an even spend so far) and `resetsInMs`. Every provider has `planMultiplier`
+(a number above 1, or `null`) and `hidden` (from the «Hidden providers»
+setting); the text marks a hidden provider `[hidden]` after its status.
 
 `headroom` ranks provider accounts from the most headroom to the tightest by
 their tightest window, for agents choosing where to send a job:
@@ -233,7 +249,9 @@ Headroom, polled 2026-11-16 00:09 UTC (1m ago)
 Verdicts: `headroom` (every window calm), `tight`, `short`, `critical`,
 `hit` (with when it is available again), `unknown`. `--host` or `--thread`
 keeps one host's accounts; data older than 30 minutes is marked stale, for
-the whole report or for one account (`measured 2d 3h ago`).
+the whole report or for one account (`measured 2d 3h ago`). Hidden providers
+are left out of the ranking and listed in a last line `hidden: <ids>`
+(`hidden` in JSON); with `--thread` the thread's own provider stays in.
 
 Agents in bb threads get the same reference from
 [skills/usage-forecast/SKILL.md](skills/usage-forecast/SKILL.md).
