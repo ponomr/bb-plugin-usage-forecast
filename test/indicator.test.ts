@@ -203,6 +203,20 @@ describe("indicatorView: groups", () => {
     expect(view.worst).toMatchObject({ hostName: "server", providerId: "claude-code", usedPercent: 45 });
   });
 
+  it("a link kept by one host only still makes one account", () => {
+    // The laptop went offline with its `sharedWith`; the server's next poll dropped its own.
+    const view = indicatorView(
+      snap([
+        host("server", [prov("claude-code", [win("Current session", 45, "calm")])]),
+        host("laptop", [prov("claude-code", [win("Current session", 30, "calm")], { sharedWith: ["server"], measuredAt: NOW - MIN_MS })]),
+      ]),
+      NOW,
+    );
+    expect(view.groups.map((g) => g.providers.length)).toEqual([1, 1]);
+    expect(view.groups[0]!.providers[0]!.alsoOn).toEqual(["laptop"]);
+    expect(view.groups[1]!.providers[0]!.provider.windows[0]!.usedPercent).toBe(45);
+  });
+
   it("AE5: no ok provider anywhere gives no worst window and no groups", () => {
     const view = indicatorView(
       snap([
