@@ -347,7 +347,7 @@ const pairText = (p: TokenPair) => `${formatTokenCount(p.work, "en")} (${formatT
 export function formatTokensReport(r: TokensReport): string {
   const collecting = r.backfill.done
     ? []
-    : [`First collection of this month's threads is running: ${r.backfill.threadsRead} read, ${r.backfill.threadsFailed} failed.`];
+    : [`First collection of past threads is running: ${r.backfill.threadsRead} read, ${r.backfill.threadsFailed} failed.`];
   if (r.providers.length === 0 && r.threads.length === 0) return ["No token data yet.", ...collecting].join("\n");
   const lines = [`Tokens in BB threads without cache reads (with them in brackets); day and month in ${r.timeZone}.`];
   for (const p of r.providers) lines.push(`  ${p.providerId}: today ${pairText(p.today)}, month ${pairText(p.month)}`);

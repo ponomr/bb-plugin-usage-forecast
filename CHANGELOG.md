@@ -4,6 +4,24 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## Unreleased
+
+- Token totals (UF-12). The server counts tokens from bb's
+  `thread/tokenUsage/updated` events, per thread and per provider in hourly
+  buckets kept for 40 days (`tokens:hours`, `tokens:threads`, each trimmed
+  under 200 KB). It counts a thread when it goes idle, and once after the
+  first start walks every thread, archived and hidden included, one at a
+  time; a thread that fails is skipped and logged by error class only. The
+  main number leaves cache reads out, the full `totalTokens` is in brackets
+  or the tooltip. The expanded band shows «Tokens: thread 86k · today 310k ·
+  month 4.2M» below the limit windows (no line without data), the sidebar
+  card «today 310k · month 4.2M» per provider, and the new CLI command
+  `bb usage-forecast tokens [--json]` the provider sums for the server's day
+  and month and the ten latest threads. New RPC query `tokens`. Because bb
+  keeps only a thread's newest token event and Claude Code restarts its
+  count with each runtime run, the totals are lower bounds: the first
+  collection books each thread's last total in the hour of its last turn.
+
 ## 0.4.9 — 2026-11-16
 
 - Plan multiplier (UF-11). When bb's usage limits carry a plan multiplier

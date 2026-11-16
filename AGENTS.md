@@ -14,9 +14,11 @@ auto-compact without open clients.
   settings (`limits-show.ts`, `reset-show.ts`), account grouping across hosts
   (`accounts.ts`), the CLI's window verdict and provider headroom
   (`headroom.ts`), the plan multiplier and its text (`plan.ts`) and the
-  `hiddenProviders` setting's parser (`hidden-providers.ts`).
+  `hiddenProviders` setting's parser (`hidden-providers.ts`), and the token
+  totals' pure core: counting, trims, sums and number format (`tokens.ts`).
 - `src/server/` — poller, KV storage, auto-compact, limit push notifications
-  (through the `push-notifications` plugin), CLI.
+  (through the `push-notifications` plugin), the token counter with its first
+  collection (`token-counter.ts`), CLI.
 - `src/app/` — composer band (design after `claude-code-usage-quota-mod`),
   context card section, settings section, the sidebar-footer ring
   (`indicator.ts` model, `ring-icon.tsx`, `indicator-store.ts` with its

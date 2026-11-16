@@ -447,7 +447,7 @@ describe("tokens command (UF-12 R10)", () => {
         "Recent threads:",
         "  thr_a claude-code 286k",
         "  thr_b codex 2.35k",
-        "First collection of this month's threads is running: 0 read, 0 failed.",
+        "First collection of past threads is running: 0 read, 0 failed.",
       ].join("\n"),
     );
 
