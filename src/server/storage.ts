@@ -14,10 +14,24 @@ export const UNSUPPORTED_TTL_MS = 24 * 60 * 60_000;
 /** Remembered compaction points (one per provider and window size). */
 export const MAX_COMPACT_POINTS = 20;
 
+/** Hosts kept in the host index; the ones polled longest ago are dropped first. */
+export const MAX_HOSTS = 20;
+
+const enc = encodeURIComponent;
+
+/**
+ * Limits keys. The legacy keys (no host id) belong to the host that owned
+ * them before 0.4.6; every other host has its id in the key. Encoding removes
+ * ":", so a scoped key never equals a legacy one.
+ */
 export const keys = {
   latest: "limits:latest",
-  samples: (providerId: string) => `limits:samples:${encodeURIComponent(providerId)}`,
+  samples: (providerId: string) => `limits:samples:${enc(providerId)}`,
   windows: (windowKey: string) => `limits:windows:${windowKey}`,
+  hostLatest: (hostId: string) => `limits:latest:${enc(hostId)}`,
+  hostSamples: (hostId: string, providerId: string) => `limits:samples:${enc(hostId)}:${enc(providerId)}`,
+  hostWindows: (hostId: string, windowKey: string) => `limits:windows:${enc(hostId)}:${windowKey}`,
+  hostIndex: "limits:hosts",
   log: "autocompact:log",
   cooldown: (threadId: string) => `autocompact:cooldown:${threadId}`,
   unsupported: "autocompact:unsupported",
@@ -72,6 +86,50 @@ export interface StoredLatest {
 
 export const EMPTY_LATEST: StoredLatest = { polledAt: null, pollError: null, providers: [] };
 
+/**
+ * Which keys a host's limits live on: null means the legacy keys. The legacy
+ * owner and a host id that is not known (no marker yet) map to null.
+ */
+export type HostScope = string | null;
+
+export function scopeOf(hostId: string | null, legacyOwner: string | null): HostScope {
+  if (hostId === null || legacyOwner === null || hostId === legacyOwner) return null;
+  return hostId;
+}
+
+/** One known host. Names and state only; no account fields. */
+export interface HostEntry {
+  hostId: string;
+  name: string;
+  connected: boolean;
+  polledAt: number | null;
+  pollError: string | null;
+}
+
+export interface HostIndex {
+  /** The host that owns the legacy keys; written once and never changed. */
+  legacyOwner: string;
+  hosts: HostEntry[];
+}
+
+function isHostEntry(value: unknown): value is HostEntry {
+  const v = value as HostEntry | null;
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    typeof v.hostId === "string" &&
+    typeof v.name === "string" &&
+    typeof v.connected === "boolean" &&
+    (v.polledAt === null || typeof v.polledAt === "number") &&
+    (v.pollError === null || typeof v.pollError === "string")
+  );
+}
+
+function isLatest(value: unknown): value is StoredLatest {
+  const v = value as StoredLatest | null;
+  return typeof v === "object" && v !== null && Array.isArray(v.providers);
+}
+
 export function byteLength(value: unknown): number {
   return Buffer.byteLength(JSON.stringify(value), "utf8");
 }
@@ -96,33 +154,84 @@ export function trimToBytes<T>(items: readonly T[], maxBytes = MAX_VALUE_BYTES):
 export class Storage {
   constructor(private readonly kv: PluginKvStorage) {}
 
-  async latest(): Promise<StoredLatest> {
-    return (await this.kv.get<StoredLatest>(keys.latest)) ?? EMPTY_LATEST;
+  async latest(scope: HostScope = null): Promise<StoredLatest> {
+    const value = await this.kv.get<unknown>(scope === null ? keys.latest : keys.hostLatest(scope));
+    return isLatest(value) ? value : EMPTY_LATEST;
   }
 
-  async setLatest(latest: StoredLatest): Promise<void> {
-    await this.kv.set(keys.latest, latest);
+  async setLatest(latest: StoredLatest, scope: HostScope = null): Promise<void> {
+    await this.kv.set(scope === null ? keys.latest : keys.hostLatest(scope), latest);
   }
 
-  async samples(providerId: string): Promise<Sample[]> {
-    return (await this.kv.get<Sample[]>(keys.samples(providerId))) ?? [];
+  private samplesKey(providerId: string, scope: HostScope): string {
+    return scope === null ? keys.samples(providerId) : keys.hostSamples(scope, providerId);
   }
 
-  async appendSamples(providerId: string, added: readonly Sample[]): Promise<void> {
+  private windowsKey(windowKey: string, scope: HostScope): string {
+    return scope === null ? keys.windows(windowKey) : keys.hostWindows(scope, windowKey);
+  }
+
+  async samples(providerId: string, scope: HostScope = null): Promise<Sample[]> {
+    const value = await this.kv.get<unknown>(this.samplesKey(providerId, scope));
+    return Array.isArray(value) ? (value as Sample[]) : [];
+  }
+
+  async appendSamples(providerId: string, added: readonly Sample[], scope: HostScope = null): Promise<void> {
     if (added.length === 0) return;
-    const all = [...(await this.samples(providerId)), ...added];
-    await this.kv.set(keys.samples(providerId), trimToBytes(all));
+    const all = [...(await this.samples(providerId, scope)), ...added];
+    await this.kv.set(this.samplesKey(providerId, scope), trimToBytes(all));
   }
 
-  async closedWindows(windowKey: string): Promise<ClosedWindow[]> {
-    return (await this.kv.get<ClosedWindow[]>(keys.windows(windowKey))) ?? [];
+  async closedWindows(windowKey: string, scope: HostScope = null): Promise<ClosedWindow[]> {
+    const value = await this.kv.get<unknown>(this.windowsKey(windowKey, scope));
+    return Array.isArray(value) ? (value as ClosedWindow[]) : [];
   }
 
   /** Returns the stored list. */
-  async appendClosedWindow(windowKey: string, closed: ClosedWindow): Promise<ClosedWindow[]> {
-    const kept = [...(await this.closedWindows(windowKey)), closed].slice(-MAX_CLOSED_WINDOWS);
-    await this.kv.set(keys.windows(windowKey), kept);
+  async appendClosedWindow(windowKey: string, closed: ClosedWindow, scope: HostScope = null): Promise<ClosedWindow[]> {
+    const kept = [...(await this.closedWindows(windowKey, scope)), closed].slice(-MAX_CLOSED_WINDOWS);
+    await this.kv.set(this.windowsKey(windowKey, scope), kept);
     return kept;
+  }
+
+  /** Null until the legacy owner is known. Entries in another shape are dropped. */
+  async hostIndex(): Promise<HostIndex | null> {
+    const value = await this.kv.get<unknown>(keys.hostIndex);
+    const v = value as HostIndex | null;
+    if (typeof v !== "object" || v === null || typeof v.legacyOwner !== "string" || !Array.isArray(v.hosts)) return null;
+    return { legacyOwner: v.legacyOwner, hosts: v.hosts.filter(isHostEntry) };
+  }
+
+  /**
+   * Keeps at most MAX_HOSTS hosts: the legacy owner always, then the most
+   * recently polled. Returns the ids it dropped; their keys are the caller's
+   * to remove.
+   */
+  async setHostIndex(index: HostIndex): Promise<string[]> {
+    const owner = index.hosts.filter((h) => h.hostId === index.legacyOwner);
+    const others = index.hosts
+      .filter((h) => h.hostId !== index.legacyOwner)
+      .sort((a, b) => (b.polledAt ?? -Infinity) - (a.polledAt ?? -Infinity));
+    const room = MAX_HOSTS - owner.length;
+    const kept = [...owner, ...others.slice(0, room)];
+    const keptIds = new Set(kept.map((h) => h.hostId));
+    await this.kv.set(keys.hostIndex, { legacyOwner: index.legacyOwner, hosts: index.hosts.filter((h) => keptIds.has(h.hostId)) });
+    return others.slice(room).map((h) => h.hostId);
+  }
+
+  /** Deletes one host's scoped keys. The legacy keys are never touched. */
+  async removeHost(hostId: string): Promise<void> {
+    const host = enc(hostId);
+    const samples = `limits:samples:${host}:`;
+    const windows = `limits:windows:${host}:`;
+    // A legacy window key is `limits:windows:<provider>:<label>`; a provider id
+    // equal to this host id would match the prefix, but its rest has no ":".
+    const doomed = [
+      keys.hostLatest(hostId),
+      ...(await this.kv.list(samples)),
+      ...(await this.kv.list(windows)).filter((k) => k.slice(windows.length).includes(":")),
+    ];
+    for (const key of doomed) await this.kv.delete(key);
   }
 
   /** Newest first. */
