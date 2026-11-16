@@ -20,6 +20,7 @@ import { forecastWarns, formatPercent } from "../shared/thresholds";
 import { showsModelTag } from "../shared/windows";
 import type { PaceState } from "../shared/pace";
 import { accountBlocks } from "../shared/accounts";
+import { windowVerdict } from "../shared/headroom";
 import { providerCompactsAtPercent } from "./threads";
 import type { Service } from "./rpc";
 
@@ -141,6 +142,17 @@ export function formatStatus(s: LimitsSnapshot, now: number): string {
   return lines.join("\n");
 }
 
+/** The snapshot for `status --json`: every window with its verdict at `now`, added at print time. */
+export function statusJson(s: LimitsSnapshot, now: number) {
+  return {
+    ...s,
+    hosts: s.hosts.map((h) => ({
+      ...h,
+      providers: h.providers.map((p) => ({ ...p, windows: p.windows.map((w) => ({ ...w, verdict: windowVerdict(w, now) })) })),
+    })),
+  };
+}
+
 export function formatThread(t: ThreadState, now: number): string {
   const lines = [`Thread ${t.threadId}${t.providerId ? ` (${t.providerId})` : ""}: ${t.active ? "answering" : "idle"}`];
   const c = t.context;
@@ -212,7 +224,8 @@ export function createCli(service: Service, now: () => number = Date.now): Plugi
         },
         async run({ options }) {
           const snapshot = options.refresh ? await service.refresh() : await service.snapshot();
-          return { exitCode: 0, stdout: options.json ? JSON.stringify(snapshot, null, 2) : formatStatus(snapshot, now()) };
+          const at = now();
+          return { exitCode: 0, stdout: options.json ? JSON.stringify(statusJson(snapshot, at), null, 2) : formatStatus(snapshot, at) };
         },
       }),
       thread: cliCommand({
