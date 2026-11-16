@@ -14,7 +14,7 @@ const TONE_CLASS: Record<Tone, string> = {
 };
 
 /** Percent figures and the headline: green in normal tone. */
-const INK_CLASS: Record<Tone, string> = {
+export const INK_CLASS: Record<Tone, string> = {
   normal: "text-[#16a34a] dark:text-[#4ade80]",
   amber: TONE_CLASS.amber,
   red: TONE_CLASS.red,
