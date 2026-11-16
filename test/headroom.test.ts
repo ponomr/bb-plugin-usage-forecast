@@ -271,3 +271,19 @@ describe("headroomReport", () => {
     expect(headroomReport(snap([], null), NOW)).toEqual({ polledAt: null, ageMs: null, stale: false, entries: [] });
   });
 });
+
+describe("an account measured long ago", () => {
+  it("is marked stale on its own while the poll is fresh", () => {
+    const old = NOW - 2 * 24 * HOUR_MS;
+    const s = snap([
+      host("server", [provider("codex", [paced("Weekly limit", 20, 50)])]),
+      host("laptop", [provider("claude-code", [paced("Weekly limit", 20, 50)], { checkedAt: old, measuredAt: old })], { connected: false, polledAt: old }),
+    ]);
+    const report = headroomReport(s, NOW);
+    expect(report.stale).toBe(false);
+    expect(report.entries.map((e) => [e.providerId, e.stale, e.measuredAt])).toEqual([
+      ["codex", false, NOW],
+      ["claude-code", true, old],
+    ]);
+  });
+});

@@ -138,6 +138,8 @@ describe("headroom", () => {
         resetsInMs: DAY_MS + 6 * HOUR_MS,
       },
       status: "ok",
+      measuredAt: NOW,
+      stale: false,
       message: null,
     });
     expect(keys(out).filter((k) => /account|email/i.test(k))).toEqual([]);

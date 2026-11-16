@@ -35,10 +35,12 @@ identified by provider and label (`claude-code` / `Current session`).
   early in its period or without a forecast counts by its used percent (tight
   from 75 %); a window whose reset has passed does not count. `--host` or
   `--thread` keeps the accounts of one host. Data polled more than 30 minutes
-  ago is marked `Stale:` (`"stale": true` in JSON). `--json` gives `polledAt`,
+  ago is marked `Stale:` (`"stale": true` in JSON); one account measured
+  that long ago, as on a host that is not connected, ends with `measured
+  <span> ago` and has its own `stale`. `--json` gives `polledAt`,
   `ageMs`, `stale` and `entries` with `providerId`, `planLabel`, `hosts`,
   `verdict`, `availableAt`, `worstWindow` (the window and its `verdict`
-  fields) and `status`.
+  fields), `status`, `message`, `measuredAt` and `stale`.
 - `bb usage-forecast thread <threadId> [--json]` — context fill (tokens and % of the working limit), the limit and its source
   (this thread, the provider setting, where the provider compacts on its own, the global setting, or the model window),
   whether the agent is answering, the effective auto-compact policy and its
@@ -71,7 +73,9 @@ The current thread id is in `bb status` or `$BB_THREAD_ID`.
   (or `--json`) and prefer a provider whose verdict is `headroom`.
 - When the provider in use is `short`, `critical` or `hit`, tell the user and
   name the providers with headroom; do not switch providers on your own.
-- With `stale` data, run it again with `--refresh` before deciding.
+- With `stale` data, run it again with `--refresh` before deciding; an
+  account that stays stale belongs to a host that is not connected, so do not
+  count on its numbers.
 
 ## Settings
 

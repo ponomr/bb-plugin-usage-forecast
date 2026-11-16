@@ -11,7 +11,8 @@ listed here.
   tightest window: `headroom` (every window calm), `tight`, `short`,
   `critical`, `hit` (with when it is available again) or `unknown`. Options
   `--json`, `--refresh`, `--host <id or name>` and `--thread <threadId>`;
-  data polled more than 30 minutes ago is marked stale. In
+  data polled more than 30 minutes ago is marked stale, and so is one
+  account measured that long ago (a host that is not connected). In
   `status --json` every window gains a `verdict` object (`state`, `lasts`,
   `runsOutAt`, `projectedPercent`, `paceDeviationPercent`, `resetsInMs`),
   computed at the moment of the call; the other fields and the text of

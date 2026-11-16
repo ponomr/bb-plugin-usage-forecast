@@ -56,7 +56,7 @@ export function windowVerdict(w: LimitWindow, now: number): WindowVerdict {
   const resetsInMs = w.resetsAt === null ? null : w.resetsAt - now;
   const paceDeviationPercent = paceDeviation(w, now);
   const main = w.forecast ? mainProjection(w.forecast) : null;
-  const projectedPercent = main?.projectedPercent ?? null;
+  const projectedPercent = main === null ? null : round1(main.projectedPercent);
   const raw = rawPaceState(w, now);
   if (raw === null) {
     const state = w.forecast?.early ? "early" : "unknown";
@@ -68,7 +68,7 @@ export function windowVerdict(w: LimitWindow, now: number): WindowVerdict {
   return {
     state,
     lasts: LASTS[state],
-    runsOutAt: runsOut ? (main?.runOutAt ?? null) : null,
+    runsOutAt: runsOut && main?.runOutAt != null ? Math.round(main.runOutAt) : null,
     projectedPercent,
     paceDeviationPercent,
     resetsInMs,
@@ -93,6 +93,10 @@ export interface HeadroomEntry {
   /** The tightest window that counts, or null for `unknown`. */
   worstWindow: WorstWindow | null;
   status: ProviderStatus;
+  /** When the windows were measured: the latest `ok` answer of the account. */
+  measuredAt: number | null;
+  /** The windows were measured more than 30 minutes ago, for example on a host that is not connected. */
+  stale: boolean;
   /** Error text when `status` is `error`. */
   message: string | null;
 }
@@ -129,6 +133,8 @@ export function providerHeadroom(snapshot: LimitsSnapshot, now: number, options:
       planLabel: p.planLabel,
       hosts: block.members.map((m) => ({ hostId: m.host.hostId, hostName: m.host.name })),
       status: p.status,
+      measuredAt: p.measuredAt,
+      stale: p.status === "ok" && p.measuredAt !== null && now - p.measuredAt > STALE_AFTER_MS,
       message: p.message,
     };
     const counted = (p.status === "ok" ? p.windows : [])

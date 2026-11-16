@@ -184,7 +184,9 @@ export function formatHeadroom(r: HeadroomReport, s: LimitsSnapshot, now: number
   r.entries.forEach((e, i) => {
     const on = several ? ` on ${e.hosts.map((h) => h.hostName ?? h.hostId ?? "default host").join(", ")}` : "";
     const plan = e.planLabel ? ` (${e.planLabel})` : "";
-    lines.push(`  ${i + 1}. ${e.providerId}${on}${plan}: ${e.verdict} – ${formatWorst(e, now)}`);
+    // The whole report's stale line already covers an old poll; this marks one old account, as on a host that is not connected.
+    const old = e.stale && !r.stale && e.measuredAt !== null ? `; measured ${formatDuration(now - e.measuredAt)} ago` : "";
+    lines.push(`  ${i + 1}. ${e.providerId}${on}${plan}: ${e.verdict} – ${formatWorst(e, now)}${old}`);
   });
   return lines.join("\n");
 }

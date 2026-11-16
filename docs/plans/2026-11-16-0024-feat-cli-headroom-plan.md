@@ -100,9 +100,9 @@ Product Contract preservation: the Product Contract above is the brainstorm's ou
 
   ```text
   Headroom, polled 2026-11-16 00:10 UTC (1m ago)
-    1. codex on Clovis (Plus): headroom – Weekly limit 57%, on pace for 69% at reset in 1d 6h
-    2. claude-code on Clovis, Sky Blue M4 (Max): tight – Current session 62%, on pace for 95% at reset in 1h 40m
-    3. acp-x on Clovis: unknown – not installed
+    1. codex on server (Plus): headroom – Weekly limit 57%, on pace for 69% at reset in 1d 6h
+    2. claude-code on server, laptop (Max): tight – Current session 62%, on pace for 95% at reset in 1h 40m
+    3. acp-x on server: unknown – not installed
   ```
 
   `short` and `critical` lines say `runs out in <span>` when `runsOutAt` is set, and `will not last to the reset` when it is null (a held state whose current projection no longer runs out); `hit` lines say `limit reached, available again in <span>`. With one host the "on <host>" part is omitted.

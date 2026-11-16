@@ -218,7 +218,8 @@ Headroom, polled 2026-11-16 00:09 UTC (1m ago)
 
 Verdicts: `headroom` (every window calm), `tight`, `short`, `critical`,
 `hit` (with when it is available again), `unknown`. `--host` or `--thread`
-keeps one host's accounts; data older than 30 minutes is marked stale.
+keeps one host's accounts; data older than 30 minutes is marked stale, for
+the whole report or for one account (`measured 2d 3h ago`).
 
 Agents in bb threads get the same reference from
 [skills/usage-forecast/SKILL.md](skills/usage-forecast/SKILL.md).
