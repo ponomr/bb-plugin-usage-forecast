@@ -20,7 +20,7 @@ import { forecastWarns, formatPercent } from "../shared/thresholds";
 import { showsModelTag } from "../shared/windows";
 import type { PaceState } from "../shared/pace";
 import { accountBlocks } from "../shared/accounts";
-import { windowVerdict } from "../shared/headroom";
+import { headroomReport, windowVerdict, type HeadroomEntry, type HeadroomReport } from "../shared/headroom";
 import { providerCompactsAtPercent } from "./threads";
 import type { Service } from "./rpc";
 
@@ -153,6 +153,65 @@ export function statusJson(s: LimitsSnapshot, now: number) {
   };
 }
 
+/** What the tightest window says, after the verdict. */
+function formatWorst(e: HeadroomEntry, now: number): string {
+  const w = e.worstWindow;
+  if (w === null) {
+    if (e.status === "ok") return "no current windows";
+    return e.status === "error" && e.message ? `error: ${e.message}` : STATUS_WORDS[e.status];
+  }
+  const model = showsModelTag(w.label, w.model) ? ` [${w.model}]` : "";
+  const head = `${w.label}${model} ${formatPercent(w.usedPercent)}`;
+  const resets = w.resetsInMs === null ? [] : [`resets in ${formatDuration(w.resetsInMs)}`];
+  if (e.verdict === "hit") {
+    return `${head}, limit reached${e.availableAt === null ? "" : `, available again in ${formatDuration(e.availableAt - now)}`}`;
+  }
+  if (e.verdict === "short" || e.verdict === "critical") {
+    const out = w.runsOutAt === null ? "will not last to the reset" : `runs out in ${formatDuration(w.runsOutAt - now)}`;
+    return [head, out, ...resets].join(", ");
+  }
+  if (w.state === "early") return [head, "too early to judge", ...resets].join(", ");
+  if (w.projectedPercent === null) return [head, ...resets].join(", ");
+  const at = w.resetsInMs === null ? "at reset" : `at reset in ${formatDuration(w.resetsInMs)}`;
+  return `${head}, on pace for ${formatPercent(w.projectedPercent)} ${at}`;
+}
+
+export function formatHeadroom(r: HeadroomReport, s: LimitsSnapshot, now: number): string {
+  if (r.polledAt === null) return "Headroom: not polled yet.";
+  const lines = [`Headroom, polled ${formatTime(r.polledAt)} (${formatDuration(now - r.polledAt)} ago)`];
+  if (r.stale) lines.push(`Stale: data is ${formatDuration(r.ageMs ?? 0)} old; run with --refresh to poll now.`);
+  const several = s.hosts.length > 1;
+  r.entries.forEach((e, i) => {
+    const on = several ? ` on ${e.hosts.map((h) => h.hostName ?? h.hostId ?? "default host").join(", ")}` : "";
+    const plan = e.planLabel ? ` (${e.planLabel})` : "";
+    lines.push(`  ${i + 1}. ${e.providerId}${on}${plan}: ${e.verdict} – ${formatWorst(e, now)}`);
+  });
+  return lines.join("\n");
+}
+
+/** The host id `--host` or `--thread` limits `headroom` to; undefined for every host. */
+async function headroomHost(service: Service, s: LimitsSnapshot, host: string | undefined, thread: string | undefined) {
+  if (host !== undefined) {
+    const lower = host.toLowerCase();
+    const found = s.hosts.find((h) => h.hostId === host) ?? s.hosts.find((h) => h.name?.toLowerCase() === lower);
+    if (found === undefined) {
+      const known = s.hosts.map(hostName).join(", ") || "none";
+      throw new PluginCliError(`Unknown host "${host}"; known hosts: ${known}`, { code: "not_found" });
+    }
+    return found.hostId ?? undefined;
+  }
+  if (thread === undefined) return undefined;
+  const threadId = parseThreadId(thread);
+  // One host answers for every thread, as in the band.
+  if (s.hosts.length <= 1) return undefined;
+  const { hostId } = await service.thread(threadId);
+  if (hostId === null) throw new PluginCliError(`Could not resolve the host of thread ${threadId}`, { code: "not_found" });
+  if (!s.hosts.some((h) => h.hostId === hostId)) {
+    throw new PluginCliError(`The host of thread ${threadId} has no limits yet`, { code: "not_found" });
+  }
+  return hostId;
+}
+
 export function formatThread(t: ThreadState, now: number): string {
   const lines = [`Thread ${t.threadId}${t.providerId ? ` (${t.providerId})` : ""}: ${t.active ? "answering" : "idle"}`];
   const c = t.context;
@@ -226,6 +285,27 @@ export function createCli(service: Service, now: () => number = Date.now): Plugi
           const snapshot = options.refresh ? await service.refresh() : await service.snapshot();
           const at = now();
           return { exitCode: 0, stdout: options.json ? JSON.stringify(statusJson(snapshot, at), null, 2) : formatStatus(snapshot, at) };
+        },
+      }),
+      headroom: cliCommand({
+        summary: "Rank providers from the most headroom to the tightest",
+        description:
+          "One entry per provider account with a verdict (headroom, tight, short, critical, hit, unknown) from its tightest window. Data polled more than 30 minutes ago is marked stale.",
+        options: {
+          ...json,
+          refresh: { type: "boolean", description: "Poll the providers now instead of using the stored data" },
+          host: { type: "string", description: "Only accounts on this host (id or name)" },
+          thread: { type: "string", description: "Only accounts on this thread's host" },
+        },
+        async run({ options }) {
+          if (options.host !== undefined && options.thread !== undefined) {
+            throw new PluginCliError("Give either --host or --thread, not both", { code: "invalid" });
+          }
+          const snapshot = options.refresh ? await service.refresh() : await service.snapshot();
+          const at = now();
+          const hostId = await headroomHost(service, snapshot, options.host, options.thread);
+          const report = headroomReport(snapshot, at, { hostId });
+          return { exitCode: 0, stdout: options.json ? JSON.stringify(report, null, 2) : formatHeadroom(report, snapshot, at) };
         },
       }),
       thread: cliCommand({
