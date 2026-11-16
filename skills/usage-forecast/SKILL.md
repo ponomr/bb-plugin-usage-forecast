@@ -63,10 +63,11 @@ identified by provider and label (`claude-code` / `Current session`).
   provider `today W (A), month W (A)` for the server's local day and month,
   then the ten most recently counted threads (`<threadId> <provider> W`). `W`
   leaves cache reads out, `A` is the provider's `totalTokens`. Only BB
-  threads count, and Hermes ACP agents report none. The numbers are lower
-  bounds: bb keeps only a thread's newest token event, so usage before the
-  plugin first saw a thread (for Claude Code, earlier runtime runs of it) is
-  missing. While the first collection runs, a last line gives its progress;
+  threads count, and Hermes ACP agents report none. The numbers are
+  approximate: bb keeps only a thread's newest token event, so the first
+  collection books a thread's whole known total in the hour of its last turn,
+  and a thread's own total is a lower bound (for Claude Code it misses
+  earlier runtime runs). While the first collection runs, a last line gives its progress;
   `--json` has `providers`, `threads` and `backfill`.
 
 The current thread id is in `bb status` or `$BB_THREAD_ID`.
@@ -111,9 +112,10 @@ Usage Forecast.
 | `limitNotifyPercent` | 90 | 50–100 |
 | `pollIntervalMinutes` | 2 | 1–10 |
 | `language` | `en` | `en`, `ru` (UI language) |
-| `limitsShow` | `used` | `used`, `remaining` (band only; CLI output stays in percent used) |
-| `resetShow` | `countdown` | `countdown`, `time` (band only: the reset as a countdown or as the local time) |
-| `hiddenProviders` | empty | provider ids separated by commas or spaces; left out of the band's other providers, the sidebar ring, limit pushes and `headroom` |
+| `limitsShow` | `used` | `used`, `remaining` (band and sidebar card; CLI output stays in percent used) |
+| `resetShow` | `countdown` | `countdown`, `time` (band and sidebar card: the reset as a countdown or as the local time) |
+| `showBand` | `true` | — (the band above the composer; off removes the band and its Compact button, everything else works as before) |
+| `hiddenProviders` | empty | provider ids separated by commas or spaces; left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom` |
 
 The thread's working limit is, in order: the thread's own limit, the provider
 setting, the point where the provider compacts on its own (Claude Code reports
@@ -157,5 +159,7 @@ asks for it.
   `session expired` or the error. Sign in to the provider in bb; the plugin
   never reads provider credentials.
 - Errors: `bb plugin list` (schedule row) and `bb plugin logs usage-forecast`.
+- No band above the composer: the `showBand` setting is off. The sidebar
+  ring is hidden in bb itself (More → Customize footer), not by a setting.
 - To stop everything: `bb plugin disable usage-forecast`. Threads, providers and
   the stored history stay unchanged.
