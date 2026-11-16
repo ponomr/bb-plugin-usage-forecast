@@ -101,6 +101,7 @@ export class FakeThreads implements ThreadsSdk {
       providerId: this.providers.get(threadId) ?? null,
       status: this.status.get(threadId) ?? "idle",
       environmentId: this.environments.get(threadId) ?? null,
+      createdAt: this.createdAt.get(threadId) ?? NOW - 24 * HOUR_MS,
     };
   }
 
@@ -175,6 +176,48 @@ export class FakeThreads implements ThreadsSdk {
     const hostId = this.environmentHosts.get(environmentId);
     if (hostId === undefined) throw new Error(`Environment ${environmentId} not found`);
     return { id: environmentId, hostId };
+  }
+
+  /** Thread creation times for `get` and `list`. */
+  createdAt = new Map<string, number>();
+  /** Thread ids `list` returns, in order; every known thread by default. */
+  listed: string[] | null = null;
+  listCalls: Array<{ includeHidden?: boolean; limit?: number; offset?: number }> = [];
+  listError: Error | null = null;
+  /** Token-usage event rows per thread, as `threads.events.list` returns them. */
+  tokenRows = new Map<string, unknown[]>();
+  eventCalls: Array<{ threadId: string; order: string; limit: string; afterSeq?: string }> = [];
+  /** Thread ids whose `events` call throws. */
+  eventErrors = new Set<string>();
+
+  /** Adds a token-usage event row to a thread; `seq` grows by one per call. */
+  tokenEvent(threadId: string, createdAt: number, total: Record<string, number>): this {
+    const rows = this.tokenRows.get(threadId) ?? [];
+    const seq = rows.length === 0 ? 100 : ((rows.at(-1) as { seq: number }).seq + 1);
+    rows.push({ id: `evt_${seq}`, threadId, seq, createdAt, type: "thread/tokenUsage/updated", data: { tokenUsage: { total, last: total } } });
+    this.tokenRows.set(threadId, rows);
+    return this;
+  }
+
+  async list({ includeHidden, limit = 50, offset = 0 }: { includeHidden?: boolean; limit?: number; offset?: number }) {
+    this.listCalls.push({ includeHidden, limit, offset });
+    if (this.listError) throw this.listError;
+    const ids = this.listed ?? [...this.providers.keys()];
+    return ids.slice(offset, offset + limit).map((id) => ({
+      id,
+      providerId: this.providers.get(id) ?? null,
+      createdAt: this.createdAt.get(id) ?? NOW - 24 * HOUR_MS,
+    }));
+  }
+
+  async events({ threadId, order, limit, afterSeq }: { threadId: string; order: "asc" | "desc"; limit: string; afterSeq?: string }) {
+    this.eventCalls.push({ threadId, order, limit, ...(afterSeq === undefined ? {} : { afterSeq }) });
+    if (this.eventErrors.has(threadId)) throw new Error(`events of ${threadId} failed: secret message text`);
+    const n = Number(limit);
+    if (n > 100) throw new Error("Thread event limit cannot exceed 100");
+    const rows = [...(this.tokenRows.get(threadId) ?? [])] as Array<{ seq: number }>;
+    if (order === "desc") return rows.reverse().slice(0, n);
+    return rows.filter((r) => afterSeq === undefined || r.seq > Number(afterSeq)).slice(0, n);
   }
 }
 

@@ -5,7 +5,7 @@
 import { loadPluginApp } from "@get-bb/plugin-sdk/testing/app";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import type { CompactResult } from "../src/shared/contract";
+import type { CompactResult, Tokens } from "../src/shared/contract";
 import { HOUR_MS } from "../src/shared/windows";
 import { worstProvider } from "../src/app/model";
 import { clearHiddenOverrides } from "../src/app/hooks";
@@ -651,5 +651,77 @@ describe("Hide button (UF-11 U4)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Подробнее" }));
     const hide = await screen.findByRole("button", { name: "Скрыть acp-opencode здесь и в уведомлениях" });
     expect(hide.textContent).toBe("Скрыть");
+  });
+});
+
+describe("band, token line (UF-12)", () => {
+  const expand = async (name = "Show details") => fireEvent.click(await screen.findByRole("button", { name }));
+  const pair = (work: number, all: number) => ({ work, all });
+  const claude = { providerId: "claude-code", today: pair(310_000, 2_500_000), month: pair(4_200_000, 31_000_000) };
+  const counted = async (): Promise<Tokens> => ({
+    thread: pair(86_000, 1_234_567),
+    providers: [claude, { providerId: "codex", today: pair(5_000, 9_000), month: pair(7_000, 12_000) }],
+    backfillDone: true,
+  });
+
+  it("shows the thread, today and month of the thread's provider, below the limit windows", async () => {
+    const b = backend({ tokens: counted });
+    render(Banner, {}, b);
+    expect(screen.queryByTestId("tokens-line")).toBeNull();
+    await expand();
+    const line = await screen.findByTestId("tokens-line");
+    expect(line.textContent).toBe("Tokens: thread 86k · today 310k · month 4.2M");
+    const details = screen.getByTestId("banner-details");
+    expect(details.contains(line)).toBe(true);
+    const input = callsTo(b, "tokens")[0]!.input as { threadId: string; dayStart: number; monthStart: number };
+    expect(input.threadId).toBe(T);
+    expect(input.monthStart).toBeLessThanOrEqual(input.dayStart);
+  });
+
+  it("puts the full sums with cache reads and the BB-only note in the tooltip", async () => {
+    render(Banner, {}, backend({ tokens: counted }));
+    await expand();
+    const title = (await screen.findByTestId("tokens-line")).getAttribute("title");
+    expect(title).toBe(
+      [
+        "Tokens without cache reads (with them in brackets).",
+        "This thread: 86 000 (1 234 567).",
+        "The provider today: 310 000 (2 500 000).",
+        "The provider this month: 4 200 000 (31 000 000).",
+        "Counts BB threads only; use of the same account outside BB is not included.",
+      ].join("\n"),
+    );
+  });
+
+  it("speaks Russian", async () => {
+    render(Banner, {}, backend({ tokens: counted }), { settings: { language: "ru" } });
+    await expand("Подробнее");
+    expect((await screen.findByTestId("tokens-line")).textContent).toBe("Токены: тред 86 тыс. · сегодня 310 тыс. · месяц 4,2 млн");
+  });
+
+  it("without the thread's own total shows today and month only", async () => {
+    render(Banner, {}, backend({ tokens: async () => ({ thread: null, providers: [claude], backfillDone: false }) }));
+    await expand();
+    expect((await screen.findByTestId("tokens-line")).textContent).toBe("Tokens: today 310k · month 4.2M");
+  });
+
+  it("AE7: a Hermes thread with no events and no provider sums has no line", async () => {
+    const b = backend({ thread: threadState({ providerId: "acp-hera" }), tokens: async () => ({ thread: null, providers: [claude], backfillDone: true }) });
+    render(Banner, {}, b);
+    await expand();
+    await waitFor(() => expect(callsTo(b, "tokens")).toHaveLength(1));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(screen.queryByTestId("tokens-line")).toBeNull();
+  });
+
+  it("a failed query shows no line and no error", async () => {
+    const b = backend({ tokens: async () => Promise.reject(new Error("tokens failed")) });
+    render(Banner, {}, b);
+    await expand();
+    await waitFor(() => expect(callsTo(b, "tokens").length).toBeGreaterThan(0));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(screen.queryByTestId("tokens-line")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.queryByText(/tokens failed/)).toBeNull();
   });
 });

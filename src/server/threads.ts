@@ -341,6 +341,16 @@ export interface ThreadsSdk {
   clearContext(args: { threadId: string }): Promise<unknown>;
   /** `environments.get`: the environment a thread runs in, with its `hostId`. */
   environment(args: { environmentId: string }): Promise<unknown>;
+  /** `threads.list`: `includeHidden` lists active, archived and hidden threads. */
+  list(args: { includeHidden?: boolean; limit?: number; offset?: number }): Promise<unknown>;
+  /** `threads.events.list`: `limit` is a string, at most "100"; the next page starts after a seq. */
+  events(args: {
+    threadId: string;
+    types: ["thread/tokenUsage/updated"];
+    order: "asc" | "desc";
+    limit: string;
+    afterSeq?: string;
+  }): Promise<unknown>;
 }
 
 export interface ThreadReaderDeps {

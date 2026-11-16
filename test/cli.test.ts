@@ -4,6 +4,7 @@ import { AutoCompactor, SUMMARY_STARTED } from "../src/server/auto-compact";
 import { createCli, formatDuration, formatStatus, formatThread, formatTime } from "../src/server/cli";
 import { Poller } from "../src/server/poller";
 import { createService } from "../src/server/rpc";
+import { TokenCounter } from "../src/server/token-counter";
 import { readThreadState } from "../src/server/threads";
 import type { LimitsSnapshot, LimitWindow } from "../src/shared/contract";
 import { forecastWindow, type ClosedWindow } from "../src/shared/forecast";
@@ -393,5 +394,82 @@ describe("hidden providers (UF-11, R12)", () => {
     const hidden = setup({ hiddenProviders: ["claude-code"] });
     expect(await hidden.service.refresh()).toEqual(await plain.service.refresh());
     expect((await hidden.service.snapshot()).hosts[0]!.providers.map((p) => p.providerId)).toContain("claude-code");
+  });
+});
+
+describe("tokens command (UF-12 R10)", () => {
+  // Fixed periods in a UTC+4 zone: the day starts at 20:00 UTC the day before.
+  const dayStart = Date.UTC(2026, 10, 7, 20);
+  const monthStart = Date.UTC(2026, 9, 31, 20);
+
+  async function tokensSetup() {
+    const base = setup();
+    const counter = new TokenCounter({
+      threads: base.threads,
+      storage: base.storage,
+      invalidate: () => {},
+      log: { info() {}, warn() {} },
+      now: base.clock.now,
+      sleep: async () => undefined,
+    });
+    const { bb, harness } = createFakePluginHost({ pluginId: "usage-forecast" });
+    bb.cli.register(
+      createCli(base.service, base.clock.now, async () => [], {
+        counter,
+        timeZone: () => "Asia/Yerevan",
+        periods: () => ({ dayStart, monthStart }),
+      }),
+    );
+    return { ...base, counter, run: (...argv: string[]) => harness.runCli(argv) };
+  }
+
+  it("prints one line with no token data yet", async () => {
+    const { run, counter } = await tokensSetup();
+    await counter.backfill();
+    expect(await run("tokens")).toMatchObject({ exitCode: 0, stdout: "No token data yet." });
+  });
+
+  it("prints today and month per provider, then the recent threads; --json per R10", async () => {
+    const { run, counter, threads } = await tokensSetup();
+    threads.thread("thr_a", "claude-code", null).thread("thr_b", "codex", null);
+    threads.tokenEvent("thr_a", Date.UTC(2026, 10, 2, 10), { totalTokens: 4_000_000, cacheReadInputTokens: 3_900_000 });
+    threads.tokenEvent("thr_a", NOW - HOUR_MS, { totalTokens: 9_200_000, cacheReadInputTokens: 8_914_000 });
+    threads.tokenEvent("thr_b", NOW - 2 * HOUR_MS, { totalTokens: 12_345, cachedInputTokens: 10_000 });
+    await counter.onIdle("thr_a");
+    await counter.onIdle("thr_b");
+
+    const text = await run("tokens");
+    expect(text.stdout).toBe(
+      [
+        "Tokens in BB threads without cache reads (with them in brackets); day and month in Asia/Yerevan.",
+        "  claude-code: today 186k (5.2M), month 286k (9.2M)",
+        "  codex: today 2.35k (12.3k), month 2.35k (12.3k)",
+        "Recent threads:",
+        "  thr_a claude-code 286k",
+        "  thr_b codex 2.35k",
+        "First collection of past threads is running: 0 read, 0 failed.",
+      ].join("\n"),
+    );
+
+    const json = JSON.parse((await run("tokens", "--json")).stdout);
+    expect(json).toEqual({
+      timeZone: "Asia/Yerevan",
+      dayStart,
+      monthStart,
+      providers: [
+        { providerId: "claude-code", today: { work: 186_000, all: 5_200_000 }, month: { work: 286_000, all: 9_200_000 } },
+        { providerId: "codex", today: { work: 2_345, all: 12_345 }, month: { work: 2_345, all: 12_345 } },
+      ],
+      threads: [
+        { threadId: "thr_a", providerId: "claude-code", work: 286_000, all: 9_200_000, updatedAt: NOW - HOUR_MS },
+        { threadId: "thr_b", providerId: "codex", work: 2_345, all: 12_345, updatedAt: NOW - 2 * HOUR_MS },
+      ],
+      backfill: { done: false, threadsRead: 0, threadsFailed: 0 },
+    });
+  });
+
+  it("is absent without a counter", async () => {
+    const { run } = setup();
+    expect((await run("tokens")).exitCode).not.toBe(0);
   });
 });

@@ -14,9 +14,11 @@ auto-compact without open clients.
   settings (`limits-show.ts`, `reset-show.ts`), account grouping across hosts
   (`accounts.ts`), the CLI's window verdict and provider headroom
   (`headroom.ts`), the plan multiplier and its text (`plan.ts`) and the
-  `hiddenProviders` setting's parser (`hidden-providers.ts`).
+  `hiddenProviders` setting's parser (`hidden-providers.ts`), and the token
+  totals' pure core: counting, trims, sums and number format (`tokens.ts`).
 - `src/server/` — poller, KV storage, auto-compact, limit push notifications
-  (through the `push-notifications` plugin), CLI.
+  (through the `push-notifications` plugin), the token counter with its first
+  collection (`token-counter.ts`), CLI.
 - `src/app/` — composer band (design after `claude-code-usage-quota-mod`),
   context card section, settings section, the sidebar-footer ring
   (`indicator.ts` model, `ring-icon.tsx`, `indicator-store.ts` with its
@@ -190,6 +192,30 @@ Compaction events:
   71 % → 35 % (90 837 tokens) about 8 s later. A second, manual compact of
   that thread stayed at 35 %: Codex keeps the last user message, so a thread
   whose fill is one long prompt does not shrink further.
+
+Token usage (checked 2026-11-16 with a throwaway plugin over 105 threads):
+
+- `threads.list` without `archived` returns active and archived threads but
+  no hidden ones; `archived: true` returns only archived ones;
+  `includeHidden: true` returns all of them (as `bb thread list
+  --include-archived --include-hidden`). `limit` (1000 accepted) and
+  `offset` pages do not overlap.
+- `threads.events.list` with `types: ["thread/tokenUsage/updated"]` filters
+  as asked. `limit` is a string and at most `"100"` (more answers HTTP 400
+  «Thread event limit cannot exceed 100»); there is no cursor, the next page
+  is `afterSeq: String(<last seq>)`. `order: "desc", limit: "1"` gives the
+  newest event.
+- The host keeps only the newest `thread/tokenUsage/updated` event of a
+  thread: every one of the 105 threads, idle or archived, had at most one.
+  It is written at the end of a turn; a thread in its first turn has none.
+  Threads of Hermes ACP agents (`acp-kaya`, `acp-hera`, `acp-porfyry`,
+  `acp-opencode`) have none.
+- The event's `scope.turnId` looks like `<run>-t<n>`. Claude Code's
+  `tokenUsage.total` counts one provider runtime run, not the thread: when the
+  thread's last turn is the first of a new run, `total` equals `last` (35 of
+  37 such threads), so `total` drops on a restart. Codex's `total` kept
+  growing across runs. Claude Code's `inputTokens` excludes cached tokens;
+  Codex's includes them. Both report `cacheReadInputTokens`.
 
 UI surfaces:
 

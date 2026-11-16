@@ -160,6 +160,14 @@ export interface Strings {
   /** Next to a shared account's provider: the other hosts signed in to it. */
   alsoOn(hosts: string): string;
 
+  // Token totals (UF-12)
+  /** The band's line: "Tokens: thread 86k · today 310k · month 4.2M"; null parts are left out. */
+  tokensLine(thread: string | null, today: string | null, month: string | null): string;
+  /** The card's text per provider: "today 310k · month 4.2M". */
+  tokensTodayMonth(today: string, month: string): string;
+  /** The line's tooltip: full sums without cache reads, with them in brackets; null parts are left out. */
+  tokensTitle(thread: string | null, today: string | null, month: string | null): string;
+
   // Settings section
   /** `claude` and `codex` are null when their limit is auto. */
   settingsSummary(enabled: boolean, threshold: number, interval: number, limit: string, claude: string | null, codex: string | null): string;
@@ -322,6 +330,22 @@ export const en: Strings = {
   paceStateName: { calm: "on track", tight: "tight", short: "runs out before reset", critical: "critical", hit: "limit reached" },
   noLimitsData: "No limits data",
   alsoOn: (hosts) => `also ${hosts}`,
+
+  tokensLine: (thread, today, month) =>
+    `Tokens: ${[thread === null ? null : `thread ${thread}`, today === null ? null : `today ${today}`, month === null ? null : `month ${month}`]
+      .filter((p) => p !== null)
+      .join(" · ")}`,
+  tokensTodayMonth: (today, month) => `today ${today} · month ${month}`,
+  tokensTitle: (thread, today, month) =>
+    [
+      "Tokens without cache reads (with them in brackets).",
+      thread === null ? null : `This thread: ${thread}.`,
+      today === null ? null : `The provider today: ${today}.`,
+      month === null ? null : `The provider this month: ${month}.`,
+      "Counts BB threads only; use of the same account outside BB is not included.",
+    ]
+      .filter((p) => p !== null)
+      .join("\n"),
 
   settingsSummary: (on, t, i, limit, claude, codex) =>
     `Context limit: Claude Code ${claude ?? "auto"}, Codex ${codex ?? "auto"}, otherwise ${limit} tokens. Auto compact: ${
@@ -486,6 +510,22 @@ export const ru: Strings = {
   paceStateName: { calm: "в норме", tight: "впритык", short: "не хватит до сброса", critical: "критично", hit: "лимит исчерпан" },
   noLimitsData: "Нет данных о лимитах",
   alsoOn: (hosts) => `также ${hosts}`,
+
+  tokensLine: (thread, today, month) =>
+    `Токены: ${[thread === null ? null : `тред ${thread}`, today === null ? null : `сегодня ${today}`, month === null ? null : `месяц ${month}`]
+      .filter((p) => p !== null)
+      .join(" · ")}`,
+  tokensTodayMonth: (today, month) => `сегодня ${today} · месяц ${month}`,
+  tokensTitle: (thread, today, month) =>
+    [
+      "Токены без чтения кэша (с ним — в скобках).",
+      thread === null ? null : `Этот тред: ${thread}.`,
+      today === null ? null : `Провайдер сегодня: ${today}.`,
+      month === null ? null : `Провайдер за месяц: ${month}.`,
+      "Считаются только треды BB; работа с тем же аккаунтом вне BB не входит.",
+    ]
+      .filter((p) => p !== null)
+      .join("\n"),
 
   settingsSummary: (on, t, i, limit, claude, codex) =>
     `Лимит контекста: Claude Code ${claude ?? "авто"}, Codex ${codex ?? "авто"}, остальные ${limit} токенов. Авто-компакт: ${

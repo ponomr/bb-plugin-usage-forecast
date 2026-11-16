@@ -21,6 +21,7 @@ import {
   POLL_MIN_MINUTES,
   thresholdSchema,
   threadTag,
+  TOKENS_TAG,
   THRESHOLD_DEFAULT_PERCENT,
   THRESHOLD_MAX_PERCENT,
   THRESHOLD_MIN_PERCENT,
@@ -32,6 +33,7 @@ import { LimitNotifier } from "./src/server/limit-notifier";
 import { Poller, TICK_CRON } from "./src/server/poller";
 import { createService, hideProvider, setDisplay } from "./src/server/rpc";
 import { Storage } from "./src/server/storage";
+import { TokenCounter } from "./src/server/token-counter";
 import { parseSettings, type ThreadsSdk } from "./src/server/threads";
 import { DEFAULT_LANGUAGE, LANGUAGES } from "./src/shared/language";
 import { DEFAULT_LIMITS_SHOW, LIMITS_SHOW } from "./src/shared/limits-show";
@@ -172,6 +174,8 @@ export default async function plugin(bb: BbPluginApi) {
     output: (args) => bb.sdk.threads.output(args),
     clearContext: (args) => bb.sdk.threads.clearContext(args),
     environment: (args) => bb.sdk.environments.get(args),
+    list: (args) => bb.sdk.threads.list(args),
+    events: (args) => bb.sdk.threads.events.list(args),
   };
 
   const notifier = new LimitNotifier({
@@ -201,6 +205,14 @@ export default async function plugin(bb: BbPluginApi) {
 
   const compactor = new AutoCompactor({ threads, storage, settings, invalidate: invalidateThread, log: bb.log });
   bb.onDispose(() => compactor.dispose());
+
+  const counter = new TokenCounter({
+    threads,
+    storage,
+    invalidate: () => bb.rpc.experimental_invalidate([TOKENS_TAG]),
+    log: bb.log,
+  });
+  bb.onDispose(() => counter.dispose());
 
   const service = createService({ threads, storage, settings, poller, compactor, invalidateThread });
 
@@ -247,6 +259,10 @@ export default async function plugin(bb: BbPluginApi) {
   bb.events.on("thread.idle", ({ thread }) => {
     void compactor.onIdle(thread.id);
   });
+  // A separate listener, so a failing count never touches auto-compact.
+  bb.events.on("thread.idle", ({ thread }) => {
+    void counter.onIdle(thread.id);
+  });
 
   bb.rpc.register(usageForecastContract, {
     snapshot: () => service.snapshot(),
@@ -257,9 +273,13 @@ export default async function plugin(bb: BbPluginApi) {
     setDisplay: (input) => setDisplay((values) => settingsHandle.experimental_set(values), input),
     hideProvider: (input) =>
       hideProvider({ read: () => settingsHandle.get(), write: (values) => settingsHandle.experimental_set(values) }, input),
+    tokens: ({ threadId, dayStart, monthStart }) => counter.view(threadId ?? null, dayStart, monthStart),
   });
 
-  bb.cli.register(createCli(service, Date.now, async () => (await settings()).hiddenProviders));
+  bb.cli.register(createCli(service, Date.now, async () => (await settings()).hiddenProviders, { counter }));
 
   bb.log.info("usage-forecast loaded");
+  // The first token collection runs once, in the background; it returns at
+  // once when storage says it is done.
+  void counter.backfill();
 }

@@ -1,6 +1,6 @@
 ---
 name: usage-forecast
-description: Read provider usage limits and their reset forecasts, check a thread's context fill, compact a thread, or set per-thread auto-compact with the Usage Forecast plugin's `bb usage-forecast` CLI. Use when asked how much of a Claude Code or Codex limit is left, which provider has headroom, when a window resets, whether a thread needs compacting, or why auto-compact did or did not run.
+description: Read provider usage limits and their reset forecasts, check a thread's context fill, compact a thread, or set per-thread auto-compact with the Usage Forecast plugin's `bb usage-forecast` CLI. Use when asked how much of a Claude Code or Codex limit is left, which provider has headroom, when a window resets, whether a thread needs compacting, why auto-compact did or did not run, or how many tokens BB threads used today or this month.
 ---
 
 # Usage Forecast
@@ -59,6 +59,15 @@ identified by provider and label (`claude-code` / `Current session`).
   per-thread auto-compact. `inherit` follows the settings. `--limit` sets the
   thread's working context limit in tokens (10 000–2 000 000; `0` returns to
   the provider and global limits); without it the stored limit is kept.
+- `bb usage-forecast tokens [--json]` — tokens used in BB threads: per
+  provider `today W (A), month W (A)` for the server's local day and month,
+  then the ten most recently counted threads (`<threadId> <provider> W`). `W`
+  leaves cache reads out, `A` is the provider's `totalTokens`. Only BB
+  threads count, and Hermes ACP agents report none. The numbers are lower
+  bounds: bb keeps only a thread's newest token event, so usage before the
+  plugin first saw a thread (for Claude Code, earlier runtime runs of it) is
+  missing. While the first collection runs, a last line gives its progress;
+  `--json` has `providers`, `threads` and `backfill`.
 
 The current thread id is in `bb status` or `$BB_THREAD_ID`.
 

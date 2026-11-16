@@ -18,6 +18,7 @@ import {
   formatCost,
   formatResetAt,
   formatSpan,
+  formatTokens,
   providerName,
   shortWindowLabel,
   statusText,
@@ -37,6 +38,7 @@ import {
   useSetOverride,
   useSnapshot,
   useThreadState,
+  useTokens,
   type CompactState,
   useStrings,
 } from "./hooks";
@@ -53,6 +55,7 @@ import {
   type WindowView,
 } from "./model";
 import { shownPercent } from "../shared/limits-show";
+import { formatTokenCount, type TokenPair } from "../shared/tokens";
 import { RecentCompacts } from "./settings-section";
 import { Bar, Ink, SegmentBar, Switch, Toned } from "./ui";
 import { Button } from "../../components/ui/button";
@@ -424,6 +427,29 @@ function HideButton({ providerId }: { providerId: string }) {
   );
 }
 
+const fullPair = (p: TokenPair) => `${formatTokens(p.work)} (${formatTokens(p.all)})`;
+
+/**
+ * UF-12 R8: "Tokens: thread 86k · today 310k · month 4.2M". "today" and
+ * "month" are the thread's provider across its BB threads. No line without
+ * data, and none while the query loads or after it failed.
+ */
+export function TokensLine({ threadId, providerId }: { threadId: string; providerId: string | null }) {
+  const s = useStrings();
+  const data = useTokens(threadId).data;
+  if (data === undefined) return null;
+  const sums = providerId === null ? undefined : data.providers.find((p) => p.providerId === providerId);
+  if (data.thread === null && sums === undefined) return null;
+  const short = (p: TokenPair | undefined) => (p === undefined ? null : formatTokenCount(p.work, s.lang));
+  const full = (p: TokenPair | undefined) => (p === undefined ? null : fullPair(p));
+  const thread = data.thread ?? undefined;
+  return (
+    <span className="text-muted-foreground" data-testid="tokens-line" title={s.tokensTitle(full(thread), full(sums?.today), full(sums?.month))}>
+      {s.tokensLine(short(thread), short(sums?.today), short(sums?.month))}
+    </span>
+  );
+}
+
 export function Banner() {
   const s = useStrings();
   const threadId = useComposerThreadId();
@@ -521,6 +547,7 @@ export function Banner() {
               ))}
             </div>
           ) : null}
+          <TokensLine threadId={threadId} providerId={state?.providerId ?? null} />
           {ownHost?.pollError && view.kind !== "error" ? <Toned tone="amber">{s.pollFailed(ownHost.pollError)}</Toned> : null}
           {data === undefined || data.recentCompactions.length === 0 ? null : (
             <Disclosure summary={<span className="font-medium">{s.recentCompactsCount(data.recentCompactions.length)}</span>}>

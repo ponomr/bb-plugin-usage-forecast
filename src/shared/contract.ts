@@ -10,6 +10,8 @@ import { RESET_SHOW } from "./reset-show";
 
 export const LIMITS_TAG = "limits";
 export const threadTag = (threadId: string) => `thread:${threadId}`;
+/** Invalidated after a token count grew a bucket. */
+export const TOKENS_TAG = "tokens";
 
 export const THRESHOLD_MIN_PERCENT = 50;
 export const THRESHOLD_MAX_PERCENT = 95;
@@ -306,6 +308,28 @@ export type HideProviderInput = z.infer<typeof hideProviderInputSchema>;
 export const hiddenProvidersSchema = z.object({ hiddenProviders: z.array(z.string()) });
 export type HiddenProviders = z.infer<typeof hiddenProvidersSchema>;
 
+// --- Token totals ------------------------------------------------------------
+
+/** Epoch ms of a local period start, computed by the caller's clock. */
+const periodStartSchema = z.number().int().nonnegative();
+
+export const tokensInputSchema = z
+  .object({ threadId: threadIdSchema.nullable().optional(), dayStart: periodStartSchema, monthStart: periodStartSchema })
+  .strict();
+export type TokensInput = z.infer<typeof tokensInputSchema>;
+
+const tokenPairSchema = z.object({ work: z.number(), all: z.number() });
+export type TokenPairOut = z.infer<typeof tokenPairSchema>;
+
+export const tokensSchema = z.object({
+  /** The thread's own totals; null when the counter has not seen it. */
+  thread: tokenPairSchema.nullable(),
+  /** Providers with buckets this month, sorted by id. */
+  providers: z.array(z.object({ providerId: z.string(), today: tokenPairSchema, month: tokenPairSchema })),
+  backfillDone: z.boolean(),
+});
+export type Tokens = z.infer<typeof tokensSchema>;
+
 // --- Contract ----------------------------------------------------------------
 
 const threadInput = z.object({ threadId: threadIdSchema });
@@ -340,6 +364,11 @@ export const usageForecastContract = defineRpcContract({
   hideProvider: {
     input: hideProviderInputSchema,
     output: hiddenProvidersSchema,
+  },
+  tokens: {
+    input: tokensInputSchema,
+    output: tokensSchema,
+    tags: () => [TOKENS_TAG],
   },
 });
 export type UsageForecastContract = typeof usageForecastContract;

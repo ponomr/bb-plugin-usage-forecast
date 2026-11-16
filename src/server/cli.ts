@@ -23,8 +23,10 @@ import { accountBlocks } from "../shared/accounts";
 import { planText } from "../shared/plan";
 import { isHidden } from "../shared/hidden-providers";
 import { headroomReport, windowVerdict, type HeadroomEntry, type HeadroomReport } from "../shared/headroom";
+import { formatTokenCount, localPeriodStarts, type TokenPair } from "../shared/tokens";
 import { providerCompactsAtPercent } from "./threads";
 import type { Service } from "./rpc";
+import type { TokenCounter, TokenThreadRow, TokenView } from "./token-counter";
 
 const STATUS_WORDS: Record<ProviderLimits["status"], string> = {
   ok: "ok",
@@ -300,14 +302,73 @@ function parseThreadId(value: string): string {
   return parsed.data;
 }
 
+// --- Tokens ------------------------------------------------------------------
+
+/** Threads listed by `tokens`, most recently updated first. */
+export const TOKENS_RECENT_THREADS = 10;
+
+/** What `tokens` reads: the counter, and the process's time zone. */
+export interface CliTokens {
+  counter: Pick<TokenCounter, "view" | "recentThreads" | "backfillState">;
+  /** IANA name of the time zone the day and month starts are in. */
+  timeZone?: () => string;
+  /** Local day and month starts of `now`; the process's local time by default. */
+  periods?: (now: number) => { dayStart: number; monthStart: number };
+}
+
+export interface TokensReport {
+  timeZone: string;
+  dayStart: number;
+  monthStart: number;
+  providers: TokenView["providers"];
+  threads: TokenThreadRow[];
+  backfill: { done: boolean; threadsRead: number; threadsFailed: number };
+}
+
+export async function tokensReport(tokens: CliTokens, now: number): Promise<TokensReport> {
+  const { dayStart, monthStart } = (tokens.periods ?? localPeriodStarts)(now);
+  const [view, threads, backfill] = await Promise.all([
+    tokens.counter.view(null, dayStart, monthStart),
+    tokens.counter.recentThreads(TOKENS_RECENT_THREADS),
+    tokens.counter.backfillState(),
+  ]);
+  return {
+    timeZone: (tokens.timeZone ?? (() => Intl.DateTimeFormat().resolvedOptions().timeZone))(),
+    dayStart,
+    monthStart,
+    providers: view.providers,
+    threads,
+    backfill: { done: backfill.done, threadsRead: backfill.threadsRead, threadsFailed: backfill.threadsFailed },
+  };
+}
+
+const pairText = (p: TokenPair) => `${formatTokenCount(p.work, "en")} (${formatTokenCount(p.all, "en")})`;
+
+export function formatTokensReport(r: TokensReport): string {
+  const collecting = r.backfill.done
+    ? []
+    : [`First collection of past threads is running: ${r.backfill.threadsRead} read, ${r.backfill.threadsFailed} failed.`];
+  if (r.providers.length === 0 && r.threads.length === 0) return ["No token data yet.", ...collecting].join("\n");
+  const lines = [`Tokens in BB threads without cache reads (with them in brackets); day and month in ${r.timeZone}.`];
+  for (const p of r.providers) lines.push(`  ${p.providerId}: today ${pairText(p.today)}, month ${pairText(p.month)}`);
+  if (r.threads.length > 0) {
+    lines.push("Recent threads:");
+    for (const t of r.threads) lines.push(`  ${t.threadId} ${t.providerId} ${formatTokenCount(t.work, "en")}`);
+  }
+  lines.push(...collecting);
+  return lines.join("\n");
+}
+
 /**
  * `hidden` reads the parsed `hiddenProviders` setting: `status` marks those
- * providers and `headroom` leaves them out.
+ * providers and `headroom` leaves them out. Without `tokens` there is no
+ * `tokens` command.
  */
 export function createCli(
   service: Service,
   now: () => number = Date.now,
   hidden: () => Promise<readonly string[]> = async () => [],
+  tokens: CliTokens | null = null,
 ): PluginCliRegistration {
   const json = { json: { type: "boolean", description: "Print JSON" } } as const;
   return defineCli({
@@ -379,6 +440,20 @@ export function createCli(
           };
         },
       }),
+      ...(tokens === null
+        ? {}
+        : {
+            tokens: cliCommand({
+              summary: "Show tokens spent in BB threads today, this month and per thread",
+              description:
+                "Counted from bb's token-usage events of each thread, without cache reads; the full sums are in brackets and in --json. Covers BB threads only. Today and this month are in the server's time zone.",
+              options: json,
+              async run({ options }) {
+                const report = await tokensReport(tokens, now());
+                return { exitCode: 0, stdout: options.json ? JSON.stringify(report, null, 2) : formatTokensReport(report) };
+              },
+            }),
+          }),
       override: cliCommand({
         summary: "Set auto-compact and the context limit for one thread",
         description:

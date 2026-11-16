@@ -131,6 +131,18 @@ the context breakdown and one line per other provider.
   window and percents, no account data, and opens bb on tap. Without the
   `push-notifications` plugin, or with no device registered, the plugin only
   logs that the push was not delivered.
+- **Token totals.** The server counts the tokens of every BB thread from
+  bb's own token-usage events: per thread, and per provider for the local day
+  and month. The expanded band has one line below the limit windows,
+  «Tokens: thread 86k · today 310k · month 4.2M», where today and month are
+  the thread's provider across all its BB threads; the tooltip gives the full
+  sums with cache reads. The sidebar card adds «today 310k · month 4.2M» under
+  each provider that has any. The main number leaves cache reads out (they
+  dominate long threads); the number in brackets is the provider's
+  `totalTokens`. Only BB threads are counted: use of the same account outside
+  BB is not, and Hermes ACP agents write no token events. After the first
+  start the server walks every thread once (archived and hidden included)
+  and from then on counts each thread when it goes idle.
 - **Live context.** The server listens to the thread's context events
   (usage updated, compacted, cleared) and refreshes the open band at once;
   a poll every 30 s while the agent answers is only a backstop.
@@ -224,6 +236,7 @@ bb usage-forecast headroom [--refresh] [--json] [--host <id or name> | --thread 
 bb usage-forecast thread <threadId> [--json]
 bb usage-forecast compact <threadId>
 bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95] [--limit <tokens>|0]
+bb usage-forecast tokens [--json]
 ```
 
 `status` puts the state after the percent, for example
@@ -252,6 +265,21 @@ keeps one host's accounts; data older than 30 minutes is marked stale, for
 the whole report or for one account (`measured 2d 3h ago`). Hidden providers
 are left out of the ranking and listed in a last line `hidden: <ids>`
 (`hidden` in JSON); with `--thread` the thread's own provider stays in.
+
+`tokens` prints each provider's sums for the server's day and month, without
+cache reads and, in brackets, with them, then the ten most recently counted
+threads:
+
+```text
+Tokens in BB threads without cache reads (with them in brackets); day and month in UTC.
+  claude-code: today 310k (2.5M), month 4.2M (31M)
+  codex: today 5k (9k), month 7k (12k)
+Recent threads:
+  thr_a claude-code 86k
+```
+
+Until the first collection has read every thread it adds a line with its
+progress. `--json` gives the same numbers in full.
 
 Agents in bb threads get the same reference from
 [skills/usage-forecast/SKILL.md](skills/usage-forecast/SKILL.md).
@@ -287,6 +315,15 @@ e-mail addresses in error texts are masked.
   never stored.
 - When a provider answers that it cannot compact, the plugin stops trying it
   for 24 hours; a successful manual compact lifts the mark earlier.
+- Token totals are approximate. bb keeps only a thread's newest token-usage
+  event, so the first collection books each thread's last known total in the
+  hour of its last turn: the day and month of the first collection also hold
+  what a long-running thread spent before them. For Claude Code that total
+  covers only the provider's latest runtime run of the thread (it restarts
+  its count with each run), so a thread's own total is a lower bound. From then on each idle thread adds what it grew; a count that
+  dropped is a new run and counts in full, but a run that ends above the
+  count remembered from the run before is counted only for the excess.
+  Hourly sums and threads are kept for 40 days, under 200 KB each.
 
 ## Built-in provider usage
 

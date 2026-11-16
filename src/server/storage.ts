@@ -5,6 +5,7 @@ import type { PluginKvStorage } from "@get-bb/plugin-sdk";
 import type { ClosedWindow } from "../shared/forecast";
 import type { HeldPace } from "../shared/pace";
 import type { CompactLogEntry, ProviderLimits } from "../shared/contract";
+import { emptyTokenState, type HourEntry, type ThreadEntry, type TokenState, threadsValue } from "../shared/tokens";
 
 /** Upper bound for any serialized value, in bytes. */
 export const MAX_VALUE_BYTES = 200 * 1024;
@@ -38,6 +39,8 @@ export const keys = {
   unsupported: "autocompact:unsupported",
   compactPoints: "context:compact-points",
   notified: "notify:sent",
+  tokenHours: "tokens:hours",
+  tokenThreads: "tokens:threads",
 } as const;
 
 /** The last compaction point bb reported for one provider and window size. */
@@ -126,6 +129,67 @@ function isHostEntry(value: unknown): value is HostEntry {
     (v.polledAt === null || typeof v.polledAt === "number") &&
     (v.pollError === null || typeof v.pollError === "string")
   );
+}
+
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+
+function isHourEntry(value: unknown): value is HourEntry {
+  return Array.isArray(value) && value.length === 3 && value.every(isNum);
+}
+
+function isThreadEntry(value: unknown): value is ThreadEntry {
+  const v = value as ThreadEntry | null;
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    typeof v.providerId === "string" &&
+    isNum(v.work) &&
+    isNum(v.all) &&
+    isNum(v.updatedAt) &&
+    isNum(v.seq)
+  );
+}
+
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** `tokens:hours` and `tokens:threads` read back into one state; parts in another shape read as empty. */
+export function parseTokenState(hoursValue: unknown, threadsStored: unknown): TokenState {
+  const state = emptyTokenState();
+  if (isRecord(hoursValue)) {
+    for (const [providerId, list] of Object.entries(hoursValue)) {
+      if (!Array.isArray(list)) continue;
+      const kept = list.filter(isHourEntry).sort((a, b) => a[0] - b[0]);
+      if (kept.length > 0) state.hours[providerId] = kept;
+    }
+  }
+  if (isRecord(threadsStored)) {
+    if (isRecord(threadsStored.threads)) {
+      for (const [threadId, entry] of Object.entries(threadsStored.threads)) {
+        if (!isThreadEntry(entry)) continue;
+        const e = entry as ThreadEntry;
+        state.threads[threadId] = {
+          providerId: e.providerId,
+          work: e.work,
+          all: e.all,
+          sumWork: isNum(e.sumWork) ? e.sumWork : e.work,
+          sumAll: isNum(e.sumAll) ? e.sumAll : e.all,
+          updatedAt: e.updatedAt,
+          seq: e.seq,
+        };
+      }
+    }
+    const b = threadsStored.backfill as Partial<TokenState["backfill"]> | undefined;
+    if (isRecord(b)) {
+      state.backfill = {
+        done: b.done === true,
+        threadsRead: isNum(b.threadsRead) ? b.threadsRead : 0,
+        threadsFailed: isNum(b.threadsFailed) ? b.threadsFailed : 0,
+        startedAt: isNum(b.startedAt) ? b.startedAt : null,
+      };
+    }
+    if (isNum(threadsStored.evictedBefore)) state.evictedBefore = threadsStored.evictedBefore;
+  }
+  return state;
 }
 
 function isLatest(value: unknown): value is StoredLatest {
@@ -343,5 +407,23 @@ export class Storage {
       .sort((a, b) => b[1].at - a[1].at)
       .slice(0, MAX_NOTIFIED);
     await this.kv.set(keys.notified, Object.fromEntries(kept));
+  }
+
+  /** Token totals: the hourly buckets and the thread table. */
+  async tokenState(): Promise<TokenState> {
+    const [hours, threads] = await Promise.all([this.kv.get<unknown>(keys.tokenHours), this.kv.get<unknown>(keys.tokenThreads)]);
+    return parseTokenState(hours, threads);
+  }
+
+  /** The caller trims first (`trimTokenState`); the byte bound is checked again here. */
+  async setTokenHours(hours: TokenState["hours"]): Promise<void> {
+    if (byteLength(hours) > MAX_VALUE_BYTES) throw new Error("token hours exceed the value limit");
+    await this.kv.set(keys.tokenHours, hours);
+  }
+
+  async setTokenThreads(state: TokenState): Promise<void> {
+    const value = threadsValue(state);
+    if (byteLength(value) > MAX_VALUE_BYTES) throw new Error("token threads exceed the value limit");
+    await this.kv.set(keys.tokenThreads, value);
   }
 }
