@@ -29,6 +29,7 @@ import {
   useComposerThreadId,
   useExpanded,
   useHiddenProviders,
+  useHideProvider,
   useLimitsShow,
   useNow,
   useResetShow,
@@ -387,17 +388,38 @@ function OtherProvider({ provider, now }: { provider: ProviderLimits; now: numbe
       ))}
     </span>
   );
+  const hide = <HideButton providerId={provider.providerId} />;
   if (provider.windows.length === 0) {
+    // Nothing to open: the button sits on the line, outside any other button.
     return (
-      <section data-provider={provider.providerId} className="pl-4">
+      <section data-provider={provider.providerId} className="flex flex-wrap items-baseline gap-x-2 pl-4">
         {summary}
+        {hide}
       </section>
     );
   }
   return (
     <Disclosure summary={summary} data-provider={provider.providerId}>
       <WindowList provider={provider} now={now} />
+      {hide}
     </Disclosure>
+  );
+}
+
+/** Hides another provider here, in the sidebar sign and in pushes (the `hiddenProviders` setting). */
+function HideButton({ providerId }: { providerId: string }) {
+  const s = useStrings();
+  const hideProvider = useHideProvider();
+  return (
+    <button
+      type="button"
+      className="self-start text-muted-foreground underline-offset-2 hover:underline"
+      aria-label={s.hideProviderLabel(providerName(s, providerId))}
+      data-testid="hide-provider"
+      onClick={() => hideProvider(providerId)}
+    >
+      {s.hideProvider}
+    </button>
   );
 }
 

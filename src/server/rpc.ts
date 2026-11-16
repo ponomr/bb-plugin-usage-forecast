@@ -2,7 +2,8 @@
 // the same service, so a change made from the CLI invalidates open pages too.
 
 import { isInheritOverride, normalizeOverride, type LimitsSnapshot, type ThreadOverride, type ThreadState, type CompactResult } from "../shared/contract";
-import type { Display, DisplayInput } from "../shared/contract";
+import type { Display, DisplayInput, HiddenProviders, HideProviderInput } from "../shared/contract";
+import { joinHiddenProviders, parseHiddenProviders } from "../shared/hidden-providers";
 import { parseLimitsShow } from "../shared/limits-show";
 import { parseResetShow } from "../shared/reset-show";
 import type { AutoCompactor } from "./auto-compact";
@@ -65,4 +66,23 @@ export async function setDisplay(write: DisplayWriter, input: DisplayInput): Pro
   if (input.resetShow !== undefined) values.resetShow = input.resetShow;
   const next = await write(values);
   return { limitsShow: parseLimitsShow(next.limitsShow), resetShow: parseResetShow(next.resetShow) };
+}
+
+/** Reads the plugin's settings and writes the `hiddenProviders` setting, through the settings handle. */
+export interface HiddenWriter {
+  read: () => Promise<Record<string, unknown>>;
+  write: (values: { hiddenProviders: string }) => Promise<Record<string, unknown>>;
+}
+
+/**
+ * RPC `hideProvider`: appends the id to the `hiddenProviders` setting unless
+ * it is there already, and answers with the parsed list after the write. The
+ * settings' onChange invalidates the open pages.
+ */
+export async function hideProvider(settings: HiddenWriter, input: HideProviderInput): Promise<HiddenProviders> {
+  const [id] = parseHiddenProviders(input.providerId);
+  const current = parseHiddenProviders((await settings.read()).hiddenProviders);
+  if (id === undefined || current.includes(id)) return { hiddenProviders: current };
+  const next = await settings.write({ hiddenProviders: joinHiddenProviders([...current, id]) });
+  return { hiddenProviders: parseHiddenProviders(next.hiddenProviders) };
 }

@@ -30,7 +30,7 @@ import { AutoCompactor } from "./src/server/auto-compact";
 import { createCli } from "./src/server/cli";
 import { LimitNotifier } from "./src/server/limit-notifier";
 import { Poller, TICK_CRON } from "./src/server/poller";
-import { createService, setDisplay } from "./src/server/rpc";
+import { createService, hideProvider, setDisplay } from "./src/server/rpc";
 import { Storage } from "./src/server/storage";
 import { parseSettings, type ThreadsSdk } from "./src/server/threads";
 import { DEFAULT_LANGUAGE, LANGUAGES } from "./src/shared/language";
@@ -255,6 +255,8 @@ export default async function plugin(bb: BbPluginApi) {
     compact: ({ threadId }) => service.compact(threadId),
     setThreadOverride: ({ threadId, override }) => service.setThreadOverride(threadId, override),
     setDisplay: (input) => setDisplay((values) => settingsHandle.experimental_set(values), input),
+    hideProvider: (input) =>
+      hideProvider({ read: () => settingsHandle.get(), write: (values) => settingsHandle.experimental_set(values) }, input),
   });
 
   bb.cli.register(createCli(service, Date.now, async () => (await settings()).hiddenProviders));

@@ -130,16 +130,18 @@ export interface Backend {
   thread: ThreadState;
   compact: () => Promise<CompactResult>;
   setDisplay: (input: DisplayInput) => Promise<Display>;
+  hideProvider: (input: { providerId: string }) => Promise<{ hiddenProviders: string[] }>;
   calls: { method: string; input: unknown }[];
   overrides: ThreadOverride[];
 }
 
-export function backend(over: Partial<Pick<Backend, "snapshot" | "thread" | "compact" | "setDisplay">> = {}): Backend {
+export function backend(over: Partial<Pick<Backend, "snapshot" | "thread" | "compact" | "setDisplay" | "hideProvider">> = {}): Backend {
   return {
     snapshot: over.snapshot ?? snapshot([provider("claude-code", [win("Current session", 40)])]),
     thread: over.thread ?? threadState(),
     compact: over.compact ?? (async () => ({ ok: true, message: null, entry: null })),
     setDisplay: over.setDisplay ?? (async (input) => ({ limitsShow: "used", resetShow: "countdown", ...input })),
+    hideProvider: over.hideProvider ?? (async (input) => ({ hiddenProviders: [input.providerId] })),
     calls: [],
     overrides: [],
   };
@@ -169,6 +171,7 @@ export function render<P extends object>(
       thread: log("thread", () => b.thread),
       compact: log("compact", () => b.compact()),
       setDisplay: log("setDisplay", (input: DisplayInput) => b.setDisplay(input)),
+      hideProvider: log("hideProvider", (input: { providerId: string }) => b.hideProvider(input)),
       setThreadOverride: log("setThreadOverride", (input: { threadId: string; override: ThreadOverride }) => {
         b.overrides.push(input.override);
         const override = normalizeOverride(input.override);

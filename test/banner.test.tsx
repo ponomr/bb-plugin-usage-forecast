@@ -8,6 +8,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { CompactResult } from "../src/shared/contract";
 import { HOUR_MS } from "../src/shared/windows";
 import { worstProvider } from "../src/app/model";
+import { clearHiddenOverrides } from "../src/app/hooks";
 import { backend, callsTo, entry, forecastOf, provider, render, snapshot, T, threadState, win } from "./app-fixtures";
 
 let Banner: React.ComponentType<object>;
@@ -22,6 +23,7 @@ beforeAll(async () => {
 afterEach(() => {
   cleanup();
   localStorage.clear();
+  clearHiddenOverrides();
 });
 
 const twoProviders = () =>
@@ -582,5 +584,65 @@ describe("hidden providers (UF-11)", () => {
     await waitFor(() => expect(providerBlock("claude-code")()).not.toBeNull());
     expect(providerBlock("codex")()).toBeNull();
     expect(providerBlock("acp-opencode")()).toBeNull();
+  });
+});
+
+describe("Hide button (UF-11 U4)", () => {
+  const expand = async () => fireEvent.click(await screen.findByRole("button", { name: "Show details" }));
+  const three = () =>
+    snapshot([
+      provider("claude-code", [win("Current session", 40)]),
+      provider("codex", [win("Weekly limit", 30)]),
+      provider("acp-opencode", [], { status: "unauthenticated" }),
+    ]);
+
+  it("hides another provider at once and saves it (AE6)", async () => {
+    const b = backend({ snapshot: three() });
+    render(Banner, {}, b);
+    await expand();
+    const hide = await screen.findByRole("button", { name: "Hide acp-opencode here and in notifications" });
+    expect(hide.textContent).toBe("Hide");
+    expect(hide.parentElement!.closest("button")).toBeNull();
+    fireEvent.click(hide);
+    await waitFor(() => expect(providerBlock("acp-opencode")()).toBeNull());
+    expect(providerBlock("codex")()).not.toBeNull();
+    await waitFor(() => expect(callsTo(b, "hideProvider").map((c) => c.input)).toEqual([{ providerId: "acp-opencode" }]));
+  });
+
+  it("puts the button in the opened content of a provider with windows, never in its summary", async () => {
+    render(Banner, {}, backend({ snapshot: three() }));
+    await expand();
+    await waitFor(() => expect(providerBlock("codex")()).not.toBeNull());
+    const codex = providerBlock("codex")!;
+    const summary = within(codex()!).getByRole("button", { expanded: false });
+    expect(within(codex()!).queryByTestId("hide-provider")).toBeNull();
+    fireEvent.click(summary);
+    const hide = await within(codex()!).findByRole("button", { name: "Hide Codex here and in notifications" });
+    expect(summary.contains(hide)).toBe(false);
+    expect(hide.parentElement!.closest("button")).toBeNull();
+  });
+
+  it("gives the thread's own provider no button", async () => {
+    render(Banner, {}, backend({ snapshot: three() }));
+    await expand();
+    await waitFor(() => expect(providerBlock("claude-code")()).not.toBeNull());
+    expect(within(providerBlock("claude-code")()!).queryByTestId("hide-provider")).toBeNull();
+  });
+
+  it("brings the block back when the save fails", async () => {
+    const b = backend({ snapshot: three(), hideProvider: async () => Promise.reject(new Error("settings write failed")) });
+    render(Banner, {}, b);
+    await expand();
+    fireEvent.click(await screen.findByRole("button", { name: "Hide acp-opencode here and in notifications" }));
+    await waitFor(() => expect(callsTo(b, "hideProvider")).toHaveLength(1));
+    await waitFor(() => expect(providerBlock("acp-opencode")()).not.toBeNull());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("speaks Russian", async () => {
+    render(Banner, {}, backend({ snapshot: three() }), { settings: { language: "ru" } });
+    fireEvent.click(await screen.findByRole("button", { name: "Подробнее" }));
+    const hide = await screen.findByRole("button", { name: "Скрыть acp-opencode здесь и в уведомлениях" });
+    expect(hide.textContent).toBe("Скрыть");
   });
 });
