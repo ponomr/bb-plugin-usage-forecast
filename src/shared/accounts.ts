@@ -1,6 +1,7 @@
 // Provider accounts across hosts. Hosts whose answers for one provider share
-// the account (`sharedWith`, joined transitively) form one block, so `status`
-// and `headroom` print one account once and agree on its windows.
+// the account (`sharedWith`, joined transitively) form one group, so `status`,
+// `headroom` and the sidebar card show one account once and agree on its
+// windows.
 //
 // Pure: no SDK, no clock.
 
@@ -13,35 +14,51 @@ export interface AccountBlock {
   members: { host: HostLimits; provider: ProviderLimits }[];
 }
 
+/** One provider account: the indices of its hosts in the given list, ascending. */
+export interface AccountGroup {
+  providerId: string;
+  members: number[];
+}
+
 /**
- * One block per provider account: hosts whose answers share the account
- * (`sharedWith`, joined transitively) form one block.
+ * The provider accounts of `hosts`, in order of first appearance. Hosts whose
+ * answers share the account (`sharedWith`, joined transitively) form one
+ * group. A link counts from either side: a host that went offline keeps its
+ * `sharedWith`, while the hosts still answering have dropped theirs.
  */
-export function accountBlocks(hosts: readonly HostLimits[]): AccountBlock[] {
-  const blocks: AccountBlock[] = [];
+export function accountGroups(
+  hosts: readonly { hostId: string | null; providers: readonly Pick<ProviderLimits, "providerId" | "sharedWith">[] }[],
+): AccountGroup[] {
+  const groups: AccountGroup[] = [];
   const placed = new Set<string>();
-  const id = (h: HostLimits, providerId: string) => `${h.hostId ?? ""}\n${providerId}`;
-  for (const host of hosts) {
-    for (const provider of host.providers) {
-      if (placed.has(id(host, provider.providerId))) continue;
-      const members: AccountBlock["members"] = [];
-      const queue = [host];
-      while (queue.length > 0) {
-        const h = queue.shift()!;
-        const p = h.providers.find((x) => x.providerId === provider.providerId);
-        if (p === undefined || placed.has(id(h, p.providerId))) continue;
-        placed.add(id(h, p.providerId));
-        members.push({ host: h, provider: p });
-        for (const other of p.sharedWith ?? []) {
-          const o = hosts.find((x) => x.hostId === other);
-          if (o !== undefined) queue.push(o);
-        }
+  const linked = (from: number, to: number, providerId: string) => {
+    const id = hosts[to]!.hostId;
+    return id !== null && hosts[from]!.providers.some((p) => p.providerId === providerId && p.sharedWith?.includes(id));
+  };
+  hosts.forEach((host, start) => {
+    for (const { providerId } of host.providers) {
+      if (placed.has(`${start}\n${providerId}`)) continue;
+      const members = new Set([start]);
+      for (const i of members) {
+        hosts.forEach((other, j) => {
+          if (!other.providers.some((p) => p.providerId === providerId)) return;
+          if (linked(i, j, providerId) || linked(j, i, providerId)) members.add(j);
+        });
       }
-      members.sort((a, b) => hosts.indexOf(a.host) - hosts.indexOf(b.host));
-      const time = (p: ProviderLimits) => p.measuredAt ?? p.checkedAt ?? -Infinity;
-      const best = members.reduce((a, b) => (time(b.provider) > time(a.provider) ? b : a));
-      blocks.push({ provider: best.provider, members });
+      const ordered = [...members].sort((a, b) => a - b);
+      for (const i of ordered) placed.add(`${i}\n${providerId}`);
+      groups.push({ providerId, members: ordered });
     }
-  }
-  return blocks;
+  });
+  return groups;
+}
+
+/** One block per provider account (see `accountGroups`). */
+export function accountBlocks(hosts: readonly HostLimits[]): AccountBlock[] {
+  const time = (p: ProviderLimits) => p.measuredAt ?? p.checkedAt ?? -Infinity;
+  return accountGroups(hosts).map(({ providerId, members: indices }) => {
+    const members = indices.map((i) => ({ host: hosts[i]!, provider: hosts[i]!.providers.find((p) => p.providerId === providerId)! }));
+    const best = members.reduce((a, b) => (time(b.provider) > time(a.provider) ? b : a));
+    return { provider: best.provider, members };
+  });
 }
