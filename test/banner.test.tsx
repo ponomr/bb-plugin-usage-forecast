@@ -629,6 +629,13 @@ describe("Hide button (UF-11 U4)", () => {
     expect(within(providerBlock("claude-code")()!).queryByTestId("hide-provider")).toBeNull();
   });
 
+  it("gives the thread's own provider no button when it has no windows and sits among the others", async () => {
+    render(Banner, {}, backend({ snapshot: three(), thread: threadState({ providerId: "acp-opencode" }) }));
+    await expand();
+    await waitFor(() => expect(providerBlock("acp-opencode")()).not.toBeNull());
+    expect(within(providerBlock("acp-opencode")()!).queryByTestId("hide-provider")).toBeNull();
+  });
+
   it("brings the block back when the save fails", async () => {
     const b = backend({ snapshot: three(), hideProvider: async () => Promise.reject(new Error("settings write failed")) });
     render(Banner, {}, b);

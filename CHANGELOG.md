@@ -4,7 +4,7 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
-## Unreleased
+## 0.4.9 — 2026-11-16
 
 - Plan multiplier (UF-11). When bb's usage limits carry a plan multiplier
   above 1 (`plan.multiplier`), the band header, the expanded provider

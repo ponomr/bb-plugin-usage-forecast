@@ -375,7 +375,8 @@ function Disclosure({ summary, children, ...rest }: { summary: ReactNode; childr
 }
 
 /** Another provider: its name and each window's percent on one line, the full windows on tap. */
-function OtherProvider({ provider, now }: { provider: ProviderLimits; now: number }) {
+/** `canHide` is false for the thread's own provider, which the band always shows. */
+function OtherProvider({ provider, now, canHide }: { provider: ProviderLimits; now: number; canHide: boolean }) {
   const s = useStrings();
   const summary = (
     <span className="flex flex-wrap items-baseline gap-x-2">
@@ -388,7 +389,7 @@ function OtherProvider({ provider, now }: { provider: ProviderLimits; now: numbe
       ))}
     </span>
   );
-  const hide = <HideButton providerId={provider.providerId} />;
+  const hide = canHide ? <HideButton providerId={provider.providerId} /> : null;
   if (provider.windows.length === 0) {
     // Nothing to open: the button sits on the line, outside any other button.
     return (
@@ -516,7 +517,7 @@ export function Banner() {
           {view.kind === "limits" && view.others.length > 0 ? (
             <div className="flex flex-col gap-1">
               {view.others.map((p) => (
-                <OtherProvider key={p.providerId} provider={p} now={now} />
+                <OtherProvider key={p.providerId} provider={p} now={now} canHide={p.providerId !== (state?.providerId ?? null)} />
               ))}
             </div>
           ) : null}
