@@ -11,6 +11,7 @@ import { formatPercent, type Tone } from "../shared/thresholds";
 import { providerName, windowLabel } from "./format";
 import type { Strings } from "./i18n";
 import { hostStale, windowView, withoutForecast } from "./model";
+import { accountGroups } from "../shared/accounts";
 import { isHidden } from "../shared/hidden-providers";
 
 export interface WorstWindow {
@@ -70,44 +71,23 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number,
   const hosts = snapshot.hosts;
   const showHosts = hosts.length > 1;
   const providersOf = hosts.map((h) => (hostStale(h) ? withoutForecast(h.providers) : h.providers).filter((p) => !isHidden(hidden, p.providerId)));
-  const indexOf = new Map(hosts.map((h, i) => [h.hostId, i]));
   const groups: IndicatorProvider[][] = hosts.map(() => []);
-  const done = new Set<string>();
   const listed = new Set<number>();
 
-  hosts.forEach((_, start) => {
-    for (const { providerId } of providersOf[start]!) {
-      if (done.has(`${start}\n${providerId}`)) continue;
-      // Every host that shares this account, directly or through another member.
-      // A link counts from either side: a host that went offline keeps its
-      // `sharedWith`, while the hosts still answering have dropped theirs.
-      const members = new Set([start]);
-      for (const i of members) {
-        const p = providersOf[i]!.find((x) => x.providerId === providerId);
-        for (const id of p?.sharedWith ?? []) {
-          const j = indexOf.get(id);
-          if (j !== undefined) members.add(j);
-        }
-        const id = hosts[i]!.hostId;
-        providersOf.forEach((providers, j) => {
-          if (id !== null && providers.some((x) => x.providerId === providerId && x.sharedWith?.includes(id))) members.add(j);
-        });
-      }
-      const ordered = [...members].sort((a, b) => a - b);
-      for (const i of ordered) done.add(`${i}\n${providerId}`);
-      let best: ProviderLimits | null = null;
-      for (const i of ordered) {
-        const p = providersOf[i]!.find((x) => x.providerId === providerId);
-        if (p?.status !== "ok") continue;
-        if (best === null || (p.measuredAt ?? -Infinity) > (best.measuredAt ?? -Infinity)) best = p;
-      }
-      if (best === null || best.windows.length === 0) continue;
-      for (const i of ordered) listed.add(i);
-      for (const i of ordered) {
-        groups[i]!.push({ provider: best, alsoOn: ordered.filter((j) => j !== i).map((j) => hostName(hosts[j]!)) });
-      }
+  for (const { providerId, members } of accountGroups(hosts.map((h, i) => ({ hostId: h.hostId, providers: providersOf[i]! })))) {
+    // Unlike the CLI's blocks, the card shows the newest answer that has data.
+    let best: ProviderLimits | null = null;
+    for (const i of members) {
+      const p = providersOf[i]!.find((x) => x.providerId === providerId);
+      if (p?.status !== "ok") continue;
+      if (best === null || (p.measuredAt ?? -Infinity) > (best.measuredAt ?? -Infinity)) best = p;
     }
-  });
+    if (best === null || best.windows.length === 0) continue;
+    for (const i of members) {
+      listed.add(i);
+      groups[i]!.push({ provider: best, alsoOn: members.filter((j) => j !== i).map((j) => hostName(hosts[j]!)) });
+    }
+  }
 
   let worst: WorstWindow | null = null;
   groups.forEach((entries, i) => {

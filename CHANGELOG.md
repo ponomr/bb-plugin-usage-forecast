@@ -4,6 +4,12 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.17 — 2026-11-16
+
+- `bb usage-forecast status` and `headroom` no longer list a shared account
+  twice while one of its hosts is offline. The sidebar card and the CLI now
+  group accounts with the same code (`accountGroups`).
+
 ## 0.4.16 — 2026-11-16
 
 - The poller no longer stores a sample of every window on every poll

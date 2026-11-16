@@ -252,6 +252,17 @@ describe("providerHeadroom", () => {
     expect(entries[1]!.worstWindow?.usedPercent).toBe(80);
   });
 
+  it("shows a shared account once when only one host still holds the link", () => {
+    // The laptop went offline with its `sharedWith`; the server's next poll dropped its own.
+    const s = snap([
+      host("server", [provider("claude-code", [paced("Weekly limit", 80, 95)])]),
+      host("laptop", [provider("claude-code", [paced("Weekly limit", 30, 50)], { sharedWith: ["server"], measuredAt: NOW - HOUR_MS })]),
+    ]);
+    const entries = providerHeadroom(s, NOW);
+    expect(entries.map((e) => [e.providerId, e.hosts.map((h) => h.hostId)])).toEqual([["claude-code", ["server", "laptop"]]]);
+    expect(entries[0]!.worstWindow?.usedPercent).toBe(80);
+  });
+
   it("filters by host and keeps a shared account with all its hosts", () => {
     const shared = (other: string) => provider("claude-code", [paced("Weekly limit", 30, 50)], { sharedWith: [other] });
     const s = snap([
