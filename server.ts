@@ -30,11 +30,12 @@ import { AutoCompactor } from "./src/server/auto-compact";
 import { createCli } from "./src/server/cli";
 import { LimitNotifier } from "./src/server/limit-notifier";
 import { Poller, TICK_CRON } from "./src/server/poller";
-import { createService } from "./src/server/rpc";
+import { createService, setDisplay } from "./src/server/rpc";
 import { Storage } from "./src/server/storage";
 import { parseSettings, type ThreadsSdk } from "./src/server/threads";
 import { DEFAULT_LANGUAGE, LANGUAGES } from "./src/shared/language";
 import { DEFAULT_LIMITS_SHOW, LIMITS_SHOW } from "./src/shared/limits-show";
+import { DEFAULT_RESET_SHOW, RESET_SHOW } from "./src/shared/reset-show";
 
 export const POLL_SCHEDULE = "poll-limits";
 
@@ -130,10 +131,18 @@ export default async function plugin(bb: BbPluginApi) {
     limitsShow: {
       type: "select",
       label: "Limits show",
-      description: "Show each limit window as the percent used or the percent left. The context bar always shows what is used.",
+      description: "Show each limit window as the percent used or the percent left. A press on a percent in the band switches it too. The context bar always shows what is used.",
       options: [...LIMITS_SHOW],
       experimental_optionLabels: { used: "Used", remaining: "Remaining" },
       default: DEFAULT_LIMITS_SHOW,
+    },
+    resetShow: {
+      type: "select",
+      label: "Reset shows",
+      description: "Show when a limit window resets as the time left until it or as the local time of the reset. A press on a reset time in the band switches it too.",
+      options: [...RESET_SHOW],
+      experimental_optionLabels: { countdown: "Countdown", time: "Exact time" },
+      default: DEFAULT_RESET_SHOW,
     },
   });
   const settings = async () => parseSettings(await settingsHandle.get());
@@ -238,6 +247,7 @@ export default async function plugin(bb: BbPluginApi) {
     refresh: () => service.refresh(),
     compact: ({ threadId }) => service.compact(threadId),
     setThreadOverride: ({ threadId, override }) => service.setThreadOverride(threadId, override),
+    setDisplay: (input) => setDisplay((values) => settingsHandle.experimental_set(values), input),
   });
 
   bb.cli.register(createCli(service));
