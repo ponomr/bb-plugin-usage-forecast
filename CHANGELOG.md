@@ -6,11 +6,33 @@ listed here.
 
 ## Unreleased
 
+- Press to switch (UF-9). A press on a reset time in the band switches every
+  row between the countdown («3d», «resets in 3d») and the local time of the
+  reset («Thu 19:59», «resets at 19:59» today, «resets Thu 19:59»); a press on
+  a window's percent switches every window between used and left. Both
+  choices are plugin settings, the new «Reset shows» (countdown by default)
+  and «Limits show», saved on the server through the new RPC method
+  `setDisplay`, so a press on one device reaches the others. The band shows
+  the press at once and returns to the previous form if the save fails. The
+  run-out wording, the budget line, the context bar, push texts and the CLI
+  are unchanged.
+- CLI for agents (UF-10). `bb usage-forecast headroom` ranks provider
+  accounts from the most headroom to the tightest, one line each with the
+  tightest window: `headroom` (every window calm), `tight`, `short`,
+  `critical`, `hit` (with when it is available again) or `unknown`. Options
+  `--json`, `--refresh`, `--host <id or name>` and `--thread <threadId>`;
+  data polled more than 30 minutes ago is marked stale, and so is one
+  account measured that long ago (a host that is not connected). In
+  `status --json` every window gains a `verdict` object (`state`, `lasts`,
+  `runsOutAt`, `projectedPercent`, `paceDeviationPercent`, `resetsInMs`),
+  computed at the moment of the call; the other fields and the text of
+  `status` are unchanged. The agent skill says when to use them.
 - Limits ring in the sidebar footer (UF-8). A ring next to bb's footer
   buttons shows the worst window across every host, filled to its used
   percent and coloured by its pace state; its tooltip names the window.
   Pressing it opens a card with every provider's windows, grouped by host
-  when there are several, with a shared account listed once. To hide it, use
+  when there are several, with a shared account listed once and hosts that cannot be read named
+  at the bottom; a window whose reset has passed does not count. To hide it, use
   More → Customize footer in the sidebar.
 
 ## 0.4.7 — 2026-11-16

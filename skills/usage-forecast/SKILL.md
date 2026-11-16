@@ -1,6 +1,6 @@
 ---
 name: usage-forecast
-description: Read provider usage limits and their reset forecasts, check a thread's context fill, compact a thread, or set per-thread auto-compact with the Usage Forecast plugin's `bb usage-forecast` CLI. Use when asked how much of a Claude Code or Codex limit is left, when a window resets, whether a thread needs compacting, or why auto-compact did or did not run.
+description: Read provider usage limits and their reset forecasts, check a thread's context fill, compact a thread, or set per-thread auto-compact with the Usage Forecast plugin's `bb usage-forecast` CLI. Use when asked how much of a Claude Code or Codex limit is left, which provider has headroom, when a window resets, whether a thread needs compacting, or why auto-compact did or did not run.
 ---
 
 # Usage Forecast
@@ -24,7 +24,23 @@ identified by provider and label (`claude-code` / `Current session`).
   windows have none. `--refresh` polls now. With more than
   one bb host each block names its host (`codex (Plus) on MacBook: ok`); hosts
   signed in to one account share a block, and a host that is not connected
-  says from when its data is. `--json` has the same data per host in `hosts`.
+  says from when its data is. `--json` has the same data per host in `hosts`,
+  and every window gains a `verdict` object (below).
+- `bb usage-forecast headroom [--refresh] [--json] [--host <id or name> | --thread <threadId>]` —
+  one line per provider account, from the most headroom to the tightest:
+  `1. codex (Plus): headroom – Weekly limit 57%, on pace for 69% at reset in 1d 6h`.
+  The verdict is the state of the account's tightest window: `headroom` (every
+  window calm), `tight`, `short`, `critical`, `hit` (with `available again in
+  <span>`) or `unknown` (not signed in, error, no current window). A window
+  early in its period or without a forecast counts by its used percent (tight
+  from 75 %); a window whose reset has passed does not count. `--host` or
+  `--thread` keeps the accounts of one host. Data polled more than 30 minutes
+  ago is marked `Stale:` (`"stale": true` in JSON); one account measured
+  that long ago, as on a host that is not connected, ends with `measured
+  <span> ago` and has its own `stale`. `--json` gives `polledAt`,
+  `ageMs`, `stale` and `entries` with `providerId`, `planLabel`, `hosts`,
+  `verdict`, `availableAt`, `worstWindow` (the window and its `verdict`
+  fields), `status`, `message`, `measuredAt` and `stale`.
 - `bb usage-forecast thread <threadId> [--json]` — context fill (tokens and % of the working limit), the limit and its source
   (this thread, the provider setting, where the provider compacts on its own, the global setting, or the model window),
   whether the agent is answering, the effective auto-compact policy and its
@@ -39,6 +55,27 @@ identified by provider and label (`claude-code` / `Current session`).
   the provider and global limits); without it the stored limit is kept.
 
 The current thread id is in `bb status` or `$BB_THREAD_ID`.
+
+`verdict` of a window in `status --json`, computed at the moment of the call:
+
+| Field | Meaning |
+| --- | --- |
+| `state` | `calm`, `tight`, `short`, `critical`, `hit`, `early` (first part of the window) or `unknown` (no forecast, or the reset has passed) |
+| `lasts` | `true` for calm and tight, `false` for short, critical and hit, `null` for early and unknown |
+| `runsOutAt` | epoch ms when the current pace runs out before the reset, else `null` |
+| `projectedPercent` | percent used at the reset by the main projection, or `null` |
+| `paceDeviationPercent` | used percent minus an even spend so far (positive: faster than even), or `null` |
+| `resetsInMs` | time to the reset, or `null` |
+
+## Choosing a provider
+
+- Before a long or parallel job, run `bb usage-forecast headroom --thread "$BB_THREAD_ID"`
+  (or `--json`) and prefer a provider whose verdict is `headroom`.
+- When the provider in use is `short`, `critical` or `hit`, tell the user and
+  name the providers with headroom; do not switch providers on your own.
+- With `stale` data, run it again with `--refresh` before deciding; an
+  account that stays stale belongs to a host that is not connected, so do not
+  count on its numbers.
 
 ## Settings
 
@@ -58,6 +95,7 @@ Usage Forecast.
 | `pollIntervalMinutes` | 2 | 1–10 |
 | `language` | `en` | `en`, `ru` (UI language) |
 | `limitsShow` | `used` | `used`, `remaining` (band only; CLI output stays in percent used) |
+| `resetShow` | `countdown` | `countdown`, `time` (band only: the reset as a countdown or as the local time) |
 
 The thread's working limit is, in order: the thread's own limit, the provider
 setting, the point where the provider compacts on its own (Claude Code reports

@@ -46,7 +46,11 @@ the context breakdown and one line per other provider.
   both opening on tap. The expanded part scrolls inside about half the screen
   height, so the header with its collapse button stays in view on a phone;
   there is a Collapse button at its bottom too. The expanded or collapsed state
-  is kept per device.
+  is kept per device. A press on a reset time switches every row between the
+  countdown («3d», «resets in 3d») and the local time of the reset («Thu
+  19:59», «resets at 19:59» today); a press on a window's percent switches
+  every window between used and left. Both are the settings below, so the
+  choice reaches every device.
 - **Forecast to the reset.** From the current pace of the window, and from
   the pace of past windows of the same kind once the server has seen enough of
   them. The current pace is the main forecast: the note, the colour, the tick
@@ -161,7 +165,8 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Limit push threshold, % | 90 | 50–100 | Usage of a limit window that sends the push |
 | Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
 | Language | English | English, Русский | Language of the plugin UI |
-| Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used |
+| Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used. A press on a percent in the band switches it |
+| Reset shows | Countdown | Countdown, Exact time | When a limit window resets: the time left until it, or the local time of the reset (the short weekday when not today). A press on a reset time in the band switches it |
 
 Auto-compact rules:
 
@@ -201,6 +206,7 @@ Auto-compact rules:
 
 ```sh
 bb usage-forecast status [--refresh] [--json]
+bb usage-forecast headroom [--refresh] [--json] [--host <id or name> | --thread <threadId>]
 bb usage-forecast thread <threadId> [--json]
 bb usage-forecast compact <threadId>
 bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95] [--limit <tokens>|0]
@@ -209,6 +215,25 @@ bb usage-forecast override <threadId> inherit|off|on [--threshold 50-95] [--limi
 `status` puts the state after the percent, for example
 `Weekly limit: 60% [will not last], resets in 3d 0h, …` (`calm`, `tight`,
 `will not last`, `critical`, `used up`; no bracket without a state).
+In `status --json` every window also has a `verdict`, computed at the moment
+of the call: `state` (the pace state, `early` or `unknown`), `lasts`,
+`runsOutAt`, `projectedPercent`, `paceDeviationPercent` (used percent minus
+an even spend so far) and `resetsInMs`.
+
+`headroom` ranks provider accounts from the most headroom to the tightest by
+their tightest window, for agents choosing where to send a job:
+
+```text
+Headroom, polled 2026-11-16 00:09 UTC (1m ago)
+  1. codex (Plus): headroom – Weekly limit 57%, on pace for 69% at reset in 1d 6h
+  2. claude-code (Max): tight – Current session 62%, on pace for 95% at reset in 1h 40m
+  3. acp-x: unknown – not installed
+```
+
+Verdicts: `headroom` (every window calm), `tight`, `short`, `critical`,
+`hit` (with when it is available again), `unknown`. `--host` or `--thread`
+keeps one host's accounts; data older than 30 minutes is marked stale, for
+the whole report or for one account (`measured 2d 3h ago`).
 
 Agents in bb threads get the same reference from
 [skills/usage-forecast/SKILL.md](skills/usage-forecast/SKILL.md).
