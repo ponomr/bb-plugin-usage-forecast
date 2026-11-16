@@ -27,7 +27,6 @@
     "src",
     "test",
     "components",
-    "lib",
-    "hooks"
+    "lib"
   ]
 }

@@ -110,6 +110,8 @@ function formatEntry(e: CompactLogEntry): string {
 }
 
 /** A host's name for the CLI. */
+const n = (v: number) => v.toLocaleString("en-US");
+
 function hostName(h: HostLimits): string {
   return h.name ?? h.hostId ?? "default host";
 }
@@ -251,7 +253,6 @@ export function formatThread(t: ThreadState, now: number): string {
   const lines = [`Thread ${t.threadId}${t.providerId ? ` (${t.providerId})` : ""}: ${t.active ? "answering" : "idle"}`];
   const c = t.context;
   if (c) {
-    const n = (v: number) => v.toLocaleString("en-US");
     const tokens = `${c.estimated ? "~" : ""}${n(c.usedTokens)} of ${n(c.limitTokens)} tokens`;
     lines.push(`Context: ${formatPercent(c.percent)} (${tokens}${c.estimated ? ", estimated" : ""})`);
     const providerName = t.providerId ?? "provider";
@@ -268,7 +269,7 @@ export function formatThread(t: ThreadState, now: number): string {
       lines.push(`Provider compacts on its own at ${n(c.autoCompactAtTokens)} tokens (${formatPercent(providerAt)} of the window)`);
     }
     for (const cat of c.categories.filter((x) => x.kind === "used" && x.tokens > 0)) {
-      lines.push(`  ${cat.label}: ${cat.tokens.toLocaleString("en-US")}`);
+      lines.push(`  ${cat.label}: ${n(cat.tokens)}`);
     }
   } else {
     lines.push("Context: no measurement yet");
@@ -277,13 +278,13 @@ export function formatThread(t: ThreadState, now: number): string {
   const source = a.source === "thread" ? "this thread" : "settings";
   const capped =
     a.effectiveThresholdPercent !== a.thresholdPercent ? `, acts at ${formatPercent(a.effectiveThresholdPercent)}` : "";
-  const atTokens = a.effectiveThresholdTokens === null ? "" : ` = ${a.effectiveThresholdTokens.toLocaleString("en-US")} tokens`;
+  const atTokens = a.effectiveThresholdTokens === null ? "" : ` = ${n(a.effectiveThresholdTokens)} tokens`;
   lines.push(
     a.enabled
       ? `Auto-compact: on at ${formatPercent(a.thresholdPercent)}${capped}${atTokens} (from ${source})`
       : `Auto-compact: off (from ${source})`,
   );
-  const limitOverride = t.override.limitTokens === undefined ? "" : `, limit ${t.override.limitTokens.toLocaleString("en-US")} tokens`;
+  const limitOverride = t.override.limitTokens === undefined ? "" : `, limit ${n(t.override.limitTokens)} tokens`;
   lines.push(`Override: ${t.override.autoCompact}${t.override.thresholdPercent ? ` ${t.override.thresholdPercent}%` : ""}${limitOverride}`);
   if (t.cooldownUntil !== null) lines.push(`Cooldown: ${formatDuration(t.cooldownUntil - now)} left`);
   if (!t.compactSupported) {
@@ -491,7 +492,7 @@ export function createCli(
           }
           const { override } = await service.setThreadOverride(threadId, parsed.data);
           const detail = override.thresholdPercent ? ` at ${override.thresholdPercent}%` : "";
-          const limit = override.limitTokens === undefined ? "" : ` Context limit: ${override.limitTokens.toLocaleString("en-US")} tokens.`;
+          const limit = override.limitTokens === undefined ? "" : ` Context limit: ${n(override.limitTokens)} tokens.`;
           return { exitCode: 0, stdout: `Auto-compact for ${threadId}: ${override.autoCompact}${detail}.${limit}` };
         },
       }),

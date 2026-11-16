@@ -6,6 +6,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { en } from "./i18n";
 import { indicatorTitle, indicatorView, type WorstWindow } from "./indicator";
+import { createStore } from "./store";
 import { useHiddenProviders, useLimitsShow, useNow, useSnapshot, useStrings } from "./hooks";
 
 export interface IndicatorState {
@@ -13,31 +14,18 @@ export interface IndicatorState {
   title: string;
 }
 
-let state: IndicatorState = { worst: null, title: en.indicatorLabel };
-const listeners = new Set<() => void>();
-
-export function getIndicatorState(): IndicatorState {
-  return state;
-}
-
 /** Everything the ring draws; an equal state does not notify. */
 function drawn(s: IndicatorState): string {
   return JSON.stringify([s.title, s.worst?.usedPercent ?? null, s.worst?.tone ?? null]);
 }
 
-export function setIndicatorState(next: IndicatorState): void {
-  if (drawn(next) === drawn(state)) return;
-  state = next;
-  for (const listener of listeners) listener();
-}
+const store = createStore<IndicatorState>({ worst: null, title: en.indicatorLabel }, (a, b) => drawn(a) === drawn(b));
 
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
+export const getIndicatorState = store.get;
+export const setIndicatorState = store.set;
 
 export function useIndicatorState(): IndicatorState {
-  return useSyncExternalStore(subscribe, getIndicatorState, getIndicatorState);
+  return useSyncExternalStore(store.subscribe, store.get, store.get);
 }
 
 /** The app overlay that feeds the store; it renders nothing. */

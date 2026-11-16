@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { cleanMessage } from "../src/server/messages";
 import { backoffMinutes, Poller, toSnapshot } from "../src/server/poller";
-import { byteLength, keys, MAX_CLOSED_WINDOWS, MAX_VALUE_BYTES, type Sample } from "../src/server/storage";
+import { MAX_CLOSED_WINDOWS } from "../src/server/storage";
 import { HOUR_MS, windowKey } from "../src/shared/windows";
 import { LimitNotifier, type PushMessage } from "../src/server/limit-notifier";
 import { snapshotSchema } from "../src/shared/contract";
@@ -118,7 +118,7 @@ describe("poll", () => {
     expect(provider.windows.map((w) => w.label)).toEqual(["Current session", "Weekly limit"]);
     expect(provider.windows[0]!.durationMs).toBe(5 * HOUR_MS);
     expect(provider.windows[0]!.forecast).not.toBeNull();
-    const stored = JSON.stringify(await t.storage.latest()) + JSON.stringify(await t.storage.samples("claude-code"));
+    const stored = JSON.stringify(await t.storage.latest());
     expect(stored).not.toContain("owner@example.com");
     expect(stored).not.toContain("secret-account-key");
     expect(t.invalidations()).toBe(1);
@@ -196,24 +196,6 @@ describe("poll", () => {
     const closed = await storage.closedWindows("k");
     expect(closed).toHaveLength(MAX_CLOSED_WINDOWS);
     expect(closed[0]!.peakUsedPercent).toBe(5);
-  });
-});
-
-describe("storage bounds", () => {
-  it("keeps 5000 samples under the byte bound, newest kept", async () => {
-    const storage = makeStorage();
-    const samples: Sample[] = Array.from({ length: 5000 }, (_, i) => ({
-      at: NOW + i * MIN,
-      label: i % 2 ? "Current session" : "Weekly limit",
-      usedPercent: (i % 1000) / 10,
-      resetsAt: NOW + 5 * HOUR_MS,
-    }));
-    for (let i = 0; i < samples.length; i += 500) await storage.appendSamples("claude-code", samples.slice(i, i + 500));
-    const stored = await storage.samples("claude-code");
-    expect(byteLength(stored)).toBeLessThanOrEqual(MAX_VALUE_BYTES);
-    expect(stored.at(-1)).toEqual(samples.at(-1));
-    expect(stored.length).toBeLessThan(5000);
-    expect(keys.samples("a/b")).toBe("limits:samples:a%2Fb");
   });
 });
 

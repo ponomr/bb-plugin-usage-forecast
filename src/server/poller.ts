@@ -35,7 +35,6 @@ import {
   type HostEntry,
   type HostIndex,
   type HostScope,
-  type Sample,
   type Storage,
   type StoredLatest,
   type StoredProvider,
@@ -421,7 +420,7 @@ export class Poller {
     };
   }
 
-  /** Reads the host's previous record and asks bb. Never throws; writes only samples and closed windows. */
+  /** Reads the host's previous record and asks bb. Never throws; writes only closed windows. */
   private async fetch(target: Target, now: number): Promise<Fetched> {
     const { storage } = this.deps;
     let previous: StoredLatest;
@@ -510,7 +509,6 @@ export class Poller {
     const { storage } = this.deps;
     const windows: LimitWindow[] = [];
     const open: Record<string, StoredWindow> = {};
-    const samples: Sample[] = [];
     // A label seen twice in one answer keeps its first window.
     const seen = new Set<string>();
 
@@ -556,10 +554,8 @@ export class Poller {
         forecast,
         pace: pace?.state ?? null,
       });
-      samples.push({ at: now, label: w.label, usedPercent: w.usedPercent, resetsAt });
     }
 
-    await storage.appendSamples(providerId, samples, scope);
     return {
       providerId,
       status: "ok",

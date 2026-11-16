@@ -4,14 +4,11 @@
 import { createFakePluginHost } from "@get-bb/plugin-sdk/testing";
 import { describe, expect, it } from "vitest";
 import {
-  byteLength,
   keys,
   MAX_HOSTS,
-  MAX_VALUE_BYTES,
   scopeOf,
   Storage,
   type HostEntry,
-  type Sample,
   type StoredLatest,
 } from "../src/server/storage";
 import { HOUR_MS } from "../src/shared/windows";
@@ -22,7 +19,6 @@ function setup() {
   return { kv, storage: new Storage(kv) };
 }
 
-const sample = (usedPercent: number, at = NOW): Sample => ({ at, label: "Weekly limit", usedPercent, resetsAt: NOW + HOUR_MS });
 
 const latestOf = (usedPercent: number): StoredLatest => ({
   polledAt: NOW,
@@ -55,29 +51,22 @@ describe("host scope", () => {
   it("returns data written before the change for the legacy owner, unchanged", async () => {
     const { kv, storage } = setup();
     await kv.set("limits:latest", latestOf(57));
-    await kv.set("limits:samples:codex", [sample(57)]);
     await kv.set("limits:windows:codex:Weekly%20limit", [{ startedAt: 1, resetAt: 2, peakUsedPercent: 80 }]);
     await storage.setHostIndex({ legacyOwner: "h1", hosts: [host("h1", NOW)] });
 
     const scope = scopeOf("h1", (await storage.hostIndex())!.legacyOwner);
     expect(await storage.latest(scope)).toEqual(latestOf(57));
-    expect(await storage.samples("codex", scope)).toEqual([sample(57)]);
     expect(await storage.closedWindows("codex:Weekly%20limit", scope)).toEqual([{ startedAt: 1, resetAt: 2, peakUsedPercent: 80 }]);
     // Another host starts empty.
     expect((await storage.latest("h2")).providers).toEqual([]);
-    expect(await storage.samples("codex", "h2")).toEqual([]);
     expect(await storage.closedWindows("codex:Weekly%20limit", "h2")).toEqual([]);
   });
 
-  it("keeps each host's samples, latest and closed windows apart", async () => {
+  it("keeps each host's latest and closed windows apart", async () => {
     const { storage } = setup();
-    await storage.appendSamples("codex", [sample(57)], null);
-    await storage.appendSamples("codex", [sample(5)], "h2");
     await storage.setLatest(latestOf(57), null);
     await storage.setLatest(latestOf(5), "h2");
     await storage.appendClosedWindow("codex:Weekly%20limit", { startedAt: 1, resetAt: 2, peakUsedPercent: 90 }, "h2");
-    expect(await storage.samples("codex")).toEqual([sample(57)]);
-    expect(await storage.samples("codex", "h2")).toEqual([sample(5)]);
     expect((await storage.latest()).providers[0]!.windows[0]!.usedPercent).toBe(57);
     expect((await storage.latest("h2")).providers[0]!.windows[0]!.usedPercent).toBe(5);
     expect(await storage.closedWindows("codex:Weekly%20limit")).toEqual([]);
@@ -87,11 +76,9 @@ describe("host scope", () => {
   it("reads values in an unexpected shape as empty", async () => {
     const { kv, storage } = setup();
     await kv.set(keys.latest, "junk");
-    await kv.set(keys.samples("codex"), { not: "a list" });
     await kv.set(keys.windows("codex:x"), 5);
     await kv.set(keys.hostIndex, { legacyOwner: 3, hosts: "x" });
     expect(await storage.latest()).toEqual({ polledAt: null, pollError: null, providers: [] });
-    expect(await storage.samples("codex")).toEqual([]);
     expect(await storage.closedWindows("codex:x")).toEqual([]);
     expect(await storage.hostIndex()).toBeNull();
   });
@@ -102,7 +89,6 @@ describe("removeHost", () => {
     const { kv, storage } = setup();
     for (const scope of [null, "h2", "h3"]) {
       await storage.setLatest(latestOf(10), scope);
-      await storage.appendSamples("codex", [sample(10)], scope);
       await storage.appendClosedWindow("codex:Weekly%20limit", { startedAt: 1, resetAt: 2, peakUsedPercent: 10 }, scope);
     }
     // A host id that starts with another's must survive.
@@ -111,15 +97,15 @@ describe("removeHost", () => {
     const left = (await kv.list("limits:")).sort();
     expect(left.some((k) => k.includes(":h2:") || k.endsWith(":h2"))).toBe(false);
     expect(left).toContain(keys.latest);
-    expect(left).toContain(keys.samples("codex"));
+    expect(left).toContain(keys.windows("codex:Weekly%20limit"));
     expect(left).toContain(keys.hostLatest("h3"));
     expect(left).toContain(keys.hostLatest("h2x"));
-    expect(left).toContain(keys.hostSamples("h3", "codex"));
+    expect(left).toContain(keys.hostWindows("h3", "codex:Weekly%20limit"));
 
     // Removing the legacy owner's id leaves the legacy keys alone.
     await storage.removeHost("h1");
     expect(await kv.get(keys.latest)).toEqual(latestOf(10));
-    expect(await storage.samples("codex")).toHaveLength(1);
+    expect(await storage.closedWindows("codex:Weekly%20limit")).toHaveLength(1);
   });
 });
 
@@ -144,18 +130,13 @@ describe("host index", () => {
   });
 });
 
-describe("byte bound", () => {
-  it("trims a scoped sample buffer exactly as the legacy one", async () => {
-    const { storage } = setup();
-    const samples: Sample[] = Array.from({ length: 5000 }, (_, i) => sample((i % 1000) / 10, NOW + i * MIN));
-    for (let i = 0; i < samples.length; i += 500) {
-      await storage.appendSamples("codex", samples.slice(i, i + 500), null);
-      await storage.appendSamples("codex", samples.slice(i, i + 500), "h2");
-    }
-    const legacy = await storage.samples("codex");
-    const scoped = await storage.samples("codex", "h2");
-    expect(byteLength(scoped)).toBeLessThanOrEqual(MAX_VALUE_BYTES);
-    expect(scoped).toEqual(legacy);
-    expect(scoped.at(-1)).toEqual(samples.at(-1));
+describe("dropSamples", () => {
+  it("deletes the samples of every host and nothing else", async () => {
+    const { kv, storage } = setup();
+    await kv.set("limits:samples:codex", [1]);
+    await kv.set("limits:samples:h2:codex", [1]);
+    await storage.setLatest(latestOf(10), null);
+    await storage.dropSamples();
+    expect(await kv.list("limits:")).toEqual([keys.latest]);
   });
 });

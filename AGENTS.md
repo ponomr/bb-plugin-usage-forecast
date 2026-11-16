@@ -22,9 +22,10 @@ auto-compact without open clients.
 - `src/app/` — composer band (design after `claude-code-usage-quota-mod`),
   context card section, settings section, the sidebar-footer ring
   (`indicator.ts` model, `ring-icon.tsx`, `indicator-store.ts` with its
-  overlay feeder, `sidebar-card.tsx`); UI strings in `i18n.ts`.
-- `components/`, `lib/`, `hooks/` — vendored BB UI components; import them by
-  relative path and keep them unchanged.
+  overlay feeder, the `store.ts` helper behind the module stores,
+  `sidebar-card.tsx`); UI strings in `i18n.ts`.
+- `components/`, `lib/` — vendored BB UI components (only the ones `src/`
+  imports); import them by relative path and keep them unchanged.
 
 ## Critical Rules
 

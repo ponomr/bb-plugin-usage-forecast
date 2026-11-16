@@ -98,6 +98,11 @@ export function hostStale(host: HostLimits): boolean {
   return !host.connected || host.pollError !== null;
 }
 
+/** Providers without forecast or pace, for a stale host: its values are not current. */
+export function withoutForecast(providers: readonly ProviderLimits[]): ProviderLimits[] {
+  return providers.map((p) => ({ ...p, windows: p.windows.map((w) => ({ ...w, forecast: null, pace: null })) }));
+}
+
 /** The time of a host's newest measured data, else its last poll. */
 function dataTime(host: HostLimits): number | null {
   const measured = host.providers.map((p) => p.measuredAt).filter((t): t is number => t !== null);
@@ -123,9 +128,7 @@ export function bannerView(
   // Hidden providers drop out; the thread's own provider always stays.
   const own = thread?.providerId ?? null;
   const shown = host.providers.filter((p) => p.providerId === own || !isHidden(hidden, p.providerId));
-  const providers = stale
-    ? shown.map((p) => ({ ...p, windows: p.windows.map((w) => ({ ...w, forecast: null, pace: null })) }))
-    : shown;
+  const providers = stale ? withoutForecast(shown) : shown;
   const staleSince = stale ? dataTime(host) : null;
   const primary = providers.find((p) => p.providerId === own && p.windows.length > 0) ?? worstProvider(providers, now);
   if (primary !== null) return { kind: "limits", primary, others: providers.filter((p) => p !== primary), staleSince };
