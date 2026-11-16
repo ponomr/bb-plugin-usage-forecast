@@ -50,11 +50,6 @@ export function useBandShown(): boolean {
   return useSettings().values?.showBand !== false;
 }
 
-/** The `showSidebar` setting; on until the settings load and unless it is switched off. */
-export function useSidebarShown(): boolean {
-  return useSettings().values?.showSidebar !== false;
-}
-
 // A press on a percent or a reset time shows its result at once, before the
 // settings follow the save. The pressed value lives here, one per setting and
 // shared by every row: `base` is the settings value at the press. The override

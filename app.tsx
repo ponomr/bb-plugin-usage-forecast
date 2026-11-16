@@ -33,9 +33,8 @@ export default definePluginApp((app) => {
   // The footer icon renders outside the plugin slot; this overlay feeds it.
   app.experimental_icons.register({ name: RING_ICON, component: RingIcon });
   app.slots.experimental_appOverlay({ id: "indicator-feeder", component: IndicatorFeeder });
-  // Setup has no settings, so the item cannot follow one: the `showSidebar`
-  // setting empties the icon and the card, the host's More → Customize footer
-  // removes the button (AGENTS.md, Host facts, Sidebar footer).
+  // Setup has no settings, so the item cannot follow one: the host's More →
+  // Customize footer hides it (AGENTS.md, Host facts, Sidebar footer).
   app.experimental_sidebarFooter.register({
     kind: "disclosure",
     id: "limits",
