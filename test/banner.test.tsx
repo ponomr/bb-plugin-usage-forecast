@@ -65,7 +65,7 @@ describe("band, collapsed", () => {
       provider("claude-code", [win("Current session", 70, { forecast: forecastOf(75) })]),
       provider("codex", [win("Weekly limit", 60, { forecast: forecastOf(110), resetsAt: Date.now() + 5 * HOUR_MS })]),
     ]);
-    expect(worstProvider(s.providers, Date.now())?.providerId).toBe("codex");
+    expect(worstProvider(s.hosts[0]!.providers, Date.now())?.providerId).toBe("codex");
     render(Banner, {}, backend({ snapshot: s, thread: threadState({ providerId: null }) }));
     const weekly = await findWindow("Weekly limit");
     expect(weekly.querySelector("[data-marker]")!.getAttribute("data-marker")).toBe("100");
@@ -86,7 +86,7 @@ describe("band, collapsed", () => {
       provider("claude-code", [win("Current session", 50, { resetsAt: Date.now() + HOUR_MS })]),
       provider("codex", [win("Weekly limit", 50, { resetsAt: Date.now() + 5 * 24 * HOUR_MS })]),
     ]);
-    expect(worstProvider(s.providers, Date.now())?.providerId).toBe("codex");
+    expect(worstProvider(s.hosts[0]!.providers, Date.now())?.providerId).toBe("codex");
   });
 
   it("says the limit is reached, in red", async () => {
@@ -329,7 +329,7 @@ describe("band, expanded", () => {
 
   it("marks windows kept from an earlier answer", async () => {
     const s = twoProviders();
-    s.providers[1] = { ...s.providers[1]!, status: "error", message: "timeout", measuredAt: Date.now() - 30 * 60_000 };
+    s.hosts[0]!.providers[1] = { ...s.hosts[0]!.providers[1]!, status: "error", message: "timeout", measuredAt: Date.now() - 30 * 60_000 };
     render(Banner, {}, backend({ snapshot: s }));
     await expand();
     await waitFor(() => expect(providerBlock("codex")()?.textContent).toMatch(/error: timeout.*data from .+/));
@@ -524,6 +524,6 @@ describe("band, pace state", () => {
       provider("claude-code", [win("Current session", 60, { forecast: forecastOf(95), pace: "tight" })]),
       provider("codex", [win("Current session", 30, { forecast: forecastOf(60), pace: "short" })]),
     ]);
-    expect(worstProvider(s.providers, Date.now())?.providerId).toBe("codex");
+    expect(worstProvider(s.hosts[0]!.providers, Date.now())?.providerId).toBe("codex");
   });
 });

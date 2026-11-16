@@ -72,6 +72,21 @@ Usage limits:
   `cost`. The response also carries undocumented `plan: {id, multiplier}` and
   `accountKey`.
 
+Hosts (checked 2026-11-16 from the bb CLI on the server, a two-host install):
+
+- `usageLimits` without `hostId` answers for one host only. Since 0.4.6 the
+  plugin polls each host of `hosts.list` with `status: connected` and
+  `lifecycle.phase: active` by `hostId`; data stored before belongs to the
+  host in `system.config().primaryHostId` (`bb settings show` shows it), kept
+  as `legacyOwner` in `limits:hosts`.
+- A Mac that was offline listed as `status: disconnected` with
+  `lifecycle.phase: active`. Usage for it (`bb settings usage --machine`)
+  did not fail: every provider answered `status: error`, «Provider usage
+  could not be loaded.». The plugin therefore does not poll disconnected
+  hosts.
+- A thread's host: `threads.get` has `environmentId`, the environment
+  (`environments.get`) has `hostId` (`bb thread show`, `bb environment show`).
+
 Schedules and lifecycle:
 
 - `bb.background.schedule` with a name already registered in this load throws

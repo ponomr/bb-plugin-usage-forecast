@@ -44,11 +44,11 @@ describe("plugin wiring", () => {
   it("polls on the schedule and serves the snapshot without account identifiers", async () => {
     const { harness, invalidations } = await load();
     const empty = (await harness.callRpc("snapshot", null)) as LimitsSnapshot;
-    expect(empty).toMatchObject({ polledAt: null, providers: [] });
+    expect(empty).toMatchObject({ polledAt: null, hosts: [{ hostId: null, providers: [] }] });
 
     await harness.runSchedule(POLL_SCHEDULE);
     const snapshot = (await harness.callRpc("snapshot", null)) as LimitsSnapshot;
-    expect(snapshot.providers[0]!.windows.map((w) => w.usedPercent)).toEqual([40, 20]);
+    expect(snapshot.hosts[0]!.providers[0]!.windows.map((w) => w.usedPercent)).toEqual([40, 20]);
     const text = JSON.stringify(snapshot);
     expect(text).not.toContain("owner@example.com");
     expect(text).not.toContain("secret-account-key");

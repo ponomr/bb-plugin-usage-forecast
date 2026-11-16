@@ -21,7 +21,10 @@ identified by provider and label (`claude-code` / `Current session`).
   the current pace runs out before the reset. The bracket after the percent is
   the pace state: `[calm]`, `[tight]` (85–100 % at reset), `[will not last]`,
   `[critical]` (runs out within a tenth of the window) or `[used up]`; early
-  windows have none. `--refresh` polls now.
+  windows have none. `--refresh` polls now. With more than
+  one bb host each block names its host (`codex (Plus) on MacBook: ok`); hosts
+  signed in to one account share a block, and a host that is not connected
+  says from when its data is. `--json` has the same data per host in `hosts`.
 - `bb usage-forecast thread <threadId> [--json]` — context fill (tokens and % of the working limit), the limit and its source
   (this thread, the provider setting, where the provider compacts on its own, the global setting, or the model window),
   whether the agent is answering, the effective auto-compact policy and its

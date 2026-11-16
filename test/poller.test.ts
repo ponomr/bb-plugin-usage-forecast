@@ -221,10 +221,20 @@ describe("snapshot", () => {
   it("drops the forecast of a window whose reset has passed", async () => {
     const t = setup(() => claudeLimits(40, 20));
     const { latest } = await t.poller.poll();
-    const later = toSnapshot(latest, [], NOW + 3 * HOUR_MS);
-    expect(later.providers[0]!.windows[0]!.forecast).toBeNull();
-    expect(later.providers[0]!.windows[1]!.forecast).not.toBeNull();
-    expect(later.providers[0]).not.toHaveProperty("open");
+    const later = toSnapshot([{ hostId: null, name: null, primary: true, connected: true, latest }], [], NOW + 3 * HOUR_MS);
+    const provider = later.hosts[0]!.providers[0]!;
+    expect(provider.windows[0]!.forecast).toBeNull();
+    expect(provider.windows[1]!.forecast).not.toBeNull();
+    expect(provider).not.toHaveProperty("open");
+  });
+
+  it("drops every forecast of a host whose last poll failed (R6)", async () => {
+    const t = setup(() => claudeLimits(40, 20));
+    const { latest } = await t.poller.poll();
+    const failed = { ...latest, pollError: "boom" };
+    const s = toSnapshot([{ hostId: null, name: null, primary: true, connected: true, latest: failed }], [], NOW);
+    expect(s.pollError).toBe("boom");
+    expect(s.hosts[0]!.providers[0]!.windows.map((w) => w.forecast)).toEqual([null, null]);
   });
 });
 
@@ -245,8 +255,8 @@ describe("pace state", () => {
       state: "short",
       calmer: { state: "calm", since: t.clock.value },
     });
-    const snap = toSnapshot(await t.storage.latest(), [], t.clock.value);
-    expect(snap.providers[0]!.windows[0]!.pace).toBe("short");
+    const snap = toSnapshot([{ hostId: null, name: null, primary: true, connected: true, latest: await t.storage.latest() }], [], t.clock.value);
+    expect(snap.hosts[0]!.providers[0]!.windows[0]!.pace).toBe("short");
     // Ten minutes after the first calm reading.
     t.clock.advance(10 * MIN);
     expect(sessionPace((await t.poller.poll()).latest)).toBe("calm");
@@ -276,9 +286,9 @@ describe("pace state", () => {
   it("drops the pace of a window whose reset has passed", async () => {
     const t = setup(() => claudeLimits(90, 20));
     const { latest } = await t.poller.poll();
-    const later = toSnapshot(latest, [], NOW + 3 * HOUR_MS);
-    expect(later.providers[0]!.windows[0]!.pace).toBeNull();
-    expect(later.providers[0]!.windows[1]!.pace).toBe("calm");
+    const later = toSnapshot([{ hostId: null, name: null, primary: true, connected: true, latest: latest }], [], NOW + 3 * HOUR_MS);
+    expect(later.hosts[0]!.providers[0]!.windows[0]!.pace).toBeNull();
+    expect(later.hosts[0]!.providers[0]!.windows[1]!.pace).toBe("calm");
   });
 
   it("reads a latest value stored before the upgrade with a null pace", async () => {
@@ -290,12 +300,17 @@ describe("pace state", () => {
       for (const o of Object.values(p.open) as { pace?: unknown }[]) delete o.pace;
     }
     await t.storage.setLatest(old);
-    const snap = toSnapshot(await t.storage.latest(), [], NOW);
-    expect(snap.providers[0]!.windows.map((w) => w.pace)).toEqual([null, null]);
-    expect(snapshotSchema.parse(snap).providers[0]!.windows[0]!.pace).toBeNull();
+    const snap = toSnapshot([{ hostId: null, name: null, primary: true, connected: true, latest: await t.storage.latest() }], [], NOW);
+    expect(snap.hosts[0]!.providers[0]!.windows.map((w) => w.pace)).toEqual([null, null]);
+    expect(snapshotSchema.parse(snap).hosts[0]!.providers[0]!.windows[0]!.pace).toBeNull();
     // The JSON a pre-upgrade server returned parses too.
-    const parsed = snapshotSchema.parse({ polledAt: NOW, pollError: null, providers: old.providers, recentCompactions: [] });
-    expect(parsed.providers[0]!.windows[0]!.pace).toBeNull();
+    const parsed = snapshotSchema.parse({
+      polledAt: NOW,
+      pollError: null,
+      hosts: [{ hostId: null, name: null, connected: true, primary: true, polledAt: NOW, pollError: null, providers: old.providers }],
+      recentCompactions: [],
+    });
+    expect(parsed.hosts[0]!.providers[0]!.windows[0]!.pace).toBeNull();
     // The next poll starts the state without a hold.
     t.clock.advance(2 * MIN);
     expect(sessionPace((await t.poller.poll()).latest)).toBe("calm");
@@ -321,7 +336,7 @@ describe("pace state", () => {
       storage,
       intervalMinutes: async () => 2,
       invalidate: () => {},
-      afterPoll: (providers, now) => notifier.check(providers, now),
+      afterPoll: (hosts, now) => notifier.checkHosts(hosts, now),
       now: clock.now,
     });
     // Critical below the push threshold: 50 % after 30 minutes runs out in 30 minutes.

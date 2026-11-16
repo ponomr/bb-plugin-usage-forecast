@@ -41,7 +41,7 @@ describe("formatters", () => {
   });
 
   it("formats an empty snapshot", () => {
-    expect(formatStatus({ polledAt: null, pollError: null, providers: [], recentCompactions: [] }, NOW)).toBe(
+    expect(formatStatus({ polledAt: null, pollError: null, hosts: [], recentCompactions: [] }, NOW)).toBe(
       "Limits: not polled yet.\nRecent compacts: none",
     );
   });
@@ -50,7 +50,7 @@ describe("formatters", () => {
     const s: LimitsSnapshot = {
       polledAt: NOW,
       pollError: "codex: boom",
-      providers: [
+      hosts: [{ hostId: null, name: null, connected: true, primary: true, polledAt: NOW, pollError: "codex: boom", providers: [
         {
           providerId: "claude-code",
           status: "expired",
@@ -91,7 +91,7 @@ describe("formatters", () => {
             },
           ],
         },
-      ],
+      ] }],
       recentCompactions: [],
     } as unknown as LimitsSnapshot;
     expect(formatStatus(s, NOW + 3 * MIN)).toBe(
@@ -127,7 +127,17 @@ describe("forecast wording", () => {
     const s: LimitsSnapshot = {
       polledAt: NOW,
       pollError: null,
-      providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+      hosts: [
+        {
+          hostId: null,
+          name: null,
+          connected: true,
+          primary: true,
+          polledAt: NOW,
+          pollError: null,
+          providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+        },
+      ],
       recentCompactions: [],
     } as unknown as LimitsSnapshot;
     return formatStatus(s, NOW).split("\n")[2]!;
@@ -189,7 +199,17 @@ describe("forecast wording", () => {
     const s = {
       polledAt: NOW,
       pollError: null,
-      providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+      hosts: [
+        {
+          hostId: null,
+          name: null,
+          connected: true,
+          primary: true,
+          polledAt: NOW,
+          pollError: null,
+          providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+        },
+      ],
       recentCompactions: [],
     } as unknown as LimitsSnapshot;
     expect(formatStatus(s, NOW)).toContain("at this pace runs out 2026-11-08 12:30 UTC (2h 30m before reset), budget 7%/hour [over 100%]");
@@ -211,7 +231,17 @@ describe("pace state word", () => {
     const s = {
       polledAt: NOW,
       pollError: null,
-      providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+      hosts: [
+        {
+          hostId: null,
+          name: null,
+          connected: true,
+          primary: true,
+          polledAt: NOW,
+          pollError: null,
+          providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+        },
+      ],
       recentCompactions: [],
     } as LimitsSnapshot;
     return formatStatus(s, NOW).split("\n")[2]!;
@@ -243,7 +273,7 @@ describe("bb usage-forecast", () => {
     expect(refreshed.stdout).not.toContain("owner@example.com");
 
     const json = await t.run("status", "--json");
-    expect(JSON.parse(json.stdout).providers[0].providerId).toBe("claude-code");
+    expect(JSON.parse(json.stdout).hosts[0].providers[0].providerId).toBe("claude-code");
   });
 
   it("thread shows the context, the limit source and the cooldown", async () => {

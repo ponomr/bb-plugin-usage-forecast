@@ -103,8 +103,30 @@ export const providerLimitsSchema = z.object({
   measuredAt: z.number().nullable(),
   /** From the latest `ok` answer, kept while later polls fail. */
   windows: z.array(limitWindowSchema),
+  /**
+   * Ids of the other hosts signed in to the same account for this provider,
+   * sorted; absent when none. Decided per poll; the account itself is never stored.
+   */
+  sharedWith: z.array(z.string()).optional(),
 });
 export type ProviderLimits = z.infer<typeof providerLimitsSchema>;
+
+/** One host's limits. */
+export const hostLimitsSchema = z.object({
+  /** Null on an install where the plugin does not know the hosts yet: the record of the default host. */
+  hostId: z.string().nullable(),
+  name: z.string().nullable(),
+  /** False when the host was not connected at the last poll; its values are stale. */
+  connected: z.boolean(),
+  /** The host whose data predates per-host polling (the default host). */
+  primary: z.boolean(),
+  /** Epoch ms of this host's latest poll. */
+  polledAt: z.number().nullable(),
+  /** Error of this host's latest poll as a whole. */
+  pollError: z.string().nullable(),
+  providers: z.array(providerLimitsSchema),
+});
+export type HostLimits = z.infer<typeof hostLimitsSchema>;
 
 // --- Auto-compact log --------------------------------------------------------
 
@@ -134,11 +156,12 @@ export const compactLogEntrySchema = z.object({
 export type CompactLogEntry = z.infer<typeof compactLogEntrySchema>;
 
 export const snapshotSchema = z.object({
-  /** Epoch ms of the latest poll, or null before the first one. */
+  /** Epoch ms of the newest host poll, or null before the first one. */
   polledAt: z.number().nullable(),
-  /** Error of the latest poll as a whole, e.g. the SDK call threw. */
+  /** The hosts' poll errors, each named by its host when there are several. */
   pollError: z.string().nullable(),
-  providers: z.array(providerLimitsSchema),
+  /** The default host first. */
+  hosts: z.array(hostLimitsSchema),
   /** Newest first, at most RECENT_COMPACTIONS. */
   recentCompactions: z.array(compactLogEntrySchema),
 });
@@ -209,6 +232,8 @@ export type ThreadContext = z.infer<typeof threadContextSchema>;
 export const threadStateSchema = z.object({
   threadId: z.string(),
   providerId: z.string().nullable(),
+  /** The host the thread runs on, or null when it could not be resolved. */
+  hostId: z.string().nullable(),
   /** True while the agent is answering. */
   active: z.boolean(),
   /** Null when the host has no measurement yet. */

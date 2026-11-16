@@ -9,6 +9,7 @@ import {
   THRESHOLD_MAX_PERCENT,
   THRESHOLD_MIN_PERCENT,
   type CompactLogEntry,
+  type HostLimits,
   type LimitsSnapshot,
   type LimitWindow,
   type ProviderLimits,
@@ -102,19 +103,77 @@ function formatEntry(e: CompactLogEntry): string {
   return `  ${formatTime(e.at)}  ${e.threadId}  ${before} -> ${after}  ${e.result} (${e.trigger})${message}`;
 }
 
+/** A host's name for the CLI. */
+function hostName(h: HostLimits): string {
+  return h.name ?? h.hostId ?? "default host";
+}
+
+interface StatusBlock {
+  /** The member whose answer is printed: the newest one, the primary host on a tie. */
+  provider: ProviderLimits;
+  /** Every host of the account, in snapshot order (primary first). */
+  members: { host: HostLimits; provider: ProviderLimits }[];
+}
+
+/**
+ * One block per provider account: hosts whose answers share the account
+ * (`sharedWith`, joined transitively) form one block.
+ */
+function statusBlocks(hosts: readonly HostLimits[]): StatusBlock[] {
+  const blocks: StatusBlock[] = [];
+  const placed = new Set<string>();
+  const id = (h: HostLimits, providerId: string) => `${h.hostId ?? ""}\n${providerId}`;
+  for (const host of hosts) {
+    for (const provider of host.providers) {
+      if (placed.has(id(host, provider.providerId))) continue;
+      const members: StatusBlock["members"] = [];
+      const queue = [host];
+      while (queue.length > 0) {
+        const h = queue.shift()!;
+        const p = h.providers.find((x) => x.providerId === provider.providerId);
+        if (p === undefined || placed.has(id(h, p.providerId))) continue;
+        placed.add(id(h, p.providerId));
+        members.push({ host: h, provider: p });
+        for (const other of p.sharedWith ?? []) {
+          const o = hosts.find((x) => x.hostId === other);
+          if (o !== undefined) queue.push(o);
+        }
+      }
+      members.sort((a, b) => hosts.indexOf(a.host) - hosts.indexOf(b.host));
+      const time = (p: ProviderLimits) => p.measuredAt ?? p.checkedAt ?? -Infinity;
+      const best = members.reduce((a, b) => (time(b.provider) > time(a.provider) ? b : a));
+      blocks.push({ provider: best.provider, members });
+    }
+  }
+  return blocks;
+}
+
+function formatProvider(lines: string[], p: ProviderLimits, now: number, on: string): void {
+  const plan = p.planLabel ? ` (${p.planLabel})` : "";
+  const status = p.status === "error" && p.message ? `error: ${p.message}` : STATUS_WORDS[p.status];
+  lines.push(`  ${p.providerId}${plan}${on}: ${status}`);
+  if (p.windows.length && p.status !== "ok" && p.measuredAt !== null) {
+    lines.push(`    last good data from ${formatTime(p.measuredAt)}`);
+  }
+  for (const w of p.windows) lines.push(formatWindow(w, now));
+}
+
 export function formatStatus(s: LimitsSnapshot, now: number): string {
   const lines: string[] = [];
   if (s.polledAt === null) lines.push("Limits: not polled yet.");
   else lines.push(`Limits, polled ${formatTime(s.polledAt)} (${formatDuration(now - s.polledAt)} ago)`);
   if (s.pollError) lines.push(`Last poll failed: ${s.pollError}`);
-  for (const p of s.providers) {
-    const plan = p.planLabel ? ` (${p.planLabel})` : "";
-    const status = p.status === "error" && p.message ? `error: ${p.message}` : STATUS_WORDS[p.status];
-    lines.push(`  ${p.providerId}${plan}: ${status}`);
-    if (p.windows.length && p.status !== "ok" && p.measuredAt !== null) {
-      lines.push(`    last good data from ${formatTime(p.measuredAt)}`);
+  if (s.hosts.length <= 1) {
+    for (const p of s.hosts[0]?.providers ?? []) formatProvider(lines, p, now, "");
+  } else {
+    for (const block of statusBlocks(s.hosts)) {
+      formatProvider(lines, block.provider, now, ` on ${block.members.map((m) => hostName(m.host)).join(", ")}`);
+      for (const { host, provider } of block.members) {
+        if (host.connected) continue;
+        const at = provider.measuredAt ?? host.polledAt;
+        lines.push(`    ${hostName(host)}: not connected${at === null ? "" : `, data from ${formatTime(at)}`}`);
+      }
     }
-    for (const w of p.windows) lines.push(formatWindow(w, now));
   }
   lines.push(s.recentCompactions.length ? "Recent compacts:" : "Recent compacts: none");
   for (const e of s.recentCompactions) lines.push(formatEntry(e));

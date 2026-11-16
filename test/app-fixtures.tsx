@@ -7,6 +7,7 @@ import {
   usageForecastContract,
   type CompactLogEntry,
   type CompactResult,
+  type HostLimits,
   type LimitsSnapshot,
   type LimitWindow,
   type ProviderLimits,
@@ -64,7 +65,21 @@ export function provider(providerId: string, windows: LimitWindow[], over: Parti
 }
 
 export function snapshot(providers: ProviderLimits[], over: Partial<LimitsSnapshot> = {}): LimitsSnapshot {
-  return { polledAt: Date.now(), pollError: null, providers, recentCompactions: [], ...over };
+  return { polledAt: Date.now(), pollError: null, hosts: [host(null, providers)], recentCompactions: [], ...over };
+}
+
+/** One host's record; `hostId` null is the record of an install whose hosts are not known yet. */
+export function host(hostId: string | null, providers: ProviderLimits[], over: Partial<HostLimits> = {}): HostLimits {
+  return {
+    hostId,
+    name: hostId,
+    connected: true,
+    primary: hostId === null,
+    polledAt: Date.now(),
+    pollError: null,
+    providers,
+    ...over,
+  };
 }
 
 export function entry(i: number, over: Partial<CompactLogEntry> = {}): CompactLogEntry {
@@ -85,6 +100,7 @@ export function threadState(over: Partial<ThreadState> = {}): ThreadState {
   return {
     threadId: T,
     providerId: "claude-code",
+    hostId: null,
     active: false,
     context: {
       usedTokens: 90_000,
