@@ -10,9 +10,14 @@
 // past windows of the same (providerId, label). The mod's blend damped early
 // jumps; instead `current` stays null for the first 5 % of a window.
 //
+// One of the two is the main projection: `current` once 5 % of the window has
+// passed, `learned` before that. The warning, the colour and the wording all
+// follow the main one; an early window never warns.
+//
 // Pure: no SDK, no clock. Callers pass `now` and the closed windows.
 
 import { forecastWarns } from "./thresholds";
+import { DAY_MS, HOUR_MS } from "./windows";
 
 /** A closed window kept for the learned pace. Times are epoch ms. */
 export interface ClosedWindow {
@@ -33,7 +38,14 @@ export interface WindowForecast {
   status: "hit" | "running";
   current: Projection | null;
   learned: (Projection & { basedOnWindows: number }) | null;
-  /** True when either projection is above 100 %, or the limit is hit. */
+  /**
+   * The projection that speaks for the window: `current` when it exists,
+   * `learned` while the window is early, null with neither.
+   */
+  main: "current" | "learned" | null;
+  /** Less than `MIN_ELAPSED_FRACTION` of a running window has passed, or elapsed is unknown. */
+  early: boolean;
+  /** True when the limit is hit, or the window is not early and the main projection is above 100 %. */
   warning: boolean;
 }
 
@@ -90,7 +102,7 @@ export function forecastWindow(input: ForecastInput): WindowForecast | null {
 
   if (used >= 100) {
     const hit: Projection = { projectedPercent: used, runOutAt: now };
-    return { status: "hit", current: hit, learned: null, warning: true };
+    return { status: "hit", current: hit, learned: null, main: "current", early: false, warning: true };
   }
 
   const remaining = resetsAt - now;
@@ -98,8 +110,8 @@ export function forecastWindow(input: ForecastInput): WindowForecast | null {
   // for this window; elapsed is then unknown and only `learned` applies.
   const elapsed = durationMs - remaining;
 
-  const current =
-    elapsed >= durationMs * MIN_ELAPSED_FRACTION ? project(used, used / elapsed, now, remaining) : null;
+  const early = elapsed < durationMs * MIN_ELAPSED_FRACTION;
+  const current = early ? null : project(used, used / elapsed, now, remaining);
 
   const history = input.closedWindows ?? [];
   const typical = typicalPeak(history);
@@ -111,6 +123,29 @@ export function forecastWindow(input: ForecastInput): WindowForecast | null {
           basedOnWindows: Math.min(history.length, LEARNED_WINDOWS_USED),
         };
 
-  const warning = [current, learned].some((p) => p !== null && forecastWarns(p.projectedPercent));
-  return { status: "running", current, learned, warning };
+  const main = current ? "current" : learned ? "learned" : null;
+  const warning = current !== null && forecastWarns(current.projectedPercent);
+  return { status: "running", current, learned, main, early, warning };
+}
+
+export interface LastingBudget {
+  /** Percent of the limit per `per` that lasts to the reset; for `rest`, the percent left. */
+  percent: number;
+  /** `day` for windows of two days or more, else `hour`; `rest` when less than one unit remains. */
+  per: "day" | "hour" | "rest";
+}
+
+/**
+ * The spending rate that makes the limit last to the reset, or null when
+ * there is none: no reset, a passed reset, an unknown duration or no limit left.
+ */
+export function lastingBudget(input: Omit<ForecastInput, "closedWindows">): LastingBudget | null {
+  const { usedPercent: used, resetsAt, durationMs, now } = input;
+  if (durationMs === null || durationMs <= 0 || used >= 100) return null;
+  if (resetsAt === null || !Number.isFinite(resetsAt) || resetsAt <= now) return null;
+  const left = 100 - Math.max(0, used);
+  const remaining = resetsAt - now;
+  const unit = durationMs >= 2 * DAY_MS ? DAY_MS : HOUR_MS;
+  if (remaining < unit) return { percent: left, per: "rest" };
+  return { percent: (left / remaining) * unit, per: unit === DAY_MS ? "day" : "hour" };
 }

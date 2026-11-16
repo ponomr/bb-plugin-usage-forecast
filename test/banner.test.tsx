@@ -87,7 +87,7 @@ describe("band, collapsed", () => {
   });
 
   it("says the limit is reached, in red", async () => {
-    const hit = { status: "hit" as const, current: null, learned: null, warning: true };
+    const hit = { status: "hit" as const, current: null, learned: null, main: null, early: false, warning: true };
     render(Banner, {}, backend({ snapshot: snapshot([provider("claude-code", [win("Current session", 100, { forecast: hit })])]) }));
     const head = await screen.findByTestId("headline");
     expect(head.textContent).toMatch(/^Limit reached\. Usage resumes at .+\.$/);
@@ -270,7 +270,7 @@ describe("band, expanded", () => {
   });
 
   it("says when a window will hit its limit before the reset", async () => {
-    const forecast = { status: "running" as const, current: { projectedPercent: 160, runOutAt: Date.now() + HOUR_MS }, learned: null, warning: true };
+    const forecast = { status: "running" as const, current: { projectedPercent: 160, runOutAt: Date.now() + HOUR_MS }, learned: null, main: "current" as const, early: false, warning: true };
     render(Banner, {}, backend({ snapshot: snapshot([provider("claude-code", [win("Current session", 70, { forecast })])]) }));
     await expand();
     const session = await findWindow("Current session", providerBlock("claude-code"));

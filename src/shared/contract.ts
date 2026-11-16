@@ -59,6 +59,9 @@ export const windowForecastSchema = z.object({
   status: z.enum(["hit", "running"]),
   current: projectionSchema.nullable(),
   learned: projectionSchema.extend({ basedOnWindows: z.number().int() }).nullable(),
+  /** Defaults keep a forecast from before these fields parsing. */
+  main: z.enum(["current", "learned"]).nullable().default(null),
+  early: z.boolean().default(false),
   warning: z.boolean(),
 });
 

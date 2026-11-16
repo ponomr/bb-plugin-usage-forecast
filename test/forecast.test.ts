@@ -3,10 +3,12 @@ import {
   type ClosedWindow,
   forecastWindow,
   isNewWindow,
+  lastingBudget,
   LEARNED_WINDOWS_USED,
   median,
   typicalPeak,
 } from "../src/shared/forecast";
+import { windowForecastSchema } from "../src/shared/contract";
 import { contextTone, forecastTone, forecastWarns, limitTone, worseTone } from "../src/shared/thresholds";
 import { DAY_MS, HOUR_MS, windowDurationMs, windowKey } from "../src/shared/windows";
 
@@ -93,21 +95,73 @@ describe("forecastWindow", () => {
     expect(f?.warning).toBe(false);
   });
 
-  it("warns on the learned pace alone", () => {
+  it("does not warn on the learned pace alone (AE2)", () => {
+    // 20 % after 2.5 h is 8 %/h: 40 % at the reset. Learned: 20 + 200 * 0.5 = 120.
     const f = forecastWindow({
-      usedPercent: 60,
-      resetsAt: NOW + 4 * HOUR_MS,
+      usedPercent: 20,
+      resetsAt: NOW + FIVE_HOURS / 2,
       durationMs: FIVE_HOURS,
       now: NOW,
-      closedWindows: closed([90, 90, 90]),
+      closedWindows: closed([200, 200, 200]),
+    });
+    expect(f?.current?.projectedPercent).toBeCloseTo(40);
+    expect(f?.learned?.projectedPercent).toBeCloseTo(120);
+    expect(f?.main).toBe("current");
+    expect(f?.warning).toBe(false);
+  });
+
+  it("warns on the current pace even when the learned one lasts (AE2)", () => {
+    // 60 % after 2.5 h: 120 % at the reset. Learned: 60 + 40 * 0.5 = 80.
+    const f = forecastWindow({
+      usedPercent: 60,
+      resetsAt: NOW + FIVE_HOURS / 2,
+      durationMs: FIVE_HOURS,
+      now: NOW,
+      closedWindows: closed([40, 40, 40]),
+    });
+    expect(f?.current?.projectedPercent).toBeCloseTo(120);
+    expect(f?.learned?.projectedPercent).toBeCloseTo(80);
+    expect(f?.warning).toBe(true);
+  });
+
+  it("names the current pace as main once 5 % of the window has passed", () => {
+    const f = forecastWindow({
+      usedPercent: 20,
+      resetsAt: NOW + FIVE_HOURS / 2,
+      durationMs: FIVE_HOURS,
+      now: NOW,
+      closedWindows: closed([50]),
+    });
+    expect(f).toMatchObject({ main: "current", early: false });
+  });
+
+  it("names the learned pace as main and never warns while early (AE4)", () => {
+    // 6 minutes of 5 h is 2 %; a usual peak of 110 % projects above 100 %.
+    const f = forecastWindow({
+      usedPercent: 3,
+      resetsAt: NOW + FIVE_HOURS - 6 * 60_000,
+      durationMs: FIVE_HOURS,
+      now: NOW,
+      closedWindows: closed([110, 110, 110]),
     });
     expect(f?.learned?.projectedPercent).toBeGreaterThan(100);
-    expect(f?.warning).toBe(true);
+    expect(f).toMatchObject({ status: "running", main: "learned", early: true, warning: false, current: null });
+  });
+
+  it("has no main projection while early without history", () => {
+    const f = forecastWindow({ usedPercent: 2, resetsAt: NOW + FIVE_HOURS - 5 * 60_000, durationMs: FIVE_HOURS, now: NOW });
+    expect(f).toMatchObject({ main: null, early: true, warning: false });
   });
 
   it("marks a hit limit", () => {
     const f = forecastWindow({ usedPercent: 100, resetsAt: NOW + HOUR_MS, durationMs: FIVE_HOURS, now: NOW });
-    expect(f).toMatchObject({ status: "hit", warning: true, current: { projectedPercent: 100, runOutAt: NOW } });
+    expect(f).toMatchObject({
+      status: "hit",
+      warning: true,
+      early: false,
+      main: "current",
+      current: { projectedPercent: 100, runOutAt: NOW },
+    });
   });
 
   it.each([
@@ -132,6 +186,48 @@ describe("forecastWindow", () => {
     });
     expect(f?.current).toBeNull();
     expect(f?.learned?.projectedPercent).toBeCloseTo(70);
+    expect(f).toMatchObject({ early: true, main: "learned", warning: false });
+  });
+
+  it("parses a forecast stored before main and early existed", () => {
+    const parsed = windowForecastSchema.parse({ status: "running", current: null, learned: null, warning: false });
+    expect(parsed).toMatchObject({ main: null, early: false });
+  });
+});
+
+describe("lastingBudget", () => {
+  const WEEK = 7 * DAY_MS;
+
+  it("gives a daily budget for a week (AE1)", () => {
+    const b = lastingBudget({ usedPercent: 60, resetsAt: NOW + 3 * DAY_MS, durationMs: WEEK, now: NOW });
+    expect(b?.per).toBe("day");
+    expect(b?.percent).toBeCloseTo(13.33, 1);
+  });
+
+  it("gives an hourly budget for a five-hour window", () => {
+    const b = lastingBudget({ usedPercent: 50, resetsAt: NOW + 2 * HOUR_MS, durationMs: FIVE_HOURS, now: NOW });
+    expect(b?.per).toBe("hour");
+    expect(b?.percent).toBeCloseTo(25);
+  });
+
+  it("gives the percent left when less than one unit remains (AE5)", () => {
+    expect(lastingBudget({ usedPercent: 95, resetsAt: NOW + 30 * 60_000, durationMs: FIVE_HOURS, now: NOW })).toEqual({
+      percent: 5,
+      per: "rest",
+    });
+    expect(lastingBudget({ usedPercent: 90, resetsAt: NOW + 20 * HOUR_MS, durationMs: WEEK, now: NOW })).toEqual({
+      percent: 10,
+      per: "rest",
+    });
+  });
+
+  it.each([
+    ["no reset", { usedPercent: 40, resetsAt: null, durationMs: FIVE_HOURS }],
+    ["a passed reset", { usedPercent: 40, resetsAt: NOW - 1, durationMs: FIVE_HOURS }],
+    ["an unknown duration", { usedPercent: 40, resetsAt: NOW + HOUR_MS, durationMs: null }],
+    ["a used-up limit", { usedPercent: 100, resetsAt: NOW + HOUR_MS, durationMs: FIVE_HOURS }],
+  ])("has no budget for %s", (_name, input) => {
+    expect(lastingBudget({ ...input, now: NOW })).toBeNull();
   });
 });
 
