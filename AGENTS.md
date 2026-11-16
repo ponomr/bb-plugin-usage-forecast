@@ -180,6 +180,30 @@ UI surfaces:
 - `experimental_useThreadContextKind()` is `card` on the Mac and `banner` on
   the phone.
 
+Sidebar footer (checked 2026-11-16 with a throwaway plugin in headless
+Chrome against the web app, bb 0.49.0):
+
+- An `experimental_icons` component used as a footer item's icon renders
+  outside the plugin slot: `useSettings()` throws «plugin SDK hooks can only
+  be used inside a plugin slot component» and `experimental_useRpcQuery`
+  throws «plugin RPC hooks outside a plugin slot component need an explicit
+  pluginId». React state, effects and `useSyncExternalStore` work, and the
+  icon re-renders. The plugin therefore feeds a module store from an
+  `experimental_appOverlay` component that renders `null`; a settings change
+  reached the icon within seconds.
+- `definePluginApp` setup is synchronous and has no settings API; a
+  registration cannot depend on a setting. A registered footer item cannot
+  be removed at run time: with its icon hidden the host's 32×32 button stays
+  focusable.
+- The host lets the user take any footer item out of the row: More →
+  Customize footer → «Remove <label> from footer» moves it into the More menu
+  (UI preference `sidebar.hiddenFooterItems`, key
+  `plugin:<pluginId>/<itemId>`). More also offers «Hide footer».
+- A disclosure item's card opens directly above the footer row and closes on
+  a second press of the item.
+- At a phone-width viewport (390 px) the footer sits at the bottom of the
+  sidebar drawer with the live icon. The native phone app is unchecked.
+
 ## Repository and release contract
 
 - Repository: public `ponomr/bb-plugin-usage-forecast`, MIT. Submitted to the
