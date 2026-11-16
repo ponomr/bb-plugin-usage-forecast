@@ -4,6 +4,22 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.6 — 2026-11-16
+
+- Limits per bb host (UF-5). Every connected host is polled with
+  `usageLimits({hostId})` in parallel, with a 30 s timeout and back-off per
+  host; a removed or destroyed host is dropped with its keys. A thread's band
+  shows only the limits of the host it runs on (thread → environment → host),
+  marks them stale with their time when that host is disconnected or its poll
+  failed, and says the host is unknown rather than show another host. The
+  CLI status and the limit pushes go once per account: hosts that bb reports
+  on the same account for a provider are grouped (`sharedWith`, host ids
+  only), and push titles name the hosts when more than one is known. Data
+  stored before keeps its keys and belongs to bb's primary host
+  (`limits:hosts` records it); other hosts get keys with their host id. The
+  RPC snapshot carries `hosts` instead of a top-level `providers`, and the
+  thread state gains `hostId`. Remembered pushes go from 50 to 200.
+
 ## 0.4.5 — 2026-11-15
 
 - Summary and clear for providers that cannot compact (UF-4). New setting

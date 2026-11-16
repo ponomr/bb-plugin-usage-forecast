@@ -64,6 +64,17 @@ the context breakdown and one line per other provider.
   the switch on asks whether to compact now or after the next reply. On the phone the context panel is in the expanded band.
 - **Server-side work.** Limits are polled on the server, so history and
   auto-compact work with every client closed.
+- **Every bb host.** Each connected host (the server and, for example, a Mac
+  enrolled in the same bb) is polled on its own, with its own history and
+  forecast, and a slow or failing host does not hold up the others. A thread
+  shows only the limits of the host it runs on. When that host is
+  disconnected or its last poll failed, the band keeps its last values with
+  «Host unavailable, data from …» and no forecast; when the thread's host is
+  not known, the band says so instead of showing another host. `bb
+  usage-forecast status` lists every host; hosts signed in to one account
+  show as one entry naming all of them, and get one push, whose title names
+  the hosts when there is more than one. History collected before 0.4.6
+  belongs to bb's primary host.
 - **Push before a limit runs out.** After each poll the server checks every
   limit window. When one reaches the threshold (90 % by default) it sends one
   push through bb's `push-notifications` plugin («Claude Code: 5 Hour limit at
@@ -189,10 +200,14 @@ e-mail addresses in error texts are masked.
 - Codex reports no context breakdown, only the total.
 - Compacting an almost empty thread can make it larger; the log shows both
   numbers as they are.
-- Poll back-off: 5 minutes after one failed poll, 15 after two in a row; the
-  last error is on the `poll-limits` row of `bb plugin list`. A poll fails
-  only when bb's call fails or every provider reports an error; one
-  provider's error stays on its own row.
+- Poll back-off: 5 minutes after one failed poll, 15 after two in a row,
+  counted per host; the last error is on the `poll-limits` row of `bb plugin
+  list`. A poll fails only when bb's call fails, the host does not answer
+  within 30 s, or every provider reports an error; one provider's error stays
+  on its own row.
+- Two hosts count as one account for a provider only when bb reports the same
+  account for both in one poll; the account itself is compared in memory and
+  never stored.
 - When a provider answers that it cannot compact, the plugin stops trying it
   for 24 hours; a successful manual compact lifts the mark earlier.
 

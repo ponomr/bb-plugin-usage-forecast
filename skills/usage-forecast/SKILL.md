@@ -14,7 +14,10 @@ identified by provider and label (`claude-code` / `Current session`).
 - `bb usage-forecast status [--refresh] [--json]` — every provider and window:
   percent used, time to reset, forecast at reset from the current pace and,
   after enough history, from past windows (`learned pace N% (K windows)`). `[over 100%]` means
-  the window runs out before it resets. `--refresh` polls now.
+  the window runs out before it resets. `--refresh` polls now. With more than
+  one bb host each block names its host (`codex (Plus) on MacBook: ok`); hosts
+  signed in to one account share a block, and a host that is not connected
+  says from when its data is. `--json` has the same data per host in `hosts`.
 - `bb usage-forecast thread <threadId> [--json]` — context fill (tokens and % of the working limit), the limit and its source
   (this thread, the provider setting, where the provider compacts on its own, the global setting, or the model window),
   whether the agent is answering, the effective auto-compact policy and its
