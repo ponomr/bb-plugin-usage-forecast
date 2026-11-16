@@ -13,6 +13,7 @@
 
 import { z } from "zod";
 import { forecastWindow, isNewWindow, type ClosedWindow } from "../shared/forecast";
+import { nextPace, rawPaceState } from "../shared/pace";
 import { windowDurationMs, windowKey } from "../shared/windows";
 import type { LimitsSnapshot, LimitWindow, ProviderStatus } from "../shared/contract";
 import { PROVIDER_STATUSES, RECENT_COMPACTIONS } from "../shared/contract";
@@ -216,7 +217,8 @@ export class Poller {
       const prevOpen = before?.open[w.label];
 
       let closedWindows: ClosedWindow[] | null = null;
-      if (prevWindow && prevOpen && isNewWindow(prevWindow.resetsAt, resetsAt)) {
+      const reset = prevWindow && prevOpen && isNewWindow(prevWindow.resetsAt, resetsAt);
+      if (reset) {
         if (prevWindow.resetsAt !== null) {
           closedWindows = await storage.appendClosedWindow(key, {
             startedAt: durationMs !== null ? prevWindow.resetsAt - durationMs : prevOpen.firstSeenAt,
@@ -233,6 +235,10 @@ export class Poller {
       }
 
       closedWindows ??= await storage.closedWindows(key);
+      const forecast = forecastWindow({ usedPercent: w.usedPercent, resetsAt, durationMs, now, closedWindows });
+      // A new window starts without a held state.
+      const pace = nextPace(reset ? null : prevOpen?.pace, rawPaceState({ usedPercent: w.usedPercent, durationMs, forecast }, now), now);
+      if (pace !== null) open[w.label]!.pace = pace;
       windows.push({
         label: w.label,
         usedPercent: w.usedPercent,
@@ -240,7 +246,8 @@ export class Poller {
         model: typeof w.model === "string" ? w.model : null,
         cost: w.cost ? { usedUsdCents: w.cost.usedUsdCents, limitUsdCents: w.cost.limitUsdCents } : null,
         durationMs,
-        forecast: forecastWindow({ usedPercent: w.usedPercent, resetsAt, durationMs, now, closedWindows }),
+        forecast,
+        pace: pace?.state ?? null,
       });
       samples.push({ at: now, label: w.label, usedPercent: w.usedPercent, resetsAt });
     }
@@ -259,7 +266,10 @@ export class Poller {
   }
 }
 
-/** The client view of the stored state. A window whose reset has passed loses its forecast. */
+/**
+ * The client view of the stored state. A window whose reset has passed loses
+ * its forecast and pace; a window stored before 0.5 gets a null pace.
+ */
 export function toSnapshot(latest: StoredLatest, log: LimitsSnapshot["recentCompactions"], now: number): LimitsSnapshot {
   return {
     polledAt: latest.polledAt,
@@ -267,7 +277,7 @@ export function toSnapshot(latest: StoredLatest, log: LimitsSnapshot["recentComp
     providers: latest.providers.map(({ open: _open, ...provider }) => ({
       ...provider,
       windows: provider.windows.map((w) =>
-        w.resetsAt !== null && w.resetsAt <= now ? { ...w, forecast: null } : w,
+        w.resetsAt !== null && w.resetsAt <= now ? { ...w, forecast: null, pace: null } : { ...w, pace: w.pace ?? null },
       ),
     })),
     recentCompactions: log.slice(0, RECENT_COMPACTIONS),

@@ -29,6 +29,7 @@ function win(label: string, usedPercent: number, remaining: number, durationMs: 
     cost: null,
     durationMs,
     forecast: forecastWindow({ usedPercent, resetsAt, durationMs, now: NOW, closedWindows: history }),
+    pace: null,
   };
 }
 

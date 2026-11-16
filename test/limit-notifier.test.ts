@@ -13,7 +13,7 @@ function provider(windows: { label: string; usedPercent: number; resetsAt: numbe
     planLabel: null,
     checkedAt: NOW,
     measuredAt: NOW,
-    windows: windows.map((w) => ({ ...w, model: null, cost: null, durationMs: 5 * HOUR_MS, forecast: null })),
+    windows: windows.map((w) => ({ ...w, model: null, cost: null, durationMs: 5 * HOUR_MS, forecast: null, pace: null })),
     open: {},
   };
 }

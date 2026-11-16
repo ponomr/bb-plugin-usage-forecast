@@ -4,6 +4,7 @@
 
 import { defineRpcContract } from "@get-bb/plugin-sdk";
 import { z } from "zod";
+import { PACE_STATES } from "./pace";
 
 export const LIMITS_TAG = "limits";
 export const threadTag = (threadId: string) => `thread:${threadId}`;
@@ -78,6 +79,11 @@ export const limitWindowSchema = z.object({
   /** Null for a window whose duration is unknown: it then has no forecast. */
   durationMs: z.number().nullable(),
   forecast: windowForecastSchema.nullable(),
+  /**
+   * The pace state the server holds (see `src/shared/pace.ts`), or null with
+   * no current pace. Absent in windows stored before 0.5.
+   */
+  pace: z.enum(PACE_STATES).nullable().default(null),
 });
 export type LimitWindow = z.infer<typeof limitWindowSchema>;
 

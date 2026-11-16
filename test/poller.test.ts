@@ -3,7 +3,9 @@ import { cleanMessage } from "../src/server/messages";
 import { backoffMinutes, Poller, toSnapshot } from "../src/server/poller";
 import { byteLength, keys, MAX_CLOSED_WINDOWS, MAX_VALUE_BYTES, type Sample } from "../src/server/storage";
 import { HOUR_MS, windowKey } from "../src/shared/windows";
-import { claudeLimits, Clock, iso, makeStorage, MIN, NOW } from "./helpers";
+import { LimitNotifier, type PushMessage } from "../src/server/limit-notifier";
+import { snapshotSchema } from "../src/shared/contract";
+import { claudeLimits, Clock, iso, makeStorage, MIN, NOW, settingsOf } from "./helpers";
 
 function setup(answer: () => unknown | Promise<unknown>, interval = 2) {
   const clock = new Clock();
@@ -179,7 +181,11 @@ describe("poll", () => {
     const closed = await t.storage.closedWindows(windowKey("claude-code", "Current session"));
     expect(closed).toEqual([{ startedAt: NOW + 2 * HOUR_MS - 5 * HOUR_MS, resetAt: NOW + 2 * HOUR_MS, peakUsedPercent: 70 }]);
     const latest = await t.storage.latest();
-    expect(latest.providers[0]!.open["Current session"]).toEqual({ peakUsedPercent: 5, firstSeenAt: t.clock.value });
+    expect(latest.providers[0]!.open["Current session"]).toEqual({
+      peakUsedPercent: 5,
+      firstSeenAt: t.clock.value,
+      pace: { state: "calm", calmer: null },
+    });
   });
 
   it("keeps at most MAX_CLOSED_WINDOWS closed windows", async () => {
@@ -219,6 +225,114 @@ describe("snapshot", () => {
     expect(later.providers[0]!.windows[0]!.forecast).toBeNull();
     expect(later.providers[0]!.windows[1]!.forecast).not.toBeNull();
     expect(later.providers[0]).not.toHaveProperty("open");
+  });
+});
+
+describe("pace state", () => {
+  // Session window resets 2 h after NOW: 3 h of 5 h have passed.
+  const sessionPace = (latest: { providers: { windows: { label: string; pace: unknown }[] }[] }) =>
+    latest.providers[0]!.windows.find((w) => w.label === "Current session")!.pace;
+
+  it("holds a worse state for ten minutes before calming down (AE4)", async () => {
+    let session = 70; // 70 % after 3 h: on course for 117 %, runs out in 1 h 17 m.
+    const t = setup(() => claudeLimits(session, 10));
+    expect(sessionPace((await t.poller.poll()).latest)).toBe("short");
+    // Two minutes later the projection is calm, but the state holds.
+    session = 40;
+    t.clock.advance(2 * MIN);
+    expect(sessionPace((await t.poller.poll()).latest)).toBe("short");
+    expect((await t.storage.latest()).providers[0]!.open["Current session"]!.pace).toEqual({
+      state: "short",
+      calmer: { state: "calm", since: t.clock.value },
+    });
+    const snap = toSnapshot(await t.storage.latest(), [], t.clock.value);
+    expect(snap.providers[0]!.windows[0]!.pace).toBe("short");
+    // Ten minutes after the first calm reading.
+    t.clock.advance(10 * MIN);
+    expect(sessionPace((await t.poller.poll()).latest)).toBe("calm");
+  });
+
+  it("starts a new window with its raw state, no hold carried over", async () => {
+    let session = 70;
+    let resetsAt = NOW + 2 * HOUR_MS;
+    const t = setup(() => claudeLimits(session, 10, resetsAt));
+    expect(sessionPace((await t.poller.poll()).latest)).toBe("short");
+    // The window resets two minutes later; one hour into the new one it is calm.
+    session = 5;
+    resetsAt = NOW + 2 * MIN + 4 * HOUR_MS;
+    t.clock.advance(2 * MIN);
+    const { latest } = await t.poller.poll();
+    expect(sessionPace(latest)).toBe("calm");
+    expect(latest.providers[0]!.open["Current session"]!.pace).toEqual({ state: "calm", calmer: null });
+  });
+
+  it("has no state early in a window", async () => {
+    const t = setup(() => claudeLimits(3, 10, NOW + 5 * HOUR_MS - 5 * MIN));
+    const { latest } = await t.poller.poll();
+    expect(sessionPace(latest)).toBeNull();
+    expect(latest.providers[0]!.open["Current session"]).not.toHaveProperty("pace");
+  });
+
+  it("drops the pace of a window whose reset has passed", async () => {
+    const t = setup(() => claudeLimits(90, 20));
+    const { latest } = await t.poller.poll();
+    const later = toSnapshot(latest, [], NOW + 3 * HOUR_MS);
+    expect(later.providers[0]!.windows[0]!.pace).toBeNull();
+    expect(later.providers[0]!.windows[1]!.pace).toBe("calm");
+  });
+
+  it("reads a latest value stored before the upgrade with a null pace", async () => {
+    const t = setup(() => claudeLimits(40, 20));
+    const { latest } = await t.poller.poll();
+    const old = JSON.parse(JSON.stringify(latest));
+    for (const p of old.providers) {
+      for (const w of p.windows) delete w.pace;
+      for (const o of Object.values(p.open) as { pace?: unknown }[]) delete o.pace;
+    }
+    await t.storage.setLatest(old);
+    const snap = toSnapshot(await t.storage.latest(), [], NOW);
+    expect(snap.providers[0]!.windows.map((w) => w.pace)).toEqual([null, null]);
+    expect(snapshotSchema.parse(snap).providers[0]!.windows[0]!.pace).toBeNull();
+    // The JSON a pre-upgrade server returned parses too.
+    const parsed = snapshotSchema.parse({ polledAt: NOW, pollError: null, providers: old.providers, recentCompactions: [] });
+    expect(parsed.providers[0]!.windows[0]!.pace).toBeNull();
+    // The next poll starts the state without a hold.
+    t.clock.advance(2 * MIN);
+    expect(sessionPace((await t.poller.poll()).latest)).toBe("calm");
+  });
+
+  it("does not change what the limit push sends (AE7)", async () => {
+    const sent: PushMessage[] = [];
+    const storage = makeStorage();
+    const notifier = new LimitNotifier({
+      storage,
+      settings: settingsOf({ limitNotifyPercent: 60 }),
+      send: async (m) => {
+        sent.push(m);
+        return ["mobile"];
+      },
+      log: { info: () => {}, warn: () => {} },
+    });
+    let session = 50;
+    let resetsAt = NOW + 4 * HOUR_MS + 30 * MIN; // 30 minutes in.
+    const clock = new Clock();
+    const poller = new Poller({
+      usageLimits: async () => claudeLimits(session, 10, resetsAt),
+      storage,
+      intervalMinutes: async () => 2,
+      invalidate: () => {},
+      afterPoll: (providers, now) => notifier.check(providers, now),
+      now: clock.now,
+    });
+    // Critical below the push threshold: 50 % after 30 minutes runs out in 30 minutes.
+    expect(sessionPace((await poller.poll()).latest)).toBe("critical");
+    expect(sent).toEqual([]);
+    // A new window, calm, crossing the threshold ten minutes before its reset.
+    session = 61;
+    clock.advance(5 * HOUR_MS);
+    resetsAt = clock.value + 10 * MIN;
+    expect(sessionPace((await poller.poll()).latest)).toBe("calm");
+    expect(sent.map((m) => m.title)).toEqual(["Claude Code: 5 Hour limit at 61%"]);
   });
 });
 
