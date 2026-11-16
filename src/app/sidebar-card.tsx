@@ -2,9 +2,10 @@
 // when there is more than one, with shared accounts listed once.
 
 import type { ExperimentalSidebarFooterDisclosureProps } from "@get-bb/plugin-sdk/app";
+import { planText } from "../shared/plan";
 import { WindowList } from "./banner";
 import { formatClock, providerName } from "./format";
-import { errorText, useNow, useSnapshot, useStrings } from "./hooks";
+import { errorText, useHiddenProviders, useNow, useSnapshot, useStrings } from "./hooks";
 import { indicatorView, type IndicatorProvider } from "./indicator";
 import { hostStale } from "./model";
 import { Toned } from "./ui";
@@ -12,11 +13,12 @@ import { Toned } from "./ui";
 function ProviderSection({ entry, now }: { entry: IndicatorProvider; now: number }) {
   const s = useStrings();
   const { provider, alsoOn } = entry;
+  const plan = planText(provider.planLabel, provider.planMultiplier);
   return (
     <section className="flex flex-col gap-1" data-provider={provider.providerId}>
       <span className="flex flex-wrap items-baseline gap-x-2">
         <span className="font-semibold">{providerName(s, provider.providerId)}</span>
-        {provider.planLabel ? <span className="text-muted-foreground">{provider.planLabel}</span> : null}
+        {plan === null ? null : <span className="text-muted-foreground">{plan}</span>}
         {alsoOn.length === 0 ? null : (
           <span className="text-muted-foreground" data-testid="also-on">
             {s.alsoOn(alsoOn.join(", "))}
@@ -31,13 +33,14 @@ function ProviderSection({ entry, now }: { entry: IndicatorProvider; now: number
 export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
   const s = useStrings();
   const now = useNow();
+  const hidden = useHiddenProviders();
   const query = useSnapshot();
   const snapshot = query.data;
   let body: React.ReactNode;
   if (snapshot === undefined) {
     body = query.error ? <Toned tone="amber">{errorText(query.error)}</Toned> : <span className="text-muted-foreground">{s.loading}</span>;
   } else {
-    const view = indicatorView(snapshot, now);
+    const view = indicatorView(snapshot, now, hidden);
     const unavailable =
       view.unavailable.length === 0 ? null : (
         <span className="text-muted-foreground" data-testid="hosts-unavailable">

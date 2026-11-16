@@ -223,6 +223,23 @@ describe("plugin wiring", () => {
     expect(await harness.callRpc("setDisplay", { resetShow: "countdown" })).toEqual({ limitsShow: "used", resetShow: "countdown" });
   });
 
+  it("hideProvider appends the id once, keeps the other ids and invalidates (UF-11 R11)", async () => {
+    const { harness, invalidations } = await load({ hiddenProviders: " Codex ,, nope" } as never);
+    expect(await harness.callRpc("hideProvider", { providerId: "acp-opencode" })).toEqual({ hiddenProviders: ["codex", "nope", "acp-opencode"] });
+    expect(invalidations()).toContainEqual(null);
+    expect(await harness.callRpc("hideProvider", { providerId: "ACP-OpenCode" })).toEqual({ hiddenProviders: ["codex", "nope", "acp-opencode"] });
+    expect(await harness.callRpc("hideProvider", { providerId: "codex" })).toEqual({ hiddenProviders: ["codex", "nope", "acp-opencode"] });
+  });
+
+  it("hideProvider starts the setting when it is empty and rejects an empty or a list id", async () => {
+    const { harness } = await load();
+    await expect(harness.callRpc("hideProvider", { providerId: "" })).rejects.toThrow();
+    await expect(harness.callRpc("hideProvider", { providerId: "  " })).rejects.toThrow();
+    await expect(harness.callRpc("hideProvider", { providerId: "codex, acp-opencode" })).rejects.toThrow();
+    await expect(harness.callRpc("hideProvider", {})).rejects.toThrow();
+    expect(await harness.callRpc("hideProvider", { providerId: "codex" })).toEqual({ hiddenProviders: ["codex"] });
+  });
+
   it("compacts manually through the RPC", async () => {
     const { harness, threads } = await load();
     // 20 % of the 117 000 point where Claude Code compacts on its own.

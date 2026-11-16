@@ -68,6 +68,7 @@ function provider(providerId: string, windows: LimitWindow[], over: Partial<Prov
     status: "ok",
     message: null,
     planLabel: providerId === "codex" ? "Plus" : "Max",
+    planMultiplier: null,
     checkedAt: NOW,
     measuredAt: NOW,
     windows,
@@ -268,7 +269,7 @@ describe("headroomReport", () => {
     const s = snap([host("server", [provider("codex", [paced("Weekly limit", 10, 20)])])], NOW - 45 * MIN_MS);
     expect(headroomReport(s, NOW)).toMatchObject({ polledAt: NOW - 45 * MIN_MS, ageMs: 45 * MIN_MS, stale: true });
     expect(headroomReport(snap(s.hosts, NOW - STALE_AFTER_MS), NOW).stale).toBe(false);
-    expect(headroomReport(snap([], null), NOW)).toEqual({ polledAt: null, ageMs: null, stale: false, entries: [] });
+    expect(headroomReport(snap([], null), NOW)).toEqual({ polledAt: null, ageMs: null, stale: false, entries: [], hidden: [] });
   });
 });
 

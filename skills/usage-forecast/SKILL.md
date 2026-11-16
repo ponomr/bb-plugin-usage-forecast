@@ -24,8 +24,11 @@ identified by provider and label (`claude-code` / `Current session`).
   windows have none. `--refresh` polls now. With more than
   one bb host each block names its host (`codex (Plus) on MacBook: ok`); hosts
   signed in to one account share a block, and a host that is not connected
-  says from when its data is. `--json` has the same data per host in `hosts`,
-  and every window gains a `verdict` object (below).
+  says from when its data is. A provider in the `hiddenProviders` setting
+  ends with `[hidden]`. A plan multiplier shows after the plan name
+  (`claude-code (Max 5×)`). `--json` has the same data per host in `hosts`;
+  every provider has `planMultiplier` (number or `null`) and `hidden`, and
+  every window gains a `verdict` object (below).
 - `bb usage-forecast headroom [--refresh] [--json] [--host <id or name> | --thread <threadId>]` —
   one line per provider account, from the most headroom to the tightest:
   `1. codex (Plus): headroom – Weekly limit 57%, on pace for 69% at reset in 1d 6h`.
@@ -38,9 +41,12 @@ identified by provider and label (`claude-code` / `Current session`).
   ago is marked `Stale:` (`"stale": true` in JSON); one account measured
   that long ago, as on a host that is not connected, ends with `measured
   <span> ago` and has its own `stale`. `--json` gives `polledAt`,
-  `ageMs`, `stale` and `entries` with `providerId`, `planLabel`, `hosts`,
-  `verdict`, `availableAt`, `worstWindow` (the window and its `verdict`
-  fields), `status`, `message`, `measuredAt` and `stale`.
+  `ageMs`, `stale`, `entries` with `providerId`, `planLabel`,
+  `planMultiplier`, `hosts`, `verdict`, `availableAt`, `worstWindow` (the
+  window and its `verdict` fields), `status`, `message`, `measuredAt` and
+  `stale`, and `hidden`: the provider ids the `hiddenProviders` setting left
+  out of the ranking (the text ends with `hidden: <ids>`). With `--thread`
+  the thread's own provider stays in even when hidden.
 - `bb usage-forecast thread <threadId> [--json]` — context fill (tokens and % of the working limit), the limit and its source
   (this thread, the provider setting, where the provider compacts on its own, the global setting, or the model window),
   whether the agent is answering, the effective auto-compact policy and its
@@ -73,6 +79,8 @@ The current thread id is in `bb status` or `$BB_THREAD_ID`.
   (or `--json`) and prefer a provider whose verdict is `headroom`.
 - When the provider in use is `short`, `critical` or `hit`, tell the user and
   name the providers with headroom; do not switch providers on your own.
+- A provider missing from `headroom` may be hidden by the user (see
+  `hidden`); do not suggest it, and do not change the setting unless asked.
 - With `stale` data, run it again with `--refresh` before deciding; an
   account that stays stale belongs to a host that is not connected, so do not
   count on its numbers.
@@ -96,6 +104,7 @@ Usage Forecast.
 | `language` | `en` | `en`, `ru` (UI language) |
 | `limitsShow` | `used` | `used`, `remaining` (band only; CLI output stays in percent used) |
 | `resetShow` | `countdown` | `countdown`, `time` (band only: the reset as a countdown or as the local time) |
+| `hiddenProviders` | empty | provider ids separated by commas or spaces; left out of the band's other providers, the sidebar ring, limit pushes and `headroom` |
 
 The thread's working limit is, in order: the thread's own limit, the provider
 setting, the point where the provider compacts on its own (Claude Code reports

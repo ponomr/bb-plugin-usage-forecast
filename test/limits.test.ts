@@ -42,6 +42,14 @@ describe("per-provider settings", () => {
   });
 });
 
+describe("hiddenProviders setting", () => {
+  it("parses the text into ids and defaults to none (AE7)", () => {
+    expect(parseSettings({}).hiddenProviders).toEqual([]);
+    expect(parseSettings({ hiddenProviders: " Codex ,, nope" }).hiddenProviders).toEqual(["codex", "nope"]);
+    expect(parseSettings({ hiddenProviders: 5 }).hiddenProviders).toEqual([]);
+  });
+});
+
 describe("limit precedence", () => {
   it("orders thread, provider setting, reported point, global", () => {
     const s = withProviders(180_000, 0);

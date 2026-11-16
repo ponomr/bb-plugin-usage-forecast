@@ -135,7 +135,7 @@ describe("forecast wording", () => {
           primary: true,
           polledAt: NOW,
           pollError: null,
-          providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+          providers: [{ providerId: "codex", status: "ok", planLabel: null, planMultiplier: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
         },
       ],
       recentCompactions: [],
@@ -207,7 +207,7 @@ describe("forecast wording", () => {
           primary: true,
           polledAt: NOW,
           pollError: null,
-          providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+          providers: [{ providerId: "codex", status: "ok", planLabel: null, planMultiplier: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
         },
       ],
       recentCompactions: [],
@@ -239,7 +239,7 @@ describe("pace state word", () => {
           primary: true,
           polledAt: NOW,
           pollError: null,
-          providers: [{ providerId: "codex", status: "ok", planLabel: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
+          providers: [{ providerId: "codex", status: "ok", planLabel: null, planMultiplier: null, message: null, measuredAt: NOW, checkedAt: NOW, windows: [w] }],
         },
       ],
       recentCompactions: [],
@@ -384,5 +384,14 @@ describe("bb usage-forecast", () => {
     const out = await t.run("thread", "x".repeat(129));
     expect(out.exitCode).not.toBe(0);
     expect(out.stderr).toContain("Thread id must be 1-128 characters");
+  });
+});
+
+describe("hidden providers (UF-11, R12)", () => {
+  it("the snapshot is the same with and without the setting", async () => {
+    const plain = setup();
+    const hidden = setup({ hiddenProviders: ["claude-code"] });
+    expect(await hidden.service.refresh()).toEqual(await plain.service.refresh());
+    expect((await hidden.service.snapshot()).hosts[0]!.providers.map((p) => p.providerId)).toContain("claude-code");
   });
 });

@@ -89,6 +89,9 @@ export interface Strings {
   ago(span: string): string;
   showDetails: string;
   hideDetails: string;
+  /** The button that hides another provider in the band, the sign and pushes. */
+  hideProvider: string;
+  hideProviderLabel(provider: string): string;
   collapse: string;
   recentCompactsCount(n: number): string;
 
@@ -244,6 +247,8 @@ export const en: Strings = {
   ago: (span) => `${span} ago`,
   showDetails: "Show details",
   hideDetails: "Hide details",
+  hideProvider: "Hide",
+  hideProviderLabel: (provider) => `Hide ${provider} here and in notifications`,
   collapse: "Collapse",
   recentCompactsCount: (n) => `Recent compacts (${n})`,
 
@@ -406,6 +411,8 @@ export const ru: Strings = {
   ago: (span) => `${span} назад`,
   showDetails: "Подробнее",
   hideDetails: "Свернуть",
+  hideProvider: "Скрыть",
+  hideProviderLabel: (provider) => `Скрыть ${provider} здесь и в уведомлениях`,
   collapse: "Свернуть",
   recentCompactsCount: (n) => `Последние сжатия (${n})`,
 

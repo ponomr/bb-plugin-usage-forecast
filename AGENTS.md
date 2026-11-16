@@ -12,8 +12,9 @@ auto-compact without open clients.
   (`forecast.ts`, adapted from `claude-code-usage-quota-mod`, see `NOTICE`)
   and the window's pace state with its hold (`pace.ts`), the display
   settings (`limits-show.ts`, `reset-show.ts`), account grouping across hosts
-  (`accounts.ts`) and the CLI's window verdict and provider headroom
-  (`headroom.ts`).
+  (`accounts.ts`), the CLI's window verdict and provider headroom
+  (`headroom.ts`), the plan multiplier and its text (`plan.ts`) and the
+  `hiddenProviders` setting's parser (`hidden-providers.ts`).
 - `src/server/` — poller, KV storage, auto-compact, limit push notifications
   (through the `push-notifications` plugin), CLI.
 - `src/app/` — composer band (design after `claude-code-usage-quota-mod`),
@@ -76,6 +77,13 @@ Usage limits:
 - Every window has `resetsAt` (ISO) and an integer `usedPercent`; none had
   `cost`. The response also carries undocumented `plan: {id, multiplier}` and
   `accountKey`.
+- `plan` (checked 2026-11-16 with a throwaway plugin, `refresh: true`, one
+  connected host): `claude-code` `planLabel: "Max"` with `plan: {id: "max",
+  multiplier: null}`, `codex` `planLabel: "Plus"` with `{id: "plus",
+  multiplier: null}`; an `unauthenticated` provider (`acp-opencode`) has no
+  `plan`. No provider sent a non-null multiplier, so its type when present is
+  unseen; `planLabel` carried no multiplier. The plugin reads only a finite
+  number above 1.
 
 Hosts (checked 2026-11-16 from the bb CLI on the server, a two-host install):
 

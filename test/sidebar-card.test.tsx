@@ -48,6 +48,12 @@ describe("SidebarCard", () => {
     expect(card().querySelectorAll('[data-provider="claude-code"]')).toHaveLength(1);
   });
 
+  it("shows the plan with its multiplier", async () => {
+    const b = backend({ snapshot: snapshot([provider("claude-code", [win("Current session", 30)], { planLabel: "Max", planMultiplier: 20 })]) });
+    render(SidebarCard, props, b);
+    await waitFor(() => expect(within(card()).getByText("Max 20×")).toBeTruthy());
+  });
+
   it("without any ok provider says there is no data", async () => {
     render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [], { status: "not_installed" })]) }));
     await waitFor(() => expect(card().textContent).toBe(en.noLimitsData));
@@ -65,5 +71,18 @@ describe("SidebarCard", () => {
     const app = await loadPluginApp(() => import("../app"));
     const item = app.experimentalSidebarFooterItems.find((i) => i.id === "limits");
     expect(item).toMatchObject({ kind: "disclosure", label: "Usage limits", icon: "usage-forecast/ring" });
+  });
+});
+
+describe("hidden providers (UF-11)", () => {
+  it("leaves hidden providers out of the card; all hidden is the empty state (AE4)", async () => {
+    const s = snapshot([provider("claude-code", [win("Current session", 30)]), provider("codex", [win("Weekly limit", 97)])]);
+    render(SidebarCard, props, backend({ snapshot: s }), { settings: { hiddenProviders: "codex" } });
+    await waitFor(() => expect(card().querySelector('[data-provider="claude-code"]')).not.toBeNull());
+    expect(card().querySelector('[data-provider="codex"]')).toBeNull();
+    cleanup();
+    render(SidebarCard, props, backend({ snapshot: s }), { settings: { hiddenProviders: "codex, claude-code" } });
+    await waitFor(() => expect(within(card()).getByText(en.noLimitsData)).toBeTruthy());
+    expect(card().querySelector("[data-provider]")).toBeNull();
   });
 });

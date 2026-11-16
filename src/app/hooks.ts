@@ -3,7 +3,7 @@
 // server.ts). The intervals below are a backstop for hosts where realtime
 // does not reach the client (the phone on bb 0.49).
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   experimental_usePluginId,
   experimental_useRpcMutation,
@@ -15,6 +15,7 @@ import { STRINGS, type Strings } from "./i18n";
 import { parseLang } from "../shared/language";
 import { parseLimitsShow, type LimitsShow } from "../shared/limits-show";
 import { parseResetShow, type ResetShow } from "../shared/reset-show";
+import { parseHiddenProviders } from "../shared/hidden-providers";
 import { normalizeOverride, usageForecastContract, type CompactResult, type Display, type ThreadOverride } from "../shared/contract";
 
 export const SNAPSHOT_REFETCH_MS = 60_000;
@@ -114,6 +115,61 @@ export function useSetDisplay() {
       });
     },
     [mutation, values],
+  );
+}
+
+// A press on Hide takes the provider out at once, before the settings follow
+// the save. The ids pressed in this session live here; an id goes once the
+// settings list it (so un-hiding it later on the settings page works) or when
+// the save fails.
+
+let hiddenHere: readonly string[] = [];
+const hiddenListeners = new Set<() => void>();
+
+function setHiddenHere(next: readonly string[]) {
+  if (next.length === hiddenHere.length && next.every((id, i) => id === hiddenHere[i])) return;
+  hiddenHere = next;
+  for (const listener of hiddenListeners) listener();
+}
+
+function subscribeHidden(listener: () => void) {
+  hiddenListeners.add(listener);
+  return () => hiddenListeners.delete(listener);
+}
+
+const getHiddenHere = () => hiddenHere;
+
+/** Drops every pressed Hide; for tests, whose renders share this module. */
+export function clearHiddenOverrides() {
+  setHiddenHere([]);
+}
+
+/** The `hiddenProviders` setting, parsed, with the ids just pressed; none until the settings load. */
+export function useHiddenProviders(): string[] {
+  const raw = useSettings().values?.hiddenProviders;
+  const setting = useMemo(() => parseHiddenProviders(raw), [raw]);
+  const here = useSyncExternalStore(subscribeHidden, getHiddenHere, getHiddenHere);
+  const landed = here.some((id) => setting.includes(id));
+  useEffect(() => {
+    if (landed) setHiddenHere(hiddenHere.filter((id) => !setting.includes(id)));
+  }, [landed, setting]);
+  return useMemo(() => (here.length === 0 ? setting : [...new Set([...setting, ...here])]), [setting, here]);
+}
+
+/** Hides one provider from a press: at once in this app, then in the setting. */
+export function useHideProvider() {
+  const mutation = experimental_useRpcMutation({ contract: usageForecastContract, method: "hideProvider" });
+  return useCallback(
+    (providerId: string) => {
+      const [id] = parseHiddenProviders(providerId);
+      if (id === undefined) return;
+      if (!hiddenHere.includes(id)) setHiddenHere([...hiddenHere, id]);
+      mutation.mutate({ providerId: id }).catch(() => {
+        // No error banner: the block comes back as it was before the press.
+        setHiddenHere(hiddenHere.filter((x) => x !== id));
+      });
+    },
+    [mutation],
   );
 }
 

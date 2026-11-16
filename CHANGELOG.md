@@ -4,6 +4,27 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.9 — 2026-11-16
+
+- Plan multiplier (UF-11). When bb's usage limits carry a plan multiplier
+  above 1 (`plan.multiplier`), the band header, the expanded provider
+  headers, the sidebar card and the CLI `status` and `headroom` text show it
+  after the plan name («Claude Code · Max 5×», `claude-code (Max 5×)`); a
+  label that already names one is left as it is. The JSON of `status` and
+  `headroom` gains `planMultiplier` (`null` without one). Only the number is
+  stored, not the plan object. On bb 0.49.0 no provider sent a multiplier.
+- Hidden providers (UF-11). A new setting «Hidden providers» (`hiddenProviders`,
+  ids separated by commas or spaces, empty by default) leaves providers out of
+  the band's other providers, the sidebar ring and card, limit pushes and
+  `bb usage-forecast headroom`. A thread's own provider is always shown, and
+  `headroom --thread` keeps it. A hidden provider's push steps are still
+  tracked, so showing it again sends nothing late. Each other provider in the
+  expanded band has a Hide button (new RPC method `hideProvider`) that adds it
+  to the setting. `status` marks hidden providers `[hidden]` and its JSON
+  gains `hidden` per provider; `headroom` JSON gains `hidden` (the ids left
+  out) and its text a last line `hidden: <ids>`, and an empty ranking says
+  «No providers to rank.». Polling, storage and the snapshot do not change.
+
 ## 0.4.8 — 2026-11-16
 
 - Press to switch (UF-9). A press on a reset time in the band switches every

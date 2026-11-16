@@ -14,6 +14,7 @@
 // Pure: no SDK, no clock. Callers pass `now`.
 
 import { accountBlocks } from "./accounts";
+import { isHidden } from "./hidden-providers";
 import type { LimitsSnapshot, LimitWindow, ProviderStatus } from "./contract";
 import { mainProjection } from "./forecast";
 import { paceRank, rawPaceState, worsePace, type PaceState } from "./pace";
@@ -85,6 +86,8 @@ export type WorstWindow = Pick<LimitWindow, "label" | "model" | "usedPercent" | 
 export interface HeadroomEntry {
   providerId: string;
   planLabel: string | null;
+  /** The plan's multiplier, or null (see `src/shared/plan.ts`). */
+  planMultiplier: number | null;
   /** Every host signed in to this account, primary first. */
   hosts: { hostId: string | null; hostName: string | null }[];
   verdict: ProviderVerdict;
@@ -106,6 +109,28 @@ export interface HeadroomReport {
   ageMs: number | null;
   stale: boolean;
   entries: HeadroomEntry[];
+  /** Provider ids left out of the ranking by the `hiddenProviders` setting. */
+  hidden: string[];
+}
+
+export interface HeadroomOptions {
+  /** Only accounts on this host. */
+  hostId?: string;
+  /** Provider ids to leave out (parsed `hiddenProviders`). */
+  hidden?: readonly string[];
+  /** A provider kept even when hidden: the thread's own, for `--thread`. */
+  keep?: string | null;
+}
+
+/** The account blocks the ranking considers, before hidden providers drop out. */
+function blocksOf(snapshot: LimitsSnapshot, options: HeadroomOptions) {
+  return accountBlocks(snapshot.hosts).filter(
+    (block) => options.hostId === undefined || block.members.some((m) => m.host.hostId === options.hostId),
+  );
+}
+
+function leftOut(providerId: string, options: HeadroomOptions): boolean {
+  return providerId !== (options.keep ?? null) && isHidden(options.hidden ?? [], providerId);
 }
 
 /** The pace state a window counts as for its provider; early and unknown count by used percent. */
@@ -122,15 +147,19 @@ function sortScore(e: HeadroomEntry): number {
   return e.worstWindow === null ? 0 : (e.worstWindow.projectedPercent ?? e.worstWindow.usedPercent);
 }
 
-/** Providers from the freest to the tightest; `hostId` keeps only accounts on that host. */
-export function providerHeadroom(snapshot: LimitsSnapshot, now: number, options: { hostId?: string } = {}): HeadroomEntry[] {
+/**
+ * Providers from the freest to the tightest; `hostId` keeps only accounts on
+ * that host, `hidden` leaves providers out except `keep`.
+ */
+export function providerHeadroom(snapshot: LimitsSnapshot, now: number, options: HeadroomOptions = {}): HeadroomEntry[] {
   const entries: HeadroomEntry[] = [];
-  for (const block of accountBlocks(snapshot.hosts)) {
-    if (options.hostId !== undefined && !block.members.some((m) => m.host.hostId === options.hostId)) continue;
+  for (const block of blocksOf(snapshot, options)) {
+    if (leftOut(block.provider.providerId, options)) continue;
     const p = block.provider;
     const base = {
       providerId: p.providerId,
       planLabel: p.planLabel,
+      planMultiplier: p.planMultiplier ?? null,
       hosts: block.members.map((m) => ({ hostId: m.host.hostId, hostName: m.host.name })),
       status: p.status,
       measuredAt: p.measuredAt,
@@ -164,12 +193,15 @@ export function providerHeadroom(snapshot: LimitsSnapshot, now: number, options:
   return entries.sort((a, b) => VERDICT_ORDER[a.verdict] - VERDICT_ORDER[b.verdict] || sortScore(a) - sortScore(b));
 }
 
-export function headroomReport(snapshot: LimitsSnapshot, now: number, options: { hostId?: string } = {}): HeadroomReport {
+export function headroomReport(snapshot: LimitsSnapshot, now: number, options: HeadroomOptions = {}): HeadroomReport {
   const ageMs = snapshot.polledAt === null ? null : Math.max(0, now - snapshot.polledAt);
+  const polled = snapshot.polledAt !== null;
+  const hidden = polled ? blocksOf(snapshot, options).map((b) => b.provider.providerId).filter((id) => leftOut(id, options)) : [];
   return {
     polledAt: snapshot.polledAt,
     ageMs,
     stale: ageMs !== null && ageMs > STALE_AFTER_MS,
-    entries: snapshot.polledAt === null ? [] : providerHeadroom(snapshot, now, options),
+    entries: polled ? providerHeadroom(snapshot, now, options) : [],
+    hidden: [...new Set(hidden)],
   };
 }

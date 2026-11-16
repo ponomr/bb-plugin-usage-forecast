@@ -6,7 +6,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { en } from "./i18n";
 import { indicatorTitle, indicatorView, type WorstWindow } from "./indicator";
-import { useLimitsShow, useNow, useSnapshot, useStrings } from "./hooks";
+import { useHiddenProviders, useLimitsShow, useNow, useSnapshot, useStrings } from "./hooks";
 
 export interface IndicatorState {
   worst: WorstWindow | null;
@@ -45,8 +45,9 @@ export function IndicatorFeeder() {
   const s = useStrings();
   const show = useLimitsShow();
   const now = useNow();
+  const hidden = useHiddenProviders();
   const snapshot = useSnapshot().data;
-  const worst = snapshot === undefined ? null : indicatorView(snapshot, now).worst;
+  const worst = snapshot === undefined ? null : indicatorView(snapshot, now, hidden).worst;
   const title = snapshot === undefined ? s.indicatorLabel : indicatorTitle(s, worst, show);
   useEffect(() => setIndicatorState({ worst, title }));
   return null;

@@ -20,6 +20,8 @@ import { forecastWarns, formatPercent } from "../shared/thresholds";
 import { showsModelTag } from "../shared/windows";
 import type { PaceState } from "../shared/pace";
 import { accountBlocks } from "../shared/accounts";
+import { planText } from "../shared/plan";
+import { isHidden } from "../shared/hidden-providers";
 import { headroomReport, windowVerdict, type HeadroomEntry, type HeadroomReport } from "../shared/headroom";
 import { providerCompactsAtPercent } from "./threads";
 import type { Service } from "./rpc";
@@ -110,26 +112,29 @@ function hostName(h: HostLimits): string {
   return h.name ?? h.hostId ?? "default host";
 }
 
-function formatProvider(lines: string[], p: ProviderLimits, now: number, on: string): void {
-  const plan = p.planLabel ? ` (${p.planLabel})` : "";
+function formatProvider(lines: string[], p: ProviderLimits, now: number, on: string, hidden: readonly string[]): void {
+  const name = planText(p.planLabel, p.planMultiplier);
+  const plan = name === null ? "" : ` (${name})`;
   const status = p.status === "error" && p.message ? `error: ${p.message}` : STATUS_WORDS[p.status];
-  lines.push(`  ${p.providerId}${plan}${on}: ${status}`);
+  const mark = isHidden(hidden, p.providerId) ? " [hidden]" : "";
+  lines.push(`  ${p.providerId}${plan}${on}: ${status}${mark}`);
   if (p.windows.length && p.status !== "ok" && p.measuredAt !== null) {
     lines.push(`    last good data from ${formatTime(p.measuredAt)}`);
   }
   for (const w of p.windows) lines.push(formatWindow(w, now));
 }
 
-export function formatStatus(s: LimitsSnapshot, now: number): string {
+/** `hidden`: the parsed `hiddenProviders` setting; those providers get the mark `[hidden]`. */
+export function formatStatus(s: LimitsSnapshot, now: number, hidden: readonly string[] = []): string {
   const lines: string[] = [];
   if (s.polledAt === null) lines.push("Limits: not polled yet.");
   else lines.push(`Limits, polled ${formatTime(s.polledAt)} (${formatDuration(now - s.polledAt)} ago)`);
   if (s.pollError) lines.push(`Last poll failed: ${s.pollError}`);
   if (s.hosts.length <= 1) {
-    for (const p of s.hosts[0]?.providers ?? []) formatProvider(lines, p, now, "");
+    for (const p of s.hosts[0]?.providers ?? []) formatProvider(lines, p, now, "", hidden);
   } else {
     for (const block of accountBlocks(s.hosts)) {
-      formatProvider(lines, block.provider, now, ` on ${block.members.map((m) => hostName(m.host)).join(", ")}`);
+      formatProvider(lines, block.provider, now, ` on ${block.members.map((m) => hostName(m.host)).join(", ")}`, hidden);
       for (const { host, provider } of block.members) {
         if (host.connected) continue;
         const at = provider.measuredAt ?? host.polledAt;
@@ -142,13 +147,20 @@ export function formatStatus(s: LimitsSnapshot, now: number): string {
   return lines.join("\n");
 }
 
-/** The snapshot for `status --json`: every window with its verdict at `now`, added at print time. */
-export function statusJson(s: LimitsSnapshot, now: number) {
+/**
+ * The snapshot for `status --json`: every window with its verdict at `now`
+ * and every provider with `hidden` from the setting, added at print time.
+ */
+export function statusJson(s: LimitsSnapshot, now: number, hidden: readonly string[] = []) {
   return {
     ...s,
     hosts: s.hosts.map((h) => ({
       ...h,
-      providers: h.providers.map((p) => ({ ...p, windows: p.windows.map((w) => ({ ...w, verdict: windowVerdict(w, now) })) })),
+      providers: h.providers.map((p) => ({
+        ...p,
+        hidden: isHidden(hidden, p.providerId),
+        windows: p.windows.map((w) => ({ ...w, verdict: windowVerdict(w, now) })),
+      })),
     })),
   };
 }
@@ -183,35 +195,54 @@ export function formatHeadroom(r: HeadroomReport, s: LimitsSnapshot, now: number
   const several = s.hosts.length > 1;
   r.entries.forEach((e, i) => {
     const on = several ? ` on ${e.hosts.map((h) => h.hostName ?? h.hostId ?? "default host").join(", ")}` : "";
-    const plan = e.planLabel ? ` (${e.planLabel})` : "";
+    const name = planText(e.planLabel, e.planMultiplier);
+    const plan = name === null ? "" : ` (${name})`;
     // The whole report's stale line already covers an old poll; this marks one old account, as on a host that is not connected.
     const old = e.stale && !r.stale && e.measuredAt !== null ? `; measured ${formatDuration(now - e.measuredAt)} ago` : "";
     lines.push(`  ${i + 1}. ${e.providerId}${on}${plan}: ${e.verdict} – ${formatWorst(e, now)}${old}`);
   });
+  if (r.entries.length === 0) lines.push("  No providers to rank.");
+  if (r.hidden.length > 0) lines.push(`hidden: ${r.hidden.join(", ")}`);
   return lines.join("\n");
 }
 
-/** The host id `--host` or `--thread` limits `headroom` to; undefined for every host. */
-async function headroomHost(service: Service, s: LimitsSnapshot, host: string | undefined, thread: string | undefined) {
-  if (host !== undefined) {
-    const lower = host.toLowerCase();
-    const found = s.hosts.find((h) => h.hostId === host) ?? s.hosts.find((h) => h.name?.toLowerCase() === lower);
-    if (found === undefined) {
-      const known = s.hosts.map(hostName).join(", ") || "none";
-      throw new PluginCliError(`Unknown host "${host}"; known hosts: ${known}`, { code: "not_found" });
-    }
-    return found.hostId ?? undefined;
-  }
-  if (thread === undefined) return undefined;
+/**
+ * What `--host` or `--thread` limits `headroom` to: the host id (undefined for
+ * every host) and, for `--thread`, the thread's own provider, which stays in
+ * the ranking when hidden, as in the band.
+ */
+async function headroomTarget(
+  service: Service,
+  s: LimitsSnapshot,
+  host: string | undefined,
+  thread: string | undefined,
+  hidden: readonly string[],
+): Promise<{ hostId: string | undefined; keep: string | null }> {
+  if (thread === undefined) return { hostId: headroomHost(s, host), keep: null };
   const threadId = parseThreadId(thread);
-  // One host answers for every thread, as in the band.
-  if (s.hosts.length <= 1) return undefined;
-  const { hostId } = await service.thread(threadId);
-  if (hostId === null) throw new PluginCliError(`Could not resolve the host of thread ${threadId}`, { code: "not_found" });
-  if (!s.hosts.some((h) => h.hostId === hostId)) {
+  // One host answers for every thread; the thread is read only to keep its hidden provider.
+  if (s.hosts.length <= 1) {
+    if (hidden.length === 0) return { hostId: undefined, keep: null };
+    return { hostId: undefined, keep: (await service.thread(threadId)).providerId ?? null };
+  }
+  const state = await service.thread(threadId);
+  if (state.hostId === null) throw new PluginCliError(`Could not resolve the host of thread ${threadId}`, { code: "not_found" });
+  if (!s.hosts.some((h) => h.hostId === state.hostId)) {
     throw new PluginCliError(`The host of thread ${threadId} has no limits yet`, { code: "not_found" });
   }
-  return hostId;
+  return { hostId: state.hostId, keep: state.providerId ?? null };
+}
+
+/** The host id `--host` limits `headroom` to; undefined for every host. */
+function headroomHost(s: LimitsSnapshot, host: string | undefined): string | undefined {
+  if (host === undefined) return undefined;
+  const lower = host.toLowerCase();
+  const found = s.hosts.find((h) => h.hostId === host) ?? s.hosts.find((h) => h.name?.toLowerCase() === lower);
+  if (found === undefined) {
+    const known = s.hosts.map(hostName).join(", ") || "none";
+    throw new PluginCliError(`Unknown host "${host}"; known hosts: ${known}`, { code: "not_found" });
+  }
+  return found.hostId ?? undefined;
 }
 
 export function formatThread(t: ThreadState, now: number): string {
@@ -269,7 +300,15 @@ function parseThreadId(value: string): string {
   return parsed.data;
 }
 
-export function createCli(service: Service, now: () => number = Date.now): PluginCliRegistration {
+/**
+ * `hidden` reads the parsed `hiddenProviders` setting: `status` marks those
+ * providers and `headroom` leaves them out.
+ */
+export function createCli(
+  service: Service,
+  now: () => number = Date.now,
+  hidden: () => Promise<readonly string[]> = async () => [],
+): PluginCliRegistration {
   const json = { json: { type: "boolean", description: "Print JSON" } } as const;
   return defineCli({
     name: "usage-forecast",
@@ -286,7 +325,11 @@ export function createCli(service: Service, now: () => number = Date.now): Plugi
         async run({ options }) {
           const snapshot = options.refresh ? await service.refresh() : await service.snapshot();
           const at = now();
-          return { exitCode: 0, stdout: options.json ? JSON.stringify(statusJson(snapshot, at), null, 2) : formatStatus(snapshot, at) };
+          const ids = await hidden();
+          return {
+            exitCode: 0,
+            stdout: options.json ? JSON.stringify(statusJson(snapshot, at, ids), null, 2) : formatStatus(snapshot, at, ids),
+          };
         },
       }),
       headroom: cliCommand({
@@ -305,8 +348,9 @@ export function createCli(service: Service, now: () => number = Date.now): Plugi
           }
           const snapshot = options.refresh ? await service.refresh() : await service.snapshot();
           const at = now();
-          const hostId = await headroomHost(service, snapshot, options.host, options.thread);
-          const report = headroomReport(snapshot, at, { hostId });
+          const ids = await hidden();
+          const { hostId, keep } = await headroomTarget(service, snapshot, options.host, options.thread, ids);
+          const report = headroomReport(snapshot, at, { hostId, hidden: ids, keep });
           return { exitCode: 0, stdout: options.json ? JSON.stringify(report, null, 2) : formatHeadroom(report, snapshot, at) };
         },
       }),

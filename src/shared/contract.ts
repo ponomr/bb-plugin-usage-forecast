@@ -99,6 +99,12 @@ export const providerLimitsSchema = z.object({
   /** Error text when `status` is `error`. */
   message: z.string().nullable(),
   planLabel: z.string().nullable(),
+  /**
+   * The plan's multiplier from the host's undocumented `plan` object when it
+   * is a finite number above 1, kept like `planLabel` while later polls fail.
+   * Null otherwise and in records stored before it existed.
+   */
+  planMultiplier: z.number().nullable().default(null),
   /** Epoch ms of the latest poll that reached this provider. */
   checkedAt: z.number(),
   /** Epoch ms of the latest `ok` answer; `windows` come from it. */
@@ -288,6 +294,18 @@ export type DisplayInput = z.infer<typeof displayInputSchema>;
 export const displaySchema = z.object({ limitsShow: z.enum(LIMITS_SHOW), resetShow: z.enum(RESET_SHOW) });
 export type Display = z.infer<typeof displaySchema>;
 
+// --- Hidden providers --------------------------------------------------------
+
+/** The provider the band's Hide button adds to the `hiddenProviders` setting; one id, no separators. */
+export const hideProviderInputSchema = z
+  .object({ providerId: z.string().trim().min(1).max(128).regex(/^[^\s,]+$/, "One provider id") })
+  .strict();
+export type HideProviderInput = z.infer<typeof hideProviderInputSchema>;
+
+/** The parsed `hiddenProviders` setting after the write. */
+export const hiddenProvidersSchema = z.object({ hiddenProviders: z.array(z.string()) });
+export type HiddenProviders = z.infer<typeof hiddenProvidersSchema>;
+
 // --- Contract ----------------------------------------------------------------
 
 const threadInput = z.object({ threadId: threadIdSchema });
@@ -318,6 +336,10 @@ export const usageForecastContract = defineRpcContract({
   setDisplay: {
     input: displayInputSchema,
     output: displaySchema,
+  },
+  hideProvider: {
+    input: hideProviderInputSchema,
+    output: hiddenProvidersSchema,
   },
 });
 export type UsageForecastContract = typeof usageForecastContract;

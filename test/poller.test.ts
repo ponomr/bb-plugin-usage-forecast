@@ -359,3 +359,66 @@ describe("cleanMessage", () => {
     expect(iso(0)).toBe("1970-01-01T00:00:00.000Z");
   });
 });
+
+describe("plan multiplier", () => {
+  const withPlan = (plan: unknown, planLabel: string | null = "Max") => {
+    const answer = claudeLimits(10, 20);
+    return { "claude-code": { ...answer["claude-code"], planLabel, plan } };
+  };
+
+  it("stores the multiplier and nothing else of plan (AE1)", async () => {
+    const t = setup(() => withPlan({ id: "max-secret-id", multiplier: 5 }));
+    const { latest } = await t.poller.poll();
+    expect(latest.providers[0]).toMatchObject({ planLabel: "Max", planMultiplier: 5 });
+    expect(latest.providers[0]).not.toHaveProperty("plan");
+    const stored = JSON.stringify(await t.storage.latest());
+    expect(stored).not.toContain("max-secret-id");
+    expect(stored).not.toContain('"plan"');
+  });
+
+  it("stores null without a usable multiplier (AE2), as the host sent it on bb 0.49", async () => {
+    for (const plan of [undefined, { id: "plus", multiplier: null }, { multiplier: 1 }]) {
+      const t = setup(() => withPlan(plan, "Plus"));
+      const { latest } = await t.poller.poll();
+      expect(latest.providers[0]).toMatchObject({ planLabel: "Plus", planMultiplier: null });
+    }
+  });
+
+  it("does not fail the poll for an unexpected plan shape", async () => {
+    for (const plan of ["max", null, [], [5], { multiplier: "abc" }, 7]) {
+      const t = setup(() => withPlan(plan));
+      const { latest, error } = await t.poller.poll();
+      expect(error).toBeNull();
+      expect(latest.providers[0]).toMatchObject({ status: "ok", planMultiplier: null });
+      expect(latest.providers[0]!.windows).toHaveLength(2);
+    }
+  });
+
+  it("keeps the last known multiplier through a failed poll (R3)", async () => {
+    let answer: unknown = withPlan({ multiplier: 20 });
+    const t = setup(() => answer);
+    await t.poller.poll();
+    t.clock.advance(2 * MIN);
+    answer = { "claude-code": { status: "expired" } };
+    expect((await t.poller.poll()).latest.providers[0]).toMatchObject({ status: "expired", planLabel: "Max", planMultiplier: 20 });
+    t.clock.advance(2 * MIN);
+    answer = { "claude-code": { status: "weird" } };
+    expect((await t.poller.poll()).latest.providers[0]).toMatchObject({ status: "error", planMultiplier: 20 });
+  });
+
+  it("reads a record stored before the multiplier as null", async () => {
+    const t = setup(() => claudeLimits(10, 20));
+    await t.poller.poll();
+    const latest = await t.storage.latest();
+    const old = { ...latest, providers: latest.providers.map(({ planMultiplier: _m, ...p }) => p) };
+    await t.storage.setLatest(old as typeof latest);
+    const snap = toSnapshot([{ hostId: null, name: null, primary: true, connected: true, latest: await t.storage.latest() }], [], NOW);
+    expect(snap.hosts[0]!.providers[0]!.planMultiplier).toBeNull();
+    expect(snapshotSchema.parse(snap).hosts[0]!.providers[0]!.planMultiplier).toBeNull();
+    // A failed poll on top of the old record keeps null.
+    t.clock.advance(2 * MIN);
+    const failing = setup(() => ({ "claude-code": { status: "expired" } }));
+    await failing.storage.setLatest(old as typeof latest);
+    expect((await failing.poller.poll()).latest.providers[0]!.planMultiplier).toBeNull();
+  });
+});

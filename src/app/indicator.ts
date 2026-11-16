@@ -10,6 +10,7 @@ import { formatPercent, type Tone } from "../shared/thresholds";
 import { providerName, windowLabel } from "./format";
 import type { Strings } from "./i18n";
 import { hostStale, windowView } from "./model";
+import { isHidden } from "../shared/hidden-providers";
 
 export interface WorstWindow {
   /** The host the window is listed under; null when only one host is known. */
@@ -68,11 +69,12 @@ function currentProviders(host: HostLimits): ProviderLimits[] {
 
 const EMPTY: IndicatorView = { worst: null, groups: [], showHosts: false, unavailable: [] };
 
-export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number): IndicatorView {
+/** `hidden`: provider ids the ring and the card leave out. */
+export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number, hidden: readonly string[] = []): IndicatorView {
   if (snapshot === undefined || snapshot.polledAt === null) return EMPTY;
   const hosts = snapshot.hosts;
   const showHosts = hosts.length > 1;
-  const providersOf = hosts.map(currentProviders);
+  const providersOf = hosts.map((h) => currentProviders(h).filter((p) => !isHidden(hidden, p.providerId)));
   const indexOf = new Map(hosts.map((h, i) => [h.hostId, i]));
   const groups: IndicatorProvider[][] = hosts.map(() => []);
   const done = new Set<string>();

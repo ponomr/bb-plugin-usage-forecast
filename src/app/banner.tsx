@@ -8,6 +8,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import type { ProviderLimits, ThreadState } from "../shared/contract";
+import { planText } from "../shared/plan";
 import { formatPercent } from "../shared/thresholds";
 import { CompactButton, ContextPanel } from "./context-row";
 import {
@@ -27,6 +28,8 @@ import {
   useCompact,
   useComposerThreadId,
   useExpanded,
+  useHiddenProviders,
+  useHideProvider,
   useLimitsShow,
   useNow,
   useResetShow,
@@ -70,12 +73,13 @@ function Status({ view, now }: { view: BannerView; now: number }) {
       const { primary } = view;
       const head = headline(s, primary.windows.map((w) => windowView(w, now)), now);
       const reason = statusText(s, primary.status, primary.message);
+      const plan = planText(primary.planLabel, primary.planMultiplier);
       return (
         <span className="flex min-w-0 flex-wrap items-baseline gap-x-2">
           {head === null ? (
             <span className="text-muted-foreground">
               {providerName(s, primary.providerId)}
-              {primary.planLabel ? ` · ${primary.planLabel}` : ""}
+              {plan === null ? "" : ` · ${plan}`}
             </span>
           ) : (
             <span data-testid="headline">
@@ -329,10 +333,11 @@ function ProviderHeader({ provider, now }: { provider: ProviderLimits; now: numb
   const reason = statusText(s, provider.status, provider.message);
   // Windows kept from an earlier answer while the latest poll failed.
   const keptFrom = provider.status === "ok" || provider.windows.length === 0 ? null : provider.measuredAt;
+  const plan = planText(provider.planLabel, provider.planMultiplier);
   return (
     <span className="flex flex-wrap items-baseline gap-x-2">
       <span className="font-semibold">{providerName(s, provider.providerId)}</span>
-      {provider.planLabel ? <span className="text-muted-foreground">{provider.planLabel}</span> : null}
+      {plan === null ? null : <span className="text-muted-foreground">{plan}</span>}
       {reason === null ? null : <Toned tone="amber">{reason}</Toned>}
       {keptFrom === null ? null : <span className="text-muted-foreground">{s.dataFrom(formatClock(s, keptFrom, now))}</span>}
     </span>
@@ -370,7 +375,8 @@ function Disclosure({ summary, children, ...rest }: { summary: ReactNode; childr
 }
 
 /** Another provider: its name and each window's percent on one line, the full windows on tap. */
-function OtherProvider({ provider, now }: { provider: ProviderLimits; now: number }) {
+/** `canHide` is false for the thread's own provider, which the band always shows. */
+function OtherProvider({ provider, now, canHide }: { provider: ProviderLimits; now: number; canHide: boolean }) {
   const s = useStrings();
   const summary = (
     <span className="flex flex-wrap items-baseline gap-x-2">
@@ -383,17 +389,38 @@ function OtherProvider({ provider, now }: { provider: ProviderLimits; now: numbe
       ))}
     </span>
   );
+  const hide = canHide ? <HideButton providerId={provider.providerId} /> : null;
   if (provider.windows.length === 0) {
+    // Nothing to open: the button sits on the line, outside any other button.
     return (
-      <section data-provider={provider.providerId} className="pl-4">
+      <section data-provider={provider.providerId} className="flex flex-wrap items-baseline gap-x-2 pl-4">
         {summary}
+        {hide}
       </section>
     );
   }
   return (
     <Disclosure summary={summary} data-provider={provider.providerId}>
       <WindowList provider={provider} now={now} />
+      {hide}
     </Disclosure>
+  );
+}
+
+/** Hides another provider here, in the sidebar sign and in pushes (the `hiddenProviders` setting). */
+function HideButton({ providerId }: { providerId: string }) {
+  const s = useStrings();
+  const hideProvider = useHideProvider();
+  return (
+    <button
+      type="button"
+      className="self-start text-muted-foreground underline-offset-2 hover:underline"
+      aria-label={s.hideProviderLabel(providerName(s, providerId))}
+      data-testid="hide-provider"
+      onClick={() => hideProvider(providerId)}
+    >
+      {s.hideProvider}
+    </button>
   );
 }
 
@@ -405,11 +432,12 @@ export function Banner() {
   const compact = useCompact(threadId);
   const [expanded, setExpanded] = useExpanded();
   const now = useNow();
+  const hidden = useHiddenProviders();
   const [askAt, setAskAt] = useState<number | null>(null);
   if (threadId === null) return null;
 
   const state = thread.data;
-  const view = bannerView(s, snapshot.data, snapshot.error?.message ?? null, state, now);
+  const view = bannerView(s, snapshot.data, snapshot.error?.message ?? null, state, now, hidden);
   const host = snapshot.data === undefined ? null : threadHost(snapshot.data.hosts, state?.hostId);
   const ownHost = host === null || typeof host === "string" ? null : host;
   const primary = view.kind === "limits" ? view.primary : null;
@@ -489,7 +517,7 @@ export function Banner() {
           {view.kind === "limits" && view.others.length > 0 ? (
             <div className="flex flex-col gap-1">
               {view.others.map((p) => (
-                <OtherProvider key={p.providerId} provider={p} now={now} />
+                <OtherProvider key={p.providerId} provider={p} now={now} canHide={p.providerId !== (state?.providerId ?? null)} />
               ))}
             </div>
           ) : null}

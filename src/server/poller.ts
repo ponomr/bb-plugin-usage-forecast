@@ -24,6 +24,7 @@
 import { z } from "zod";
 import { forecastWindow, isNewWindow, type ClosedWindow } from "../shared/forecast";
 import { nextPace, rawPaceState } from "../shared/pace";
+import { planMultiplier } from "../shared/plan";
 import { windowDurationMs, windowKey } from "../shared/windows";
 import type { HostLimits, LimitsSnapshot, LimitWindow, ProviderStatus } from "../shared/contract";
 import { PROVIDER_STATUSES, RECENT_COMPACTIONS } from "../shared/contract";
@@ -68,6 +69,8 @@ const windowInput = z.object({
 const providerInput = z.object({
   status: z.enum(PROVIDER_STATUSES),
   planLabel: z.string().nullish(),
+  /** Undocumented `{id, multiplier}`; only the multiplier is read (`planMultiplier`). */
+  plan: z.unknown().optional(),
   message: z.string().nullish(),
   windows: z.array(windowInput).optional(),
 });
@@ -465,8 +468,8 @@ export class Poller {
       if (!parsed.success) {
         providers.push(this.notOk(providerId, before, "error", "Unexpected answer for this provider", null, now));
       } else if (parsed.data.status !== "ok") {
-        const { status, message, planLabel } = parsed.data;
-        providers.push(this.notOk(providerId, before, status, message ?? null, planLabel ?? null, now));
+        const { status, message, planLabel, plan } = parsed.data;
+        providers.push(this.notOk(providerId, before, status, message ?? null, planLabel ?? null, now, planMultiplier(plan)));
       } else {
         providers.push(await this.ok(providerId, before, parsed.data, now, scope));
       }
@@ -481,12 +484,15 @@ export class Poller {
     message: string | null,
     planLabel: string | null,
     now: number,
+    multiplier: number | null = null,
   ): StoredProvider {
     return {
       providerId,
       status,
       message: status === "error" ? cleanMessage(message ?? "Unknown error") : null,
       planLabel: planLabel ?? before?.planLabel ?? null,
+      // Records stored before the multiplier have no such key.
+      planMultiplier: multiplier ?? before?.planMultiplier ?? null,
       checkedAt: now,
       measuredAt: before?.measuredAt ?? null,
       windows: before?.windows ?? [],
@@ -559,6 +565,7 @@ export class Poller {
       status: "ok",
       message: null,
       planLabel: data.planLabel ?? null,
+      planMultiplier: planMultiplier(data.plan),
       checkedAt: now,
       measuredAt: now,
       windows,
@@ -628,6 +635,7 @@ export function toSnapshot(hosts: readonly StoredHost[], log: LimitsSnapshot["re
       pollError: h.latest.pollError,
       providers: h.latest.providers.map(({ open: _open, ...provider }) => ({
         ...provider,
+        planMultiplier: provider.planMultiplier ?? null,
         windows: provider.windows.map((w) =>
           stale || (w.resetsAt !== null && w.resetsAt <= now) ? { ...w, forecast: null, pace: null } : { ...w, pace: w.pace ?? null },
         ),

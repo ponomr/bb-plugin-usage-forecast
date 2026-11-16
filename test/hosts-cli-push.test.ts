@@ -20,6 +20,7 @@ function prov(providerId: string, weekly: number, plan: string, sharedWith?: str
     status: "ok",
     message: null,
     planLabel: plan,
+    planMultiplier: null,
     checkedAt: measuredAt,
     measuredAt,
     windows: [{ label: "Weekly limit", usedPercent: weekly, resetsAt: RESET, model: null, cost: null, durationMs: 7 * 24 * HOUR_MS, forecast: null, pace: null }],
