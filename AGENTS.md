@@ -261,7 +261,9 @@ Chrome against the web app, bb 0.49.0):
   marketplace's long description (`overview/usage-forecast.md` there) is a
   copy of `PLUGIN_OVERVIEW.md`, at most 4000 characters; after changing it,
   open a marketplace PR with the new copy (get-bb/marketplace#973 for
-  0.4.19). Its screenshots (`docs/screenshots/`) show the band only.
+  0.4.19). Its screenshots are copies of `docs/screenshots/` (taken on
+  0.4.20: band with the sidebar ring, expanded band, sidebar card, context
+  card, settings).
 - Checks: the command above; GitHub Actions (`.github/workflows/ci.yml`) runs
   it on every PR and on `main`, with the bb CLI from npm (`bb-app`).
 - Release: bump `version` in `package.json` and `package-lock.json` and add

@@ -13,14 +13,27 @@ before it overflows.
 
 The collapsed band above the composer: the headline with the forecast, the
 auto-compact switch, the Compact button and one bar per limit window plus the
-context bar.
+context bar. The ring in the sidebar footer (bottom left) shows the busiest
+limit window.
 
-![The collapsed Usage Forecast band above the composer](docs/screenshots/band.png)
+![The collapsed Usage Forecast band above the composer and the ring in the sidebar footer](docs/screenshots/band.png)
 
 The expanded band: every window of the thread's provider with its pace note,
-the context breakdown and one line per other provider.
+the context breakdown, one line per other provider and the token totals.
 
 ![The expanded Usage Forecast band with limit windows and the context breakdown](docs/screenshots/expanded.png)
+
+The card behind the sidebar ring: every provider's windows, one tab per host.
+
+![The sidebar card with limit windows per provider and a tab per host](docs/screenshots/sidebar-card.png)
+
+The plugin's section of the thread context card.
+
+![The thread context card section with the context breakdown and the Compact button](docs/screenshots/context-card.png)
+
+The settings.
+
+![The Usage Forecast settings](docs/screenshots/settings.png)
 
 ## What it does
 
