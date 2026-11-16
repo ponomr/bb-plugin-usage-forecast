@@ -262,7 +262,8 @@ Chrome against the web app, bb 0.49.0):
   copy of `PLUGIN_OVERVIEW.md`, at most 4000 characters; after changing it,
   open a marketplace PR with the new copy (get-bb/marketplace#973 for
   0.4.19). Its screenshots (`docs/screenshots/`) show the band only.
-- Checks: the command above; there is no CI yet.
+- Checks: the command above; GitHub Actions (`.github/workflows/ci.yml`) runs
+  it on every PR and on `main`, with the bb CLI from npm (`bb-app`).
 - Release: bump `version` in `package.json` and `package-lock.json` and add
   the version to `CHANGELOG.md` in the PR, merge it, tag the merge commit `vX.Y.Z` and push the tag.
 - Install from a checkout: check out the tag and run

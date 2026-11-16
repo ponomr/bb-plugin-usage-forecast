@@ -311,8 +311,9 @@ e-mail addresses in error texts are masked.
 - Compacting an almost empty thread can make it larger; the log shows both
   numbers as they are.
 - Poll back-off: 5 minutes after one failed poll, 15 after two in a row,
-  counted per host; the last error is on the `poll-limits` row of `bb plugin
-  list`. A poll fails only when bb's call fails, the host does not answer
+  counted per host. The `poll-limits` row of `bb plugin list` shows an error
+  only while no connected host answers; one host's error is on that host in
+  the band, in `status` and in the plugin log. A poll fails only when bb's call fails, the host does not answer
   within 30 s, or every provider reports an error; one provider's error stays
   on its own row.
 - Two hosts count as one account for a provider only when bb reports the same
