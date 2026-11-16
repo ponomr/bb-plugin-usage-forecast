@@ -16,6 +16,17 @@ listed here.
   the press at once and returns to the previous form if the save fails. The
   run-out wording, the budget line, the context bar, push texts and the CLI
   are unchanged.
+- CLI for agents (UF-10). `bb usage-forecast headroom` ranks provider
+  accounts from the most headroom to the tightest, one line each with the
+  tightest window: `headroom` (every window calm), `tight`, `short`,
+  `critical`, `hit` (with when it is available again) or `unknown`. Options
+  `--json`, `--refresh`, `--host <id or name>` and `--thread <threadId>`;
+  data polled more than 30 minutes ago is marked stale, and so is one
+  account measured that long ago (a host that is not connected). In
+  `status --json` every window gains a `verdict` object (`state`, `lasts`,
+  `runsOutAt`, `projectedPercent`, `paceDeviationPercent`, `resetsInMs`),
+  computed at the moment of the call; the other fields and the text of
+  `status` are unchanged. The agent skill says when to use them.
 
 ## 0.4.7 — 2026-11-16
 
