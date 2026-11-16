@@ -46,7 +46,11 @@ the context breakdown and one line per other provider.
   both opening on tap. The expanded part scrolls inside about half the screen
   height, so the header with its collapse button stays in view on a phone;
   there is a Collapse button at its bottom too. The expanded or collapsed state
-  is kept per device.
+  is kept per device. A press on a reset time switches every row between the
+  countdown («3d», «resets in 3d») and the local time of the reset («Thu
+  19:59», «resets at 19:59» today); a press on a window's percent switches
+  every window between used and left. Both are the settings below, so the
+  choice reaches every device.
 - **Forecast to the reset.** From the current pace of the window, and from
   the pace of past windows of the same kind once the server has seen enough of
   them. The current pace is the main forecast: the note, the colour, the tick
@@ -152,7 +156,8 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Limit push threshold, % | 90 | 50–100 | Usage of a limit window that sends the push |
 | Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
 | Language | English | English, Русский | Language of the plugin UI |
-| Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used |
+| Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used. A press on a percent in the band switches it |
+| Reset shows | Countdown | Countdown, Exact time | When a limit window resets: the time left until it, or the local time of the reset (the short weekday when not today). A press on a reset time in the band switches it |
 
 Auto-compact rules:
 

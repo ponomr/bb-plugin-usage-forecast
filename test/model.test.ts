@@ -124,6 +124,41 @@ describe("window note and budget", () => {
   });
 });
 
+describe("window note with the exact reset time", () => {
+  const timed = (w: LimitWindow, s = en, show: "used" | "remaining" = "used") => windowNote(s, windowView(w, NOW), NOW, show, "time");
+  const at = (s = en, ms: number) => formatTime(s, NOW + ms);
+
+  it("names the reset time in every status that has one", () => {
+    expect(timed(win("Current session", 100, 2 * HOUR_MS, FIVE_HOURS))).toBe(`Limit reached – resets at ${at(en, 2 * HOUR_MS)}`);
+    expect(timed(win("Current session", 30, 3 * HOUR_MS, FIVE_HOURS))).toBe(
+      `At this pace lasts to reset – about 75% used, resets at ${at(en, 3 * HOUR_MS)}`,
+    );
+    expect(timed(win("Current session", 30, 3 * HOUR_MS, FIVE_HOURS), ru, "remaining")).toBe(
+      `При текущем темпе хватит до сброса – останется примерно 25%, сброс в ${at(ru, 3 * HOUR_MS)}`,
+    );
+    expect(timed(win("Current session", 40, 3 * HOUR_MS, FIVE_HOURS))).toBe(`Tight – at this pace about 100% used, resets at ${at(en, 3 * HOUR_MS)}`);
+    expect(timed(win("Current session", 3, FIVE_HOURS - 10 * MIN_MS, FIVE_HOURS))).toBe(
+      `Too early to judge – resets at ${at(en, FIVE_HOURS - 10 * MIN_MS)}`,
+    );
+    const unknown: LimitWindow = { ...win("Opus", 40, 2 * HOUR_MS, FIVE_HOURS), durationMs: null, forecast: null };
+    expect(timed(unknown)).toBe(`No forecast yet – resets at ${at(en, 2 * HOUR_MS)}`);
+    expect(timed({ ...unknown, resetsAt: null })).toBe("No reset time");
+  });
+
+  it("gives the weekday for a reset on another day", () => {
+    // 10 % after 1 of 7 days: about 70 % at the reset, which is on Sunday.
+    const w = win("Weekly limit", 10, 6 * DAY_MS, WEEK);
+    expect(timed(w)).toBe(`At this pace lasts to reset – about 70% used, resets Sun ${at(en, 6 * DAY_MS)}`);
+    expect(timed(w, ru)).toBe(`При текущем темпе хватит до сброса – будет использовано примерно 70%, сброс в вс ${at(ru, 6 * DAY_MS)}`);
+  });
+
+  it("leaves the run-out wording and the budget line as they are", () => {
+    const w = win("Weekly limit", 60, 3 * DAY_MS, WEEK);
+    expect(timed(w)).toBe(note(w));
+    expect(timed(w, ru)).toBe(note(w, ru));
+  });
+});
+
 describe("pace details", () => {
   it("marks the main projection when both are shown", () => {
     const w = win("Current session", 20, FIVE_HOURS / 2, FIVE_HOURS, closed(200, 3));

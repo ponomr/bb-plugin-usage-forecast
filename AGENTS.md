@@ -10,9 +10,10 @@ auto-compact without open clients.
 - `server.ts` — wires storage, schedule, events, RPC contract and CLI.
 - `src/shared/` — RPC contract, window table, thresholds, the forecast
   (`forecast.ts`, adapted from `claude-code-usage-quota-mod`, see `NOTICE`)
-  and the window's pace state with its hold (`pace.ts`), account grouping
-  across hosts (`accounts.ts`) and the CLI's window verdict and provider
-  headroom (`headroom.ts`).
+  and the window's pace state with its hold (`pace.ts`), the display
+  settings (`limits-show.ts`, `reset-show.ts`), account grouping across hosts
+  (`accounts.ts`) and the CLI's window verdict and provider headroom
+  (`headroom.ts`).
 - `src/server/` — poller, KV storage, auto-compact, limit push notifications
   (through the `push-notifications` plugin), CLI.
 - `src/app/` — composer band (design after `claude-code-usage-quota-mod`),
@@ -100,6 +101,13 @@ Schedules and lifecycle:
   `last: error (…)` on the schedule row.
 - Thread plugin metadata (`threads.updatePluginMetadata`) survives
   `bb plugin reload`.
+- A server-side settings write (`settingsHandle.experimental_set`, checked
+  2026-11-16 with a throwaway plugin) fires `onChange` and then the realtime
+  event `system:changed` with `changes: ["plugins-changed"]` within a few ms.
+  In the bb 0.49.0 web client that event invalidates the `plugin-settings`
+  query behind `useSettings()` (read in the bundle, not watched in a browser:
+  the headless browser could not start on the server), so open pages follow
+  without a reload.
 
 Context window:
 

@@ -15,6 +15,7 @@ import {
   formatAgo,
   formatClock,
   formatCost,
+  formatResetAt,
   formatSpan,
   providerName,
   shortWindowLabel,
@@ -28,6 +29,8 @@ import {
   useExpanded,
   useLimitsShow,
   useNow,
+  useResetShow,
+  useSetDisplay,
   useSetOverride,
   useSnapshot,
   useThreadState,
@@ -50,6 +53,7 @@ import { shownPercent } from "../shared/limits-show";
 import { RecentCompacts } from "./settings-section";
 import { Bar, Ink, SegmentBar, Switch, Toned } from "./ui";
 import { Button } from "../../components/ui/button";
+import { cn } from "../../lib/utils";
 
 function Status({ view, now }: { view: BannerView; now: number }) {
   const s = useStrings();
@@ -163,13 +167,64 @@ function WindowBar({ view, className }: { view: WindowView; className?: string }
   );
 }
 
-/** A window's percent, used or left as the setting says. */
-function WindowPercent({ view, className }: { view: WindowView; className?: string }) {
+/** A press target: a plain button that looks like the text it holds, with a pointer and a focus ring. */
+const PRESS_CLASS = "cursor-pointer rounded-sm text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring";
+
+/** Switches `limitsShow` for every row. */
+function useToggleLimitsShow(): () => void {
   const show = useLimitsShow();
+  const setDisplay = useSetDisplay();
+  return () => setDisplay("limitsShow", show === "used" ? "remaining" : "used");
+}
+
+/** Switches `resetShow` for every row. */
+function useToggleResetShow(): () => void {
+  const resetShow = useResetShow();
+  const setDisplay = useSetDisplay();
+  return () => setDisplay("resetShow", resetShow === "countdown" ? "time" : "countdown");
+}
+
+/** A window's percent, used or left as the setting says; a press target that switches it when `pressable`. */
+function WindowPercent({ view, className, pressable = false }: { view: WindowView; className?: string; pressable?: boolean }) {
+  const s = useStrings();
+  const show = useLimitsShow();
+  const toggle = useToggleLimitsShow();
+  const text = formatPercent(shownPercent(show, view.window.usedPercent));
+  if (!pressable) {
+    return (
+      <Ink tone={view.tone} className={className}>
+        {text}
+      </Ink>
+    );
+  }
   return (
-    <Ink tone={view.tone} className={className}>
-      {formatPercent(shownPercent(show, view.window.usedPercent))}
-    </Ink>
+    <button
+      type="button"
+      className={cn(PRESS_CLASS, className)}
+      aria-label={show === "used" ? s.showPercentLeft(text) : s.showPercentUsed(text)}
+      onClick={toggle}
+    >
+      <Ink tone={view.tone}>{text}</Ink>
+    </button>
+  );
+}
+
+/** The collapsed row's reset time: a countdown or the local time, a press target that switches it. */
+function ResetTime({ resetsAt, now }: { resetsAt: number; now: number }) {
+  const s = useStrings();
+  const resetShow = useResetShow();
+  const toggle = useToggleResetShow();
+  // A reset that has passed has no time to name: both forms show the countdown's "<1m".
+  const text = resetShow === "time" && resetsAt > now ? formatResetAt(s, resetsAt, now) : formatSpan(s, Math.max(0, resetsAt - now));
+  return (
+    <button
+      type="button"
+      className={cn(PRESS_CLASS, NARROW_HIDDEN, "text-muted-foreground tabular-nums")}
+      aria-label={resetShow === "time" ? s.showCountdown(text) : s.showResetTime(text)}
+      onClick={toggle}
+    >
+      {text}
+    </button>
   );
 }
 
@@ -196,11 +251,9 @@ function CollapsedRow({ provider, state, now }: { provider: ProviderLimits | nul
             }
           >
             <span className="shrink-0 font-semibold">{shortWindowLabel(s, w.label, w.model)}</span>
-            {w.resetsAt === null ? null : (
-              <span className={`${NARROW_HIDDEN} text-muted-foreground tabular-nums`}>{formatSpan(s, Math.max(0, w.resetsAt - now))}</span>
-            )}
+            {w.resetsAt === null ? null : <ResetTime resetsAt={w.resetsAt} now={now} />}
             <WindowBar view={v} className={BAR_FIT} />
-            <WindowPercent view={v} className="shrink-0 font-medium tabular-nums" />
+            <WindowPercent view={v} className="shrink-0 font-medium tabular-nums" pressable />
           </span>
         );
       })}
@@ -226,23 +279,36 @@ const paceToned = (v: WindowView) => v.pace !== null && v.tone !== "normal";
 function WindowList({ provider, now }: { provider: ProviderLimits; now: number }) {
   const s = useStrings();
   const show = useLimitsShow();
+  const resetShow = useResetShow();
+  const toggleReset = useToggleResetShow();
   return (
     <ul className="flex flex-col gap-2">
       {provider.windows.map((w) => {
         const v = windowView(w, now);
         const budget = windowBudget(s, v, now);
+        const note = windowNote(s, v, now, show, resetShow);
+        const noteText = paceToned(v) ? <Toned tone={v.tone}>{note}</Toned> : note;
+        // The run-out note names no reset time, so only the other notes switch it.
+        const notePressable = w.resetsAt !== null && v.status !== "out";
         return (
           <li key={`${w.label}:${w.model ?? ""}`} className="flex flex-col gap-0.5" data-window={w.label} title={paceDetails(s, w, show)}>
             <span className="flex items-center gap-2">
               <span className="w-20 shrink-0 font-semibold">{windowLabel(s, w.label, w.model)}</span>
               <WindowBar view={v} className="flex-1" />
-              <WindowPercent view={v} className="w-9 text-right font-medium tabular-nums" />
+              <WindowPercent view={v} className="w-9 text-right font-medium tabular-nums" pressable />
             </span>
             <span className={paceToned(v) ? "" : "text-muted-foreground"}>
-              {paceToned(v) ? (
-                <Toned tone={v.tone}>{windowNote(s, v, now, show)}</Toned>
+              {notePressable ? (
+                <button
+                  type="button"
+                  className={cn(PRESS_CLASS, paceToned(v) ? null : "text-muted-foreground")}
+                  aria-label={resetShow === "time" ? s.showCountdown(note) : s.showResetTime(note)}
+                  onClick={toggleReset}
+                >
+                  {noteText}
+                </button>
               ) : (
-                windowNote(s, v, now, show)
+                noteText
               )}
               {w.cost ? <span className="text-muted-foreground"> · {formatCost(s, w.cost)}</span> : null}
             </span>

@@ -7,6 +7,8 @@ import {
   usageForecastContract,
   type CompactLogEntry,
   type CompactResult,
+  type Display,
+  type DisplayInput,
   type HostLimits,
   type LimitsSnapshot,
   type LimitWindow,
@@ -126,15 +128,17 @@ export interface Backend {
   snapshot: LimitsSnapshot;
   thread: ThreadState;
   compact: () => Promise<CompactResult>;
+  setDisplay: (input: DisplayInput) => Promise<Display>;
   calls: { method: string; input: unknown }[];
   overrides: ThreadOverride[];
 }
 
-export function backend(over: Partial<Pick<Backend, "snapshot" | "thread" | "compact">> = {}): Backend {
+export function backend(over: Partial<Pick<Backend, "snapshot" | "thread" | "compact" | "setDisplay">> = {}): Backend {
   return {
     snapshot: over.snapshot ?? snapshot([provider("claude-code", [win("Current session", 40)])]),
     thread: over.thread ?? threadState(),
     compact: over.compact ?? (async () => ({ ok: true, message: null, entry: null })),
+    setDisplay: over.setDisplay ?? (async (input) => ({ limitsShow: "used", resetShow: "countdown", ...input })),
     calls: [],
     overrides: [],
   };
@@ -163,6 +167,7 @@ export function render<P extends object>(
       refresh: log("refresh", () => b.snapshot),
       thread: log("thread", () => b.thread),
       compact: log("compact", () => b.compact()),
+      setDisplay: log("setDisplay", (input: DisplayInput) => b.setDisplay(input)),
       setThreadOverride: log("setThreadOverride", (input: { threadId: string; override: ThreadOverride }) => {
         b.overrides.push(input.override);
         const override = normalizeOverride(input.override);
