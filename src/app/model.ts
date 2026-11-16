@@ -6,6 +6,7 @@
 import type { HostLimits, LimitsSnapshot, LimitWindow, ProviderLimits, ThreadContext } from "../shared/contract";
 import { contextTone, limitTone, type Tone } from "../shared/thresholds";
 import { shownPercent, type LimitsShow } from "../shared/limits-show";
+import type { ResetShow } from "../shared/reset-show";
 import { lastingBudget, mainProjection } from "../shared/forecast";
 import { paceRank, paceStateTone, rawPaceState, worsePace, type PaceState } from "../shared/pace";
 import { DAY_MS } from "../shared/windows";
@@ -193,9 +194,9 @@ export function isWeekly(window: LimitWindow): boolean {
   return window.label === "Weekly limit" || (window.durationMs ?? 0) >= 7 * DAY_MS;
 }
 
-/** The note under a window: what its pace means before the reset, as used or as left. */
-export function windowNote(s: Strings, view: WindowView, now: number, show: LimitsShow = "used"): string {
-  const reset = formatResetIn(s, view.window.resetsAt, now);
+/** The note under a window: what its pace means before the reset, as used or as left, with the reset as a countdown or a time. */
+export function windowNote(s: Strings, view: WindowView, now: number, show: LimitsShow = "used", resetShow: ResetShow = "countdown"): string {
+  const reset = formatResetIn(s, view.window.resetsAt, now, resetShow);
   // A projection as the note shows it: capped at 100 %, used or left.
   const shown = (projected: number) => Math.round(shownPercent(show, Math.min(100, projected)));
   const lasts = (projected: number) => (show === "used" ? s.lastsUsed : s.lastsLeft)(shown(projected), reset);
