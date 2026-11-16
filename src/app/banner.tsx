@@ -162,7 +162,7 @@ const ITEM_CLASS = "flex min-w-0 flex-auto items-center gap-1.5";
 const BAR_FIT = "hidden min-w-3 flex-1 @sm:flex";
 
 /** A window's bar as the `limitsShow` setting says: the used part, or the part left with the pace tick mirrored. */
-function WindowBar({ view, className }: { view: WindowView; className?: string }) {
+export function WindowBar({ view, className }: { view: WindowView; className?: string }) {
   const show = useLimitsShow();
   return (
     <Bar
@@ -192,7 +192,7 @@ function useToggleResetShow(): () => void {
 }
 
 /** A window's percent, used or left as the setting says; a press target that switches it when `pressable`. */
-function WindowPercent({ view, className, pressable = false }: { view: WindowView; className?: string; pressable?: boolean }) {
+export function WindowPercent({ view, className, pressable = false }: { view: WindowView; className?: string; pressable?: boolean }) {
   const s = useStrings();
   const show = useLimitsShow();
   const toggle = useToggleLimitsShow();
@@ -216,8 +216,8 @@ function WindowPercent({ view, className, pressable = false }: { view: WindowVie
   );
 }
 
-/** The collapsed row's reset time: a countdown or the local time, a press target that switches it. */
-function ResetTime({ resetsAt, now }: { resetsAt: number; now: number }) {
+/** A window's reset on its own: a countdown or the local time, a press target that switches it. */
+export function ResetTime({ resetsAt, now, className = NARROW_HIDDEN }: { resetsAt: number; now: number; className?: string }) {
   const s = useStrings();
   const resetShow = useResetShow();
   const toggle = useToggleResetShow();
@@ -226,7 +226,7 @@ function ResetTime({ resetsAt, now }: { resetsAt: number; now: number }) {
   return (
     <button
       type="button"
-      className={cn(PRESS_CLASS, NARROW_HIDDEN, "text-muted-foreground tabular-nums")}
+      className={cn(PRESS_CLASS, className, "text-muted-foreground tabular-nums")}
       aria-label={resetShow === "time" ? s.showCountdown(text) : s.showResetTime(text)}
       onClick={toggle}
     >
@@ -283,7 +283,7 @@ function CollapsedRow({ provider, state, now }: { provider: ProviderLimits | nul
 /** A note in the window's colour: one with a pace state that is not calm. Others stay muted. */
 const paceToned = (v: WindowView) => v.pace !== null && v.tone !== "normal";
 
-export function WindowList({ provider, now }: { provider: ProviderLimits; now: number }) {
+function WindowList({ provider, now }: { provider: ProviderLimits; now: number }) {
   const s = useStrings();
   const show = useLimitsShow();
   const resetShow = useResetShow();

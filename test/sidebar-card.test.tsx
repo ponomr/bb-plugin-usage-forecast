@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { en } from "../src/app/i18n";
 import { windowNote, windowView } from "../src/app/model";
 import { SidebarCard } from "../src/app/sidebar-card";
+import { HOUR_MS } from "../src/shared/windows";
 import { backend, callsTo, host, provider, render, snapshot, win } from "./app-fixtures";
 
 afterEach(() => cleanup());
@@ -59,12 +60,32 @@ describe("SidebarCard", () => {
     await waitFor(() => expect(card().textContent).toBe(en.noLimitsData));
   });
 
-  it("shows the band's note under a window", async () => {
+  it("puts a window on one line and keeps the band's note in its tooltip", async () => {
     const w = win("Current session", 40);
     render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [w])]) }));
     const now = Date.now();
     await waitFor(() => expect(card().querySelector('[data-window="Current session"]')).not.toBeNull());
-    expect(card().querySelector('[data-window="Current session"]')!.textContent).toContain(windowNote(en, windowView(w, now), now));
+    const row = card().querySelector('[data-window="Current session"]')!;
+    const note = windowNote(en, windowView(w, now), now);
+    expect(row.getAttribute("title")).toContain(note);
+    expect(row.textContent).not.toContain(note);
+    expect(row.textContent).toContain("5H");
+    expect(row.textContent).toContain("40%");
+    expect(screen.queryByTestId("window-runs-out")).toBeNull();
+  });
+
+  it("spells out a window that runs out before its reset", async () => {
+    const w = win("Current session", 80, {
+      forecast: { status: "running", current: { projectedPercent: 140, runOutAt: Date.now() + HOUR_MS }, learned: null, main: "current", early: false, warning: true },
+    });
+    render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [w])]) }));
+    await waitFor(() => expect(screen.getByTestId("window-runs-out").textContent).toMatch(/\d/));
+  });
+
+  it("keeps a label with no short form whole", async () => {
+    render(SidebarCard, props, backend({ snapshot: snapshot([provider("claude-code", [win("Fable", 34)])]) }));
+    await waitFor(() => expect(card().querySelector('[data-window="Fable"]')).not.toBeNull());
+    expect(card().querySelector('[data-window="Fable"]')!.textContent).toContain("Fable");
   });
 
   it("is registered as the footer disclosure with the ring", async () => {
