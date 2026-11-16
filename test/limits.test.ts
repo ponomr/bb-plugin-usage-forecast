@@ -7,10 +7,11 @@ import {
   contextLimitOf,
   effectiveThreshold,
   effectiveThresholdTokens,
+  measure,
   measureThread,
   parseSettings,
-  readContext,
   readThreadState,
+  readUsage,
   type PluginSettings,
 } from "../src/server/threads";
 import type { ThreadContext, ThreadOverride } from "../src/shared/contract";
@@ -22,6 +23,12 @@ const withProviders = (claude: number, codex: number): PluginSettings => ({
   ...settings(),
   providerLimitTokens: { "claude-code": claude, codex },
 });
+
+/** The fill of a `threads.context` answer against the limit `contextLimitOf` picks. */
+function readContext(answer: unknown, override: ThreadOverride, s: PluginSettings, providerId: string | null): ThreadContext | null {
+  const usage = readUsage(answer);
+  return usage === null ? null : measure(usage, contextLimitOf(override, s, providerId, usage.autoCompactAtTokens));
+}
 
 /** The threshold auto-compact acts on, in tokens, for a context and a setting. */
 const actsAt = (thresholdPercent: number, ctx: ThreadContext | null) => effectiveThresholdTokens(thresholdPercent, ctx);

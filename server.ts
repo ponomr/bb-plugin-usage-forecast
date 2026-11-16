@@ -282,4 +282,6 @@ export default async function plugin(bb: BbPluginApi) {
   // The first token collection runs once, in the background; it returns at
   // once when storage says it is done.
   void counter.backfill();
+  // Samples written before 0.4.16 were never read; free their storage.
+  void storage.dropSamples().catch(() => {});
 }

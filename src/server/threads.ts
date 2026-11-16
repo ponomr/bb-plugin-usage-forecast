@@ -223,24 +223,6 @@ export function measure(usage: Usage, limit: ContextLimit, autoCompactAtTokens: 
 }
 
 /**
- * Context fill from a `threads.context` answer with the limit chosen by
- * `contextLimitOf`; `rememberedCompactAt` stands in when the answer has no
- * snapshot. Null when the host has no measurement.
- */
-export function readContext(
-  answer: unknown,
-  override: ThreadOverride,
-  settings: PluginSettings,
-  providerId: string | null,
-  rememberedCompactAt: number | null = null,
-): ThreadContext | null {
-  const usage = readUsage(answer);
-  if (usage === null) return null;
-  const compactAt = usage.autoCompactAtTokens ?? rememberedCompactAt;
-  return measure(usage, contextLimitOf(override, settings, providerId, compactAt), compactAt);
-}
-
-/**
  * Context fill from a `threads.context` answer with the thread's limit. A
  * compaction point in the answer is remembered per provider and window; an
  * answer without one (an answering Claude Code thread, or one whose snapshot

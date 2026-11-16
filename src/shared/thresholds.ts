@@ -38,6 +38,3 @@ export function forecastWarns(projectedPercent: number): boolean {
   return projectedPercent > FORECAST_RED_PERCENT;
 }
 
-export function forecastTone(projectedPercent: number): Tone {
-  return forecastWarns(projectedPercent) ? "red" : "normal";
-}

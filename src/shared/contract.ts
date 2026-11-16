@@ -319,7 +319,6 @@ export const tokensInputSchema = z
 export type TokensInput = z.infer<typeof tokensInputSchema>;
 
 const tokenPairSchema = z.object({ work: z.number(), all: z.number() });
-export type TokenPairOut = z.infer<typeof tokenPairSchema>;
 
 export const tokensSchema = z.object({
   /** The thread's own totals; null when the counter has not seen it. */

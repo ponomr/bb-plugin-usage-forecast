@@ -4,6 +4,16 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.16 — 2026-11-16
+
+- The poller no longer stores a sample of every window on every poll
+  (`limits:samples:*`): nothing read them. Samples stored by earlier versions
+  are deleted when the plugin loads; forecasts and the learned pace use the
+  closed windows, as before.
+- Cleanup with no change in behaviour: unused vendored UI components and 13
+  unused dev dependencies are gone, as are the plans of shipped features in
+  `docs/plans/`.
+
 ## 0.4.15 — 2026-11-16
 
 - Sidebar card: an account shared with a host that went offline was listed

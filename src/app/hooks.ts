@@ -12,6 +12,7 @@ import {
   useSettings,
 } from "@get-bb/plugin-sdk/app";
 import { STRINGS, type Strings } from "./i18n";
+import { createStore } from "./store";
 import { parseLang } from "../shared/language";
 import { parseLimitsShow, type LimitsShow } from "../shared/limits-show";
 import { parseResetShow, type ResetShow } from "../shared/reset-show";
@@ -56,23 +57,14 @@ interface DisplayOverride<K extends DisplayKey> {
   value: Display[K];
   base: Display[K];
 }
-const displayOverrides: { [K in DisplayKey]?: DisplayOverride<K> } = {};
-const displayListeners = new Set<() => void>();
+const displayOverrides = createStore<{ [K in DisplayKey]?: DisplayOverride<K> }>({});
 const DISPLAY_PARSE: { [K in DisplayKey]: (value: unknown) => Display[K] } = {
   limitsShow: parseLimitsShow,
   resetShow: parseResetShow,
 };
 
 function setDisplayOverride<K extends DisplayKey>(key: K, override: DisplayOverride<K> | undefined) {
-  if (displayOverrides[key] === override) return;
-  if (override === undefined) delete displayOverrides[key];
-  else (displayOverrides as Record<K, DisplayOverride<K>>)[key] = override;
-  for (const listener of displayListeners) listener();
-}
-
-function subscribeDisplay(listener: () => void) {
-  displayListeners.add(listener);
-  return () => displayListeners.delete(listener);
+  if (displayOverrides.get()[key] !== override) displayOverrides.set({ ...displayOverrides.get(), [key]: override });
 }
 
 /** Drops every pressed value; for tests, whose renders share this module. */
@@ -83,11 +75,11 @@ export function clearDisplayOverrides() {
 
 function useDisplay<K extends DisplayKey>(key: K): Display[K] {
   const setting = DISPLAY_PARSE[key](useSettings().values?.[key]);
-  const getOverride = () => displayOverrides[key] as DisplayOverride<K> | undefined;
-  const override = useSyncExternalStore(subscribeDisplay, getOverride, getOverride);
+  const getOverride = () => displayOverrides.get()[key] as DisplayOverride<K> | undefined;
+  const override = useSyncExternalStore(displayOverrides.subscribe, getOverride, getOverride);
   const stale = override !== undefined && override.base !== setting;
   useEffect(() => {
-    if (stale && displayOverrides[key] === override) setDisplayOverride(key, undefined);
+    if (stale && displayOverrides.get()[key] === override) setDisplayOverride(key, undefined);
   }, [key, override, stale]);
   return override === undefined || stale ? setting : override.value;
 }
@@ -113,7 +105,7 @@ export function useSetDisplay() {
       setDisplayOverride(key, override);
       mutation.mutate({ [key]: value }).catch(() => {
         // No error banner: the row returns to what it showed before the press.
-        if (displayOverrides[key] === override) setDisplayOverride(key, undefined);
+        if (displayOverrides.get()[key] === override) setDisplayOverride(key, undefined);
       });
     },
     [mutation, values],
@@ -125,35 +117,21 @@ export function useSetDisplay() {
 // settings list it (so un-hiding it later on the settings page works) or when
 // the save fails.
 
-let hiddenHere: readonly string[] = [];
-const hiddenListeners = new Set<() => void>();
-
-function setHiddenHere(next: readonly string[]) {
-  if (next.length === hiddenHere.length && next.every((id, i) => id === hiddenHere[i])) return;
-  hiddenHere = next;
-  for (const listener of hiddenListeners) listener();
-}
-
-function subscribeHidden(listener: () => void) {
-  hiddenListeners.add(listener);
-  return () => hiddenListeners.delete(listener);
-}
-
-const getHiddenHere = () => hiddenHere;
+const hiddenHere = createStore<readonly string[]>([], (a, b) => a.length === b.length && a.every((id, i) => id === b[i]));
 
 /** Drops every pressed Hide; for tests, whose renders share this module. */
 export function clearHiddenOverrides() {
-  setHiddenHere([]);
+  hiddenHere.set([]);
 }
 
 /** The `hiddenProviders` setting, parsed, with the ids just pressed; none until the settings load. */
 export function useHiddenProviders(): string[] {
   const raw = useSettings().values?.hiddenProviders;
   const setting = useMemo(() => parseHiddenProviders(raw), [raw]);
-  const here = useSyncExternalStore(subscribeHidden, getHiddenHere, getHiddenHere);
+  const here = useSyncExternalStore(hiddenHere.subscribe, hiddenHere.get, hiddenHere.get);
   const landed = here.some((id) => setting.includes(id));
   useEffect(() => {
-    if (landed) setHiddenHere(hiddenHere.filter((id) => !setting.includes(id)));
+    if (landed) hiddenHere.set(hiddenHere.get().filter((id) => !setting.includes(id)));
   }, [landed, setting]);
   return useMemo(() => (here.length === 0 ? setting : [...new Set([...setting, ...here])]), [setting, here]);
 }
@@ -165,10 +143,10 @@ export function useHideProvider() {
     (providerId: string) => {
       const [id] = parseHiddenProviders(providerId);
       if (id === undefined) return;
-      if (!hiddenHere.includes(id)) setHiddenHere([...hiddenHere, id]);
+      if (!hiddenHere.get().includes(id)) hiddenHere.set([...hiddenHere.get(), id]);
       mutation.mutate({ providerId: id }).catch(() => {
         // No error banner: the block comes back as it was before the press.
-        setHiddenHere(hiddenHere.filter((x) => x !== id));
+        hiddenHere.set(hiddenHere.get().filter((x) => x !== id));
       });
     },
     [mutation],

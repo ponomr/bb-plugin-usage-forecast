@@ -10,7 +10,7 @@ import { paceRank, type PaceState } from "../shared/pace";
 import { formatPercent, type Tone } from "../shared/thresholds";
 import { providerName, windowLabel } from "./format";
 import type { Strings } from "./i18n";
-import { hostStale, windowView } from "./model";
+import { hostStale, windowView, withoutForecast } from "./model";
 import { isHidden } from "../shared/hidden-providers";
 
 export interface WorstWindow {
@@ -62,12 +62,6 @@ function hostName(host: HostLimits): string {
   return host.name ?? host.hostId ?? "";
 }
 
-/** A stale host's providers without forecast or pace: its values are not current. */
-function currentProviders(host: HostLimits): ProviderLimits[] {
-  if (!hostStale(host)) return host.providers;
-  return host.providers.map((p) => ({ ...p, windows: p.windows.map((w) => ({ ...w, forecast: null, pace: null })) }));
-}
-
 const EMPTY: IndicatorView = { worst: null, groups: [], showHosts: false, unavailable: [] };
 
 /** `hidden`: provider ids the ring and the card leave out. */
@@ -75,7 +69,7 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number,
   if (snapshot === undefined || snapshot.polledAt === null) return EMPTY;
   const hosts = snapshot.hosts;
   const showHosts = hosts.length > 1;
-  const providersOf = hosts.map((h) => currentProviders(h).filter((p) => !isHidden(hidden, p.providerId)));
+  const providersOf = hosts.map((h) => (hostStale(h) ? withoutForecast(h.providers) : h.providers).filter((p) => !isHidden(hidden, p.providerId)));
   const indexOf = new Map(hosts.map((h, i) => [h.hostId, i]));
   const groups: IndicatorProvider[][] = hosts.map(() => []);
   const done = new Set<string>();

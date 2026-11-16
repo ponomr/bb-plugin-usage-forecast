@@ -28,10 +28,8 @@ const enc = encodeURIComponent;
  */
 export const keys = {
   latest: "limits:latest",
-  samples: (providerId: string) => `limits:samples:${enc(providerId)}`,
   windows: (windowKey: string) => `limits:windows:${windowKey}`,
   hostLatest: (hostId: string) => `limits:latest:${enc(hostId)}`,
-  hostSamples: (hostId: string, providerId: string) => `limits:samples:${enc(hostId)}:${enc(providerId)}`,
   hostWindows: (hostId: string, windowKey: string) => `limits:windows:${enc(hostId)}:${windowKey}`,
   hostIndex: "limits:hosts",
   log: "autocompact:log",
@@ -61,13 +59,6 @@ export interface Notified {
 }
 
 export const compactPointKey = (providerId: string, windowTokens: number) => `${providerId}|${windowTokens}`;
-
-export interface Sample {
-  at: number;
-  label: string;
-  usedPercent: number;
-  resetsAt: number | null;
-}
 
 /** A window of the latest answer plus what the poller needs to close it later. */
 export interface StoredWindow {
@@ -201,23 +192,6 @@ export function byteLength(value: unknown): number {
   return Buffer.byteLength(JSON.stringify(value), "utf8");
 }
 
-/**
- * Drops the oldest items until the serialized array fits in `maxBytes`.
- * Keeps the newest items; returns a new array.
- */
-export function trimToBytes<T>(items: readonly T[], maxBytes = MAX_VALUE_BYTES): T[] {
-  let kept = [...items];
-  let size = byteLength(kept);
-  while (size > maxBytes && kept.length > 0) {
-    // Drop in proportion to the excess so large buffers need few passes.
-    const average = size / kept.length;
-    const drop = Math.max(1, Math.ceil((size - maxBytes) / average));
-    kept = kept.slice(drop);
-    size = byteLength(kept);
-  }
-  return kept;
-}
-
 export class Storage {
   constructor(private readonly kv: PluginKvStorage) {}
 
@@ -230,23 +204,13 @@ export class Storage {
     await this.kv.set(scope === null ? keys.latest : keys.hostLatest(scope), latest);
   }
 
-  private samplesKey(providerId: string, scope: HostScope): string {
-    return scope === null ? keys.samples(providerId) : keys.hostSamples(scope, providerId);
-  }
-
   private windowsKey(windowKey: string, scope: HostScope): string {
     return scope === null ? keys.windows(windowKey) : keys.hostWindows(scope, windowKey);
   }
 
-  async samples(providerId: string, scope: HostScope = null): Promise<Sample[]> {
-    const value = await this.kv.get<unknown>(this.samplesKey(providerId, scope));
-    return Array.isArray(value) ? (value as Sample[]) : [];
-  }
-
-  async appendSamples(providerId: string, added: readonly Sample[], scope: HostScope = null): Promise<void> {
-    if (added.length === 0) return;
-    const all = [...(await this.samples(providerId, scope)), ...added];
-    await this.kv.set(this.samplesKey(providerId, scope), trimToBytes(all));
+  /** Deletes the per-poll samples written before 0.4.16; nothing ever read them. */
+  async dropSamples(): Promise<void> {
+    for (const key of await this.kv.list("limits:samples:")) await this.kv.delete(key);
   }
 
   async closedWindows(windowKey: string, scope: HostScope = null): Promise<ClosedWindow[]> {
@@ -289,13 +253,11 @@ export class Storage {
   /** Deletes one host's scoped keys. The legacy keys are never touched. */
   async removeHost(hostId: string): Promise<void> {
     const host = enc(hostId);
-    const samples = `limits:samples:${host}:`;
     const windows = `limits:windows:${host}:`;
     // A legacy window key is `limits:windows:<provider>:<label>`; a provider id
     // equal to this host id would match the prefix, but its rest has no ":".
     const doomed = [
       keys.hostLatest(hostId),
-      ...(await this.kv.list(samples)),
       ...(await this.kv.list(windows)).filter((k) => k.slice(windows.length).includes(":")),
     ];
     for (const key of doomed) await this.kv.delete(key);
@@ -331,7 +293,7 @@ export class Storage {
   /** Epoch ms of each provider's unsupported mark. A value in another shape (0.1.0 stored a list) reads as no marks. */
   private async unsupportedMarks(): Promise<Record<string, number>> {
     const value = await this.kv.get<unknown>(keys.unsupported);
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+    if (!isRecord(value)) return {};
     return Object.fromEntries(
       Object.entries(value).filter((entry): entry is [string, number] => typeof entry[1] === "number"),
     );
@@ -361,7 +323,7 @@ export class Storage {
   /** Keyed by `compactPointKey`. A value in another shape reads as empty. */
   async compactPoints(): Promise<Record<string, CompactPoint>> {
     const value = await this.kv.get<unknown>(keys.compactPoints);
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+    if (!isRecord(value)) return {};
     return Object.fromEntries(
       Object.entries(value).filter(
         (entry): entry is [string, CompactPoint] =>
@@ -393,7 +355,7 @@ export class Storage {
   /** Keyed by `windowKey`. A value in another shape reads as empty. */
   async notified(): Promise<Record<string, Notified>> {
     const value = await this.kv.get<unknown>(keys.notified);
-    if (typeof value !== "object" || value === null || Array.isArray(value)) return {};
+    if (!isRecord(value)) return {};
     return Object.fromEntries(
       Object.entries(value).filter(
         (entry): entry is [string, Notified] => typeof (entry[1] as Notified | null)?.at === "number",

@@ -109,9 +109,6 @@ describe("poll every host", () => {
     expect(mac.providers[0]!.windows.map((w) => w.usedPercent)).toEqual([2, 5]);
     expect(server.providers[0]).not.toHaveProperty("sharedWith");
     expect(mac.providers[0]).not.toHaveProperty("sharedWith");
-    // Each host keeps its own samples.
-    expect((await t.storage.samples("codex", null)).map((s) => s.usedPercent)).toEqual([18, 57]);
-    expect((await t.storage.samples("codex", MAC)).map((s) => s.usedPercent)).toEqual([2, 5]);
     expect(await t.storage.hostIndex()).toEqual({
       legacyOwner: SERVER,
       hosts: [
@@ -234,7 +231,6 @@ describe("poll every host", () => {
     const left = await t.kv.list("limits:");
     expect(left.filter((k) => k.includes(MAC) || k.includes(third))).toEqual([]);
     expect(left).toContain(keys.latest);
-    expect(left).toContain(keys.samples("codex"));
     expect((await readHosts(t.storage)).map((h) => h.hostId)).toEqual([SERVER]);
   });
 
@@ -270,7 +266,6 @@ describe("one host and the upgrade", () => {
     const after = setup({ hosts: [hostInfo(SERVER, "server")], primary: () => null, answers: { [SERVER]: () => claudeLimits(40, 20) } });
     await after.poller.poll();
     expect(await after.storage.latest(null)).toEqual(await before.storage.latest(null));
-    expect(await after.storage.samples("claude-code")).toEqual(await before.storage.samples("claude-code"));
     expect((await after.storage.hostIndex())!.legacyOwner).toBe(SERVER);
     const snapshot = toSnapshot(await readHosts(after.storage), [], NOW);
     expect(snapshot).toMatchObject({ polledAt: NOW, pollError: null });
@@ -289,7 +284,7 @@ describe("one host and the upgrade", () => {
     t.clock.advance(MIN);
     await t.poller.poll();
     expect((await t.storage.latest(null)).providers[0]!.open["Current session"]!.firstSeenAt).toBe(firstSeen);
-    expect(await t.storage.samples("claude-code", MAC)).toHaveLength(2);
+    expect((await t.storage.latest(MAC)).providers[0]!.open["Current session"]!.firstSeenAt).toBe(t.clock.value);
 
     // The window resets: the closed window lands in the legacy history.
     session = 5;
@@ -300,13 +295,11 @@ describe("one host and the upgrade", () => {
       { startedAt: NOW + 2 * HOUR_MS - 5 * HOUR_MS, resetAt: NOW + 2 * HOUR_MS, peakUsedPercent: 70 },
     ]);
     expect(await t.storage.closedWindows(windowKey("claude-code", "Current session"), MAC)).toEqual([]);
-    expect(await t.storage.samples("claude-code")).toHaveLength(6);
   });
 
   it("stays on the legacy keys while the default host is unknown, then writes the marker", async () => {
     let primary: () => string | null = () => null;
     const kv = makeKv();
-    await kv.set(keys.samples("codex"), [{ at: 1, label: "Weekly limit", usedPercent: 3, resetsAt: null }]);
     const t = setup({ hosts: twoHosts, primary: () => primary(), answers: { "": () => codex("a", 18, 57), [SERVER]: () => codex("a", 18, 57), [MAC]: () => codex("b", 2, 5) } }, kv);
 
     await t.poller.poll();
@@ -318,7 +311,7 @@ describe("one host and the upgrade", () => {
     expect(t.calls).toEqual([undefined, undefined]);
     expect(await t.storage.hostIndex()).toBeNull();
     expect(await kv.list("limits:latest:")).toEqual([]);
-    expect(await t.storage.samples("codex")).toHaveLength(5);
+    expect((await t.storage.latest(null)).polledAt).toBe(t.clock.value);
     expect(toSnapshot(await readHosts(t.storage), [], t.clock.value).hosts).toMatchObject([{ hostId: null, primary: true }]);
 
     primary = () => SERVER;
@@ -327,7 +320,7 @@ describe("one host and the upgrade", () => {
     await t.poller.poll();
     expect(t.calls.sort()).toEqual([MAC, SERVER]);
     expect((await t.storage.hostIndex())!.legacyOwner).toBe(SERVER);
-    expect(await t.storage.samples("codex")).toHaveLength(7);
+    expect((await t.storage.latest(null)).polledAt).toBe(t.clock.value);
     // The marker is written once: a later primary host does not move it.
     primary = () => MAC;
     t.clock.advance(2 * MIN);
