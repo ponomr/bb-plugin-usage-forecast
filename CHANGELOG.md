@@ -4,7 +4,7 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
-## Unreleased
+## 0.4.8 — 2026-11-16
 
 - Press to switch (UF-9). A press on a reset time in the band switches every
   row between the countdown («3d», «resets in 3d») and the local time of the
@@ -31,9 +31,9 @@ listed here.
   buttons shows the worst window across every host, filled to its used
   percent and coloured by its pace state; its tooltip names the window.
   Pressing it opens a card with every provider's windows, grouped by host
-  when there are several, with a shared account listed once and hosts that cannot be read named
-  at the bottom; a window whose reset has passed does not count. To hide it, use
-  More → Customize footer in the sidebar.
+  when there are several, with a shared account listed once and hosts that
+  cannot be read named at the bottom; a window whose reset has passed does
+  not count. To hide it, use More → Customize footer in the sidebar.
 
 ## 0.4.7 — 2026-11-16
 
