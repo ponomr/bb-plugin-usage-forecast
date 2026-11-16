@@ -27,9 +27,12 @@ export type HourEntry = [number, number, number];
 
 export interface ThreadEntry {
   providerId: string;
-  /** The remembered cumulative values of the thread's newest counted event. */
+  /** The remembered cumulative values of the thread's newest applied event. */
   work: number;
   all: number;
+  /** The thread's own totals: the sum of every growth applied, bucketed or not. */
+  sumWork: number;
+  sumAll: number;
   /** Epoch ms the newest applied event was written. */
   updatedAt: number;
   /** Sequence number of that event; events at or below it are skipped. */
@@ -141,18 +144,26 @@ export function applyEvents(state: TokenState, thread: ThreadRef, events: readon
   let first = true;
   for (const event of sorted) {
     if (entry !== undefined && event.seq <= entry.seq) continue;
-    const base = entry ?? { work: 0, all: 0 };
+    const base: TokenPair = entry ?? { work: 0, all: 0 };
     // A lower total is a counter that restarted after the last read: all of it is new.
-    const restarted = event.all < base.all;
-    const work = restarted ? event.work : Math.max(0, event.work - base.work);
-    const all = restarted ? event.all : event.all - base.all;
+    const restarted: boolean = event.all < base.all;
+    const work: number = restarted ? event.work : Math.max(0, event.work - base.work);
+    const all: number = restarted ? event.all : event.all - base.all;
     const baselineOnly =
       event.at <= cutoff || (!wasKnown && evicted !== null && event.at <= evicted) || (first && mayBeDropped);
     if (!baselineOnly && (work > 0 || all > 0)) {
       providerHours = addToHour(providerHours, event.at, work, all);
       counted = true;
     }
-    entry = { providerId: thread.providerId, work: event.work, all: event.all, updatedAt: event.at, seq: event.seq };
+    entry = {
+      providerId: thread.providerId,
+      work: event.work,
+      all: event.all,
+      sumWork: (entry?.sumWork ?? 0) + work,
+      sumAll: (entry?.sumAll ?? 0) + all,
+      updatedAt: event.at,
+      seq: event.seq,
+    };
     first = false;
   }
   if (entry === undefined) return { state, counted: false };

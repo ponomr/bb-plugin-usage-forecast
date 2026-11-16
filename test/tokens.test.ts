@@ -111,6 +111,8 @@ describe("applyEvents (R2–R4)", () => {
     ]);
     const next = applyEvents(drop, ref(), [ev(3, 200, at(12))], NOW).state;
     expect(hoursOf(next).at(-1)).toEqual([at(12), 80, 80]);
+    // The thread's own total runs across the restart.
+    expect(next.threads.thr_a).toMatchObject({ all: 200, sumAll: 600 });
   });
 
   it("keeps work and all apart", () => {
@@ -165,7 +167,7 @@ describe("trims (R6)", () => {
     const threads: Record<string, ThreadEntry> = {};
     for (let i = 0; i < 500; i++) {
       const updatedAt = i < 100 ? NOW - TOKEN_RETENTION_MS - (i + 1) * HOUR_MS : NOW - i * MIN_MS;
-      threads[`thr_${i}`] = { providerId: "claude-code", work: 1, all: 2, updatedAt, seq: i };
+      threads[`thr_${i}`] = { providerId: "claude-code", work: 1, all: 2, sumWork: 1, sumAll: 2, updatedAt, seq: i };
     }
     const state = trimTokenState({ ...emptyTokenState(), hours: { "claude-code": hours }, threads }, NOW);
     const kept = state.hours["claude-code"]!;
@@ -204,7 +206,7 @@ describe("trims (R6)", () => {
     const state: TokenState = {
       ...emptyTokenState(),
       evictedBefore: at(12),
-      threads: { thr_a: { providerId: "codex", work: 1, all: 1, updatedAt: NOW - TOKEN_RETENTION_MS - DAY_MS, seq: 1 } },
+      threads: { thr_a: { providerId: "codex", work: 1, all: 1, sumWork: 1, sumAll: 1, updatedAt: NOW - TOKEN_RETENTION_MS - DAY_MS, seq: 1 } },
     };
     expect(trimTokenState(state, NOW).evictedBefore).toBe(at(12));
   });
