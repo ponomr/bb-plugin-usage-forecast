@@ -16,6 +16,7 @@ import { createStore } from "./store";
 import { parseLang } from "../shared/language";
 import { parseLimitsShow, type LimitsShow } from "../shared/limits-show";
 import { parseResetShow, type ResetShow } from "../shared/reset-show";
+import { parseHeaderShow, type HeaderShow } from "../shared/header-show";
 import { parseHiddenProviders } from "../shared/hidden-providers";
 import { localPeriodStarts } from "../shared/tokens";
 import { normalizeOverride, usageForecastContract, type CompactResult, type Display, type ThreadOverride } from "../shared/contract";
@@ -43,6 +44,11 @@ export function errorText(error: unknown): string {
 /** The table for the `language` setting; English until the settings load. */
 export function useStrings(): Strings {
   return STRINGS[parseLang(useSettings().values?.language)];
+}
+
+/** The `headerShow` setting; rings until the settings load. */
+export function useHeaderShow(): HeaderShow {
+  return parseHeaderShow(useSettings().values?.headerShow);
 }
 
 /** The `showBand` setting; on until the settings load and unless it is switched off. */
@@ -282,4 +288,46 @@ export function useNow(): number {
   const [now, setNow] = useState(() => Date.now());
   useInterval(() => setNow(Date.now()), 60_000);
   return now;
+}
+
+export interface RefreshState {
+  refresh(): void;
+  pending: boolean;
+  error: string | null;
+}
+
+/** Polls the limits now (RPC `refresh`) and reloads the snapshot. */
+export function useRefreshLimits(): RefreshState {
+  const mutation = experimental_useRpcMutation({ contract: usageForecastContract, method: "refresh" });
+  const snapshot = useSnapshot();
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const refresh = useCallback(() => {
+    setPending(true);
+    setError(null);
+    mutation
+      .mutate(null)
+      .then(() => snapshot.refetch())
+      .catch((e: unknown) => setError(errorText(e)))
+      .finally(() => setPending(false));
+  }, [mutation, snapshot]);
+  return { refresh, pending, error };
+}
+
+/** The app path of a plugin's settings page (bb 0.50: `/settings/plugins/:pluginId`). */
+export function pluginSettingsPath(pluginId: string): string {
+  return `/settings/plugins/${encodeURIComponent(pluginId)}`;
+}
+
+/**
+ * Opens this plugin's settings page. The SDK has no navigation to settings,
+ * so this pushes the app route and lets the app's router follow the
+ * `popstate` event.
+ */
+export function useOpenSettings(): () => void {
+  const pluginId = experimental_usePluginId();
+  return useCallback(() => {
+    window.history.pushState(window.history.state, "", pluginSettingsPath(pluginId));
+    window.dispatchEvent(new PopStateEvent("popstate", { state: window.history.state }));
+  }, [pluginId]);
 }

@@ -44,7 +44,7 @@ describe("settings section", () => {
     expect(root.textContent).toContain("Poll error: codex: boom");
     expect(root.textContent).toContain("Claude Code: ok");
     expect(root.textContent).toContain("acp-cursor: not installed");
-    expect(root.textContent).toContain("bb--provider-usage");
+    expect(root.textContent).toContain("Provider usage");
     expect(screen.getAllByRole("listitem").some((li) => li.textContent?.includes("(Codex), auto: 85% → 30%"))).toBe(true);
 
     fireEvent.click(screen.getByRole("button", { name: "Refresh now" }));

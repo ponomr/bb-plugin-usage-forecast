@@ -24,7 +24,9 @@ auto-compact without open clients.
   context card section, settings section, the sidebar-footer ring
   (`indicator.ts` model, `ring-icon.tsx`, `indicator-store.ts` with its
   overlay feeder, the `store.ts` helper behind the module stores,
-  `sidebar-card.tsx`); UI strings in `i18n.ts`.
+  `sidebar-card.tsx`), the page-header limits (`header-model.ts` model,
+  `header-widget.tsx` with its popover card), the cards' refresh and
+  settings row (`card-actions.tsx`); UI strings in `i18n.ts`.
 - `components/`, `lib/` — vendored BB UI components (only the ones `src/`
   imports); import them by relative path and keep them unchanged.
 
@@ -251,6 +253,24 @@ Chrome against the web app, bb 0.49.0):
   a second press of the item.
 - At a phone-width viewport (390 px) the footer sits at the bottom of the
   sidebar drawer with the live icon. The native phone app is unchecked.
+
+Page header (checked 2026-11-24 with Playwright in headless Chrome against
+the web app, bb 0.50.1):
+
+- bb has no header slot. The visible header row is
+  `[data-testid=app-page-header-content-row]`; its last child holds the
+  header's own buttons. The Downshift plugin moves an element of its own
+  (`bb-downshift-host`) into that row from an app overlay; this plugin does
+  the same, inserting before the last child. A page without that row (home)
+  uses the fixed dock `[data-bb-header-addons]` that plugins share.
+- The plugin's CSS is scoped to `[data-bb-plugin=usage-forecast]`, so an
+  element created outside a slot (the header host, the popover portaled to
+  `body`) needs `data-bb-plugin="usage-forecast"` and `data-bb-plugin-root`.
+- The SDK has no navigation and no current-thread hook. The thread comes
+  from the path (`/threads/<id>`, also under `/projects/<p>/threads/<id>`);
+  the plugin's settings page is `/settings/plugins/<pluginId>`, reached by
+  `history.pushState` plus a `popstate` event, which the router followed.
+- At 390 px the header row has room for both gauges next to Downshift.
 
 ## Repository and release contract
 
