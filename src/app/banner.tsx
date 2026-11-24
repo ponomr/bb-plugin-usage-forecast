@@ -209,7 +209,8 @@ export function WindowPercent({ view, className, pressable = false }: { view: Wi
     <button
       type="button"
       className={cn(PRESS_CLASS, className)}
-      aria-label={show === "used" ? s.showPercentLeft(text) : s.showPercentUsed(text)}
+      aria-label={`${text} – ${show === "used" ? s.showPercentLeft : s.showPercentUsed}`}
+      title={show === "used" ? s.showPercentLeft : s.showPercentUsed}
       onClick={toggle}
     >
       <Ink tone={view.tone}>{text}</Ink>
@@ -228,7 +229,8 @@ export function ResetTime({ resetsAt, now, className = NARROW_HIDDEN }: { resets
     <button
       type="button"
       className={cn(PRESS_CLASS, className, "text-muted-foreground tabular-nums")}
-      aria-label={resetShow === "time" ? s.showCountdown(text) : s.showResetTime(text)}
+      aria-label={`${text} – ${resetShow === "time" ? s.showCountdown : s.showResetTime}`}
+      title={resetShow === "time" ? s.showCountdown : s.showResetTime}
       onClick={toggle}
     >
       {text}
@@ -310,7 +312,8 @@ function WindowList({ provider, now }: { provider: ProviderLimits; now: number }
                 <button
                   type="button"
                   className={cn(PRESS_CLASS, paceToned(v) ? null : "text-muted-foreground")}
-                  aria-label={resetShow === "time" ? s.showCountdown(note) : s.showResetTime(note)}
+                  aria-label={`${note} – ${resetShow === "time" ? s.showCountdown : s.showResetTime}`}
+                  title={resetShow === "time" ? s.showCountdown : s.showResetTime}
                   onClick={toggleReset}
                 >
                   {noteText}
@@ -359,6 +362,7 @@ function ProviderBlock({ provider, now }: { provider: ProviderLimits; now: numbe
 
 /** A one-line row that opens its content on tap; closed by default. */
 function Disclosure({ summary, children, ...rest }: { summary: ReactNode; children: ReactNode; "data-provider"?: string }) {
+  const s = useStrings();
   const [open, setOpen] = useState(false);
   return (
     <section className="flex flex-col gap-1" {...rest}>
@@ -366,6 +370,7 @@ function Disclosure({ summary, children, ...rest }: { summary: ReactNode; childr
         type="button"
         className="flex min-w-0 items-baseline gap-1.5 text-left"
         aria-expanded={open}
+        title={open ? s.hideDetails : s.showDetails}
         onClick={() => setOpen(!open)}
       >
         <span aria-hidden className="w-3 shrink-0 text-muted-foreground">
@@ -420,6 +425,7 @@ function HideButton({ providerId }: { providerId: string }) {
       type="button"
       className="self-start text-muted-foreground underline-offset-2 hover:underline"
       aria-label={s.hideProviderLabel(providerName(s, providerId))}
+      title={s.hideProviderLabel(providerName(s, providerId))}
       data-testid="hide-provider"
       onClick={() => hideProvider(providerId)}
     >
@@ -494,16 +500,19 @@ function Band() {
             <AutoCompactControls state={state} compact={compact} onArm={setAskAt} onDisarm={() => setAskAt(null)} />
           </div>
         )}
-        <Button
-          size="sm"
-          variant="ghost"
-          className="order-2 h-6 w-6 shrink-0 px-0 text-xs @2xl:order-3"
-          aria-label={expanded ? s.hideDetails : s.showDetails}
-          aria-expanded={expanded}
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? "▲" : "▼"}
-        </Button>
+        {/* The vendored Button takes no title: the tooltip sits on a wrapper. */}
+        <span className="order-2 inline-flex shrink-0 @2xl:order-3" title={expanded ? s.hideDetails : s.showDetails}>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-6 w-6 px-0 text-xs"
+            aria-label={expanded ? s.hideDetails : s.showDetails}
+            aria-expanded={expanded}
+            onClick={() => setExpanded(!expanded)}
+          >
+            {expanded ? "▲" : "▼"}
+          </Button>
+        </span>
       </div>
 
       {asking && ctx !== null && askAt !== null ? (

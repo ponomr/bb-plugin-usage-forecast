@@ -69,6 +69,7 @@ describe("press on a reset time", () => {
     const weekly = await collapsed("Weekly limit");
     const session = await collapsed("Current session");
     expect(weekly.textContent).toBe("W3d92%");
+    expect(within(weekly).getByRole("button", { name: /Show reset time$/ }).title).toBe(en.showResetTime);
     fireEvent.click(within(weekly).getByRole("button", { name: /Show reset time$/ }));
     const now = Date.now();
     expect(weekly.textContent).toBe(`W${formatResetAt(en, resetOf(b, "claude-code", "Weekly limit"), now)}92%`);
@@ -86,6 +87,9 @@ describe("press on a reset time", () => {
     const weekly = await expanded("claude-code", "Weekly limit");
     const note = within(weekly).getByRole("button", { name: /resets in 3d – Show reset time$/ });
     expect(note.textContent).toBe("Tight, ~92% used, resets in 3d");
+    expect(note.title).toBe(en.showResetTime);
+    const percent = within(weekly).getByRole("button", { name: /^92% – Show percent left$/ });
+    expect(percent.title).toBe(en.showPercentLeft);
     fireEvent.click(note);
     const at = formatResetAt(en, resetOf(b, "claude-code", "Weekly limit"), Date.now());
     expect(note.textContent).toBe(`Tight, ~92% used, resets ${at}`);

@@ -13,7 +13,10 @@ listed here.
   Numbers, Numbers and bars, Off). A press opens the limits card. On a phone
   the two windows stack in two lines.
 - Every expanded card (band, sidebar card, header card) ends with the last
-  poll time, a refresh button and a settings button.
+  poll time, a refresh button and a settings button (a cog).
+- Tooltips on the band's press targets: the percent and the reset time say
+  what a press switches to, the ▼/▲ and ▸/▾ toggles say «Show details» or
+  «Hide details», and «Hide» names the provider it hides.
 - Shorter UI texts in both languages.
 
 ## 0.4.21 — 2026-11-16
