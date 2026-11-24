@@ -57,10 +57,10 @@ export interface Strings {
   resetsAt(time: string, weekday: string | null): string;
   resetNow: string;
   /** Labels of the press targets: what is shown, then what a press does. */
-  showResetTime(shown: string): string;
-  showCountdown(shown: string): string;
-  showPercentLeft(shown: string): string;
-  showPercentUsed(shown: string): string;
+  showResetTime: string;
+  showCountdown: string;
+  showPercentLeft: string;
+  showPercentUsed: string;
   noReset: string;
   noForecast: string;
   currentPace(percent: string): string;
@@ -228,10 +228,10 @@ export const en: Strings = {
   resetsIn: (span) => `resets in ${span}`,
   resetsAt: (time, day) => (day === null ? `resets at ${time}` : `resets ${day} ${time}`),
   resetNow: "resets now",
-  showResetTime: (shown) => `${shown} – Show reset time`,
-  showCountdown: (shown) => `${shown} – Show countdown`,
-  showPercentLeft: (shown) => `${shown} – Show percent left`,
-  showPercentUsed: (shown) => `${shown} – Show percent used`,
+  showResetTime: "Show reset time",
+  showCountdown: "Show countdown",
+  showPercentLeft: "Show percent left",
+  showPercentUsed: "Show percent used",
   noReset: "No reset time",
   noForecast: "No forecast yet",
   currentPace: (p) => `Current pace: ${p} by reset`,
@@ -365,7 +365,7 @@ export const en: Strings = {
   refresh: "Refresh now",
   refreshing: "Refreshing…",
   refreshLimits: "Refresh limits",
-  openSettings: "Settings",
+  openSettings: "Plugin settings",
   pollError: (m) => `Poll error: ${m}`,
   providerUsageNote: "The built-in «Provider usage» plugin can stay on.",
 
@@ -410,10 +410,10 @@ export const ru: Strings = {
   resetsIn: (span) => `сброс через ${span}`,
   resetsAt: (time, day) => (day === null ? `сброс в ${time}` : `сброс в ${day} ${time}`),
   resetNow: "сброс сейчас",
-  showResetTime: (shown) => `${shown} – Показать время сброса`,
-  showCountdown: (shown) => `${shown} – Показать обратный отсчёт`,
-  showPercentLeft: (shown) => `${shown} – Показать остаток`,
-  showPercentUsed: (shown) => `${shown} – Показать расход`,
+  showResetTime: "Показать время сброса",
+  showCountdown: "Показать обратный отсчёт",
+  showPercentLeft: "Показать остаток",
+  showPercentUsed: "Показать расход",
   noReset: "Время сброса неизвестно",
   noForecast: "Прогноза пока нет",
   currentPace: (p) => `По текущему темпу к сбросу: ${p}`,
@@ -547,7 +547,7 @@ export const ru: Strings = {
   refresh: "Обновить сейчас",
   refreshing: "Обновляю…",
   refreshLimits: "Обновить лимиты",
-  openSettings: "Настройки",
+  openSettings: "Настройки плагина",
   pollError: (m) => `Ошибка опроса: ${m}`,
   providerUsageNote: "Встроенный плагин «Provider usage» можно не выключать.",
 

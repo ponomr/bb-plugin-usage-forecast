@@ -18,11 +18,12 @@ function RefreshIcon({ spinning }: { spinning: boolean }) {
   );
 }
 
+/** An eight-toothed cog with a hole: the usual settings sign. */
 function GearIcon() {
   return (
-    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={ICON} aria-hidden>
-      <circle cx="8" cy="8" r="2.2" />
-      <path d="M8 1.5v1.8M8 12.7v1.8M1.5 8h1.8M12.7 8h1.8M3.4 3.4l1.3 1.3M11.3 11.3l1.3 1.3M3.4 12.6l1.3-1.3M11.3 4.7l1.3-1.3" />
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className={ICON} aria-hidden data-icon="gear">
+      <path d="M12.68 6.55L14.47 6.69L14.47 9.31L12.68 9.45L12.33 10.29L13.50 11.65L11.65 13.50L10.29 12.33L9.45 12.68L9.31 14.47L6.69 14.47L6.55 12.68L5.71 12.33L4.35 13.50L2.50 11.65L3.67 10.29L3.32 9.45L1.53 9.31L1.53 6.69L3.32 6.55L3.67 5.71L2.50 4.35L4.35 2.50L5.71 3.67L6.55 3.32L6.69 1.53L9.31 1.53L9.45 3.32L10.29 3.67L11.65 2.50L13.50 4.35L12.33 5.71Z" />
+      <circle cx="8" cy="8" r="2" />
     </svg>
   );
 }

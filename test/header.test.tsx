@@ -109,6 +109,11 @@ describe("CardActions", () => {
     let navigated = 0;
     render(CardActions, { polledAt: Date.now(), now: Date.now(), onNavigate: () => navigated++ }, b);
     expect((await screen.findByTestId("card-actions")).textContent).toContain("Updated just now");
+    // Icon-only buttons: a tooltip and an accessible name, the settings one a cog.
+    const settings = screen.getByRole("button", { name: en.openSettings });
+    expect(settings.title).toBe(en.openSettings);
+    expect(screen.getByRole("button", { name: en.refreshLimits }).title).toBe(en.refreshLimits);
+    expect(settings.querySelector("[data-icon=gear]")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: en.refreshLimits }));
     await waitFor(() => expect(callsTo(b, "refresh")).toHaveLength(1));
     const popped: string[] = [];
