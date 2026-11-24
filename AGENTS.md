@@ -270,7 +270,9 @@ the web app, bb 0.50.1):
   from the path (`/threads/<id>`, also under `/projects/<p>/threads/<id>`);
   the plugin's settings page is `/settings/plugins/<pluginId>`, reached by
   `history.pushState` plus a `popstate` event, which the router followed.
-- At 390 px the header row has room for both gauges next to Downshift.
+- At 390 px the header row leaves the plugin about 100 px next to Downshift:
+  one line «5H 4h 41m 97%  W 61%» (173 px) pushed bb's own buttons out, so
+  below 40rem the pill stacks the windows in two lines at 11 px (99 px).
 
 ## Repository and release contract
 

@@ -7,10 +7,11 @@ listed here.
 ## 0.4.22 — 2026-11-24
 
 - Limits in the page header: the 5-hour and weekly windows of the open
-  thread's provider at the top right, next to the header's buttons, as rings
-  with the percent inside or as vertical bars beside a larger percent (new
-  setting «Limits in the header»: Rings, Bars, Off). A press opens the limits
-  card. Works at phone width.
+  thread's provider at the top right, next to the header's buttons: a pill
+  with each window's percent in its colour and the time to the 5-hour reset,
+  optionally with horizontal bars (new setting «Limits in the header»:
+  Numbers, Numbers and bars, Off). A press opens the limits card. On a phone
+  the two windows stack in two lines.
 - Every expanded card (band, sidebar card, header card) ends with the last
   poll time, a refresh button and a settings button.
 - Shorter UI texts in both languages.

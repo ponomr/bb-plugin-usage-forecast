@@ -1,7 +1,7 @@
 // The header limits: the 5-hour and weekly windows of one provider at the
-// top right of the page, as rings with the percent inside or as a vertical
-// bar beside a larger percent (the `headerShow` setting). A press opens the
-// limits card below them. bb has no header slot, so an app overlay moves its
+// top right of the page, in a pill: each window's label, the 5-hour reset,
+// with `headerShow: bars` a horizontal bar, and the percent in its tone. A
+// press opens the limits card below them. bb has no header slot, so an app overlay moves its
 // own element into the visible page header row, before the header's actions,
 // as the Downshift plugin does; a page without a header row (home) gets the
 // fixed dock that plugins share (AGENTS.md, Host facts, Page header).
@@ -11,15 +11,15 @@ import { createPortal } from "react-dom";
 import type { LimitWindow } from "../shared/contract";
 import { shownPercent, type LimitsShow } from "../shared/limits-show";
 import type { HeaderShow } from "../shared/header-show";
-import { formatPercent, type Tone } from "../shared/thresholds";
-import { providerName, shortWindowLabel, windowLabel } from "./format";
+import type { ResetShow } from "../shared/reset-show";
+import { formatPercent } from "../shared/thresholds";
+import { formatResetAt, formatResetIn, formatSpan, providerName, shortWindowLabel, windowLabel } from "./format";
 import { headerView, threadIdOfPath } from "./header-model";
-import { useHeaderShow, useHiddenProviders, useLimitsShow, useNow, useSnapshot, useStrings, useThreadState } from "./hooks";
+import { useHeaderShow, useHiddenProviders, useLimitsShow, useNow, useResetShow, useSnapshot, useStrings, useThreadState } from "./hooks";
 import type { Strings } from "./i18n";
-import { windowView } from "./model";
+import { windowView, type WindowView } from "./model";
 import { LimitsCard } from "./sidebar-card";
-import { INK_CLASS } from "./ui";
-import { cn } from "../../lib/utils";
+import { Bar, Ink } from "./ui";
 
 const PLUGIN = "usage-forecast";
 const HEADER_ROW = "[data-testid=app-page-header-content-row]";
@@ -100,80 +100,51 @@ function useHeaderHost(enabled: boolean): { host: HTMLElement | null; threadId: 
 interface Gauge {
   key: string;
   label: string;
+  view: WindowView;
   /** The shown percent (used or left), 0–100. */
   percent: number;
-  /** How far the ring and the bar fill: the shown percent, so the figure and the fill agree. */
-  fill: number;
-  tone: Tone;
+  /** The bar's pace tick, used or left as the percent is. */
+  marker: number | null;
+  /** The reset as a countdown or a local time (`resetShow`); only the 5-hour window carries it. */
+  reset: string | null;
   title: string;
 }
 
-function gauge(s: Strings, w: LimitWindow, now: number, show: LimitsShow): Gauge {
-  const v = windowView(w, now);
-  const used = Math.max(0, Math.min(100, w.usedPercent));
-  const percent = shownPercent(show, used);
+function gauge(s: Strings, w: LimitWindow, now: number, show: LimitsShow, resetShow: ResetShow, withReset: boolean): Gauge {
+  const view = windowView(w, now);
+  const percent = shownPercent(show, Math.max(0, Math.min(100, w.usedPercent)));
   const value = show === "used" ? formatPercent(percent) : s.percentLeft(formatPercent(percent));
-  const state = v.pace === null ? "" : `, ${s.paceStateName[v.pace]}`;
+  const state = view.pace === null ? "" : `, ${s.paceStateName[view.pace]}`;
+  const reset = !withReset || w.resetsAt === null ? null : resetText(s, w.resetsAt, now, resetShow);
   return {
     key: w.label,
     label: shortWindowLabel(s, w.label, w.model),
+    view,
     percent,
-    fill: percent,
-    tone: v.tone,
-    title: `${windowLabel(s, w.label, w.model)}: ${value}${state}`,
+    marker: view.marker === null ? null : shownPercent(show, view.marker),
+    reset,
+    title: `${windowLabel(s, w.label, w.model)}: ${value}${state}${reset === null ? "" : `, ${formatResetIn(s, w.resetsAt, now, resetShow)}`}`,
   };
 }
 
-/** A ring filled to the shown percent, with it inside. */
-export function GaugeRing({ g }: { g: Gauge }) {
-  const round = g.fill > 0 && g.fill < 100;
-  return (
-    <span className="relative inline-flex size-7 shrink-0 items-center justify-center" data-gauge={g.key} data-tone={g.tone}>
-      <svg viewBox="0 0 28 28" fill="none" className="absolute inset-0 size-7" aria-hidden>
-        <circle cx="14" cy="14" r="11.5" stroke="currentColor" strokeWidth="3" opacity="0.18" />
-        <circle
-          className={INK_CLASS[g.tone]}
-          cx="14"
-          cy="14"
-          r="11.5"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap={round ? "round" : "butt"}
-          pathLength={100}
-          strokeDasharray={`${g.fill} 100`}
-          transform="rotate(-90 14 14)"
-        />
-      </svg>
-      <span className="relative text-[10px] leading-none font-semibold tabular-nums">{Math.round(g.percent)}</span>
-    </span>
-  );
+/** The reset as the band's reset time says it: a countdown, or the local time while it is ahead. */
+function resetText(s: Strings, resetsAt: number, now: number, resetShow: ResetShow): string {
+  return resetShow === "time" && resetsAt > now ? formatResetAt(s, resetsAt, now) : formatSpan(s, Math.max(0, resetsAt - now));
 }
 
-/** A vertical bar filled from the bottom to the shown percent, beside it. */
-export function GaugeBar({ g }: { g: Gauge }) {
+/** One window as the band's collapsed row has it: label, reset, bar (with `bars`), coloured percent. */
+export function HeaderGauge({ g, style }: { g: Gauge; style: Exclude<HeaderShow, "off"> }) {
   return (
-    <span className="inline-flex items-center gap-1" data-gauge={g.key} data-tone={g.tone}>
-      <span className="relative h-5 w-[5px] shrink-0 overflow-hidden rounded-full bg-foreground/15" aria-hidden>
-        <span className={cn("absolute inset-x-0 bottom-0 rounded-full bg-current", INK_CLASS[g.tone])} style={{ height: `${g.fill}%` }} />
-      </span>
-      <span className="text-[15px] leading-none font-semibold tabular-nums">
-        {Math.round(g.percent)}
-        <span className="text-[10px] font-medium text-muted-foreground">%</span>
-      </span>
+    <span className="inline-flex items-center gap-1 whitespace-nowrap sm:gap-1.5" title={g.title} data-gauge={g.key} data-tone={g.view.tone}>
+      <span className="font-semibold">{g.label}</span>
+      {g.reset === null ? null : <span className="font-normal text-muted-foreground tabular-nums">{g.reset}</span>}
+      {style === "bars" ? (
+        <Bar percent={g.percent} tone={g.view.tone} marker={g.marker} className="hidden w-10 shrink-0 sm:flex" />
+      ) : null}
+      <Ink tone={g.view.tone} className="font-semibold tabular-nums">
+        {formatPercent(g.percent)}
+      </Ink>
     </span>
-  );
-}
-
-export function HeaderGauges({ gauges, style }: { gauges: readonly Gauge[]; style: Exclude<HeaderShow, "off"> }) {
-  return (
-    <>
-      {gauges.map((g) => (
-        <span key={g.key} className="inline-flex items-center gap-1" title={g.title}>
-          <span className="text-[10px] leading-none font-medium text-muted-foreground">{g.label}</span>
-          {style === "rings" ? <GaugeRing g={g} /> : <GaugeBar g={g} />}
-        </span>
-      ))}
-    </>
   );
 }
 
@@ -189,6 +160,7 @@ function HeaderPill({ style, threadId }: { style: Exclude<HeaderShow, "off">; th
   const s = useStrings();
   const now = useNow();
   const show = useLimitsShow();
+  const resetShow = useResetShow();
   const hidden = useHiddenProviders();
   const snapshot = useSnapshot().data;
   const thread = useThreadState(threadId).data;
@@ -217,7 +189,8 @@ function HeaderPill({ style, threadId }: { style: Exclude<HeaderShow, "off">; th
     };
   }, [open]);
 
-  const gauges = view === null ? [] : [view.session, view.weekly].flatMap((w) => (w === null ? [] : [gauge(s, w, now, show)]));
+  const gauges =
+    view === null ? [] : [view.session, view.weekly].flatMap((w, i) => (w === null ? [] : [gauge(s, w, now, show, resetShow, i === 0)]));
   const name = view === null ? null : providerName(s, view.provider.providerId);
   const label = view === null ? `${s.indicatorLabel}: ${s.noLimitsData}` : `${name} · ${gauges.map((g) => g.title).join(" · ")}`;
 
@@ -226,7 +199,9 @@ function HeaderPill({ style, threadId }: { style: Exclude<HeaderShow, "off">; th
       <button
         ref={button}
         type="button"
-        className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-md px-1.5 text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        // Narrower than 40rem (a phone) the header has no room for one line: the two windows
+        // stack in a smaller font and the bars drop out.
+        className="inline-flex h-8 cursor-pointer items-start justify-center gap-0 rounded-2xl border border-border bg-muted/60 px-2 text-[11px] leading-[13px] text-foreground max-sm:flex-col sm:items-center sm:gap-3 sm:rounded-full sm:px-3 sm:text-[13px] sm:leading-none hover:bg-muted focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         aria-label={label}
         title={label}
         aria-expanded={open}
@@ -235,8 +210,10 @@ function HeaderPill({ style, threadId }: { style: Exclude<HeaderShow, "off">; th
         data-style={style}
         onClick={() => setOpen(!open)}
       >
-        {gauges.length === 0 ? <GaugeRing g={{ key: "none", label: "", percent: 0, fill: 0, tone: "normal", title: label }} /> : null}
-        <HeaderGauges gauges={gauges} style={style} />
+        {gauges.length === 0 ? <span className="text-muted-foreground">—</span> : null}
+        {gauges.map((g) => (
+          <HeaderGauge key={g.key} g={g} style={style} />
+        ))}
       </button>
       {open ? <Popover anchor={button.current} cardRef={card} onClose={() => setOpen(false)} /> : null}
     </>
