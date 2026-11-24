@@ -150,9 +150,9 @@ export default async function plugin(bb: BbPluginApi) {
     headerShow: {
       type: "select",
       label: "Limits in the header",
-      description: "The 5-hour and weekly limits at the top right of the page: rings with the percent inside, or a vertical bar beside a larger percent. A press opens the limits card.",
+      description: "The 5-hour and weekly limits at the top right of the page, with the time to the 5-hour reset. Bars adds a progress bar to each. A press opens the limits card.",
       options: [...HEADER_SHOW],
-      experimental_optionLabels: { rings: "Rings", bars: "Bars", off: "Off" },
+      experimental_optionLabels: { numbers: "Numbers", bars: "Numbers and bars", off: "Off" },
       default: DEFAULT_HEADER_SHOW,
     },
     showBand: {

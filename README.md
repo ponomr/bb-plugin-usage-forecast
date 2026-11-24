@@ -116,10 +116,12 @@ The settings.
 - **Limits in the page header.** At the top right of every page, next to
   bb's own header buttons, the open thread's provider shows its 5-hour and
   weekly windows (on a page without a thread: the provider of the worst
-  window). Each is a ring with the percent inside, or, with «Limits in the
-  header» set to Bars, a thin vertical bar beside a larger percent; the fill
-  and the number follow «Limits show». Pressing it opens the same card as
-  the sidebar ring. Works at phone width too.
+  window) in a pill: «5H 4h 41m 97%  W 61%», each percent in its window's
+  colour, with the time to the 5-hour reset (a countdown or the reset time,
+  as «Reset shows» says). «Numbers and bars» adds a horizontal bar with the
+  pace tick to each window. The percent follows «Limits show». Pressing it
+  opens the same card as the sidebar ring. On a phone the two windows stack
+  in two lines and the bars drop out.
 - **Refresh and settings in every card.** The expanded band, the sidebar
   card and the header card end with the time of the last poll, a button that
   polls the limits now and a button that opens the plugin's settings.
@@ -219,7 +221,7 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Language | English | English, Русский | Language of the plugin UI |
 | Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used. A press on a percent in the band switches it |
 | Reset shows | Countdown | Countdown, Exact time | When a limit window resets: the time left until it, or the local time of the reset (the short weekday when not today). A press on a reset time in the band switches it |
-| Limits in the header | Rings | Rings, Bars, Off | The 5-hour and weekly windows at the top right of the page, as rings or as vertical bars with a larger percent. Off removes them |
+| Limits in the header | Numbers | Numbers, Numbers and bars, Off | The 5-hour and weekly windows at the top right of the page as coloured percents with the time to the 5-hour reset; with bars each window also gets a horizontal bar (not on a phone). Off removes them |
 | Band above the composer | on | on, off | The limits and context band above the message field. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
 | Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |
 

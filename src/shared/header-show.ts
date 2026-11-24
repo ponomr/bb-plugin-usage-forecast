@@ -1,9 +1,10 @@
-// How the thread header shows the 5-hour and weekly limits: rings with the
-// percent inside, a vertical bar beside a larger percent, or nothing.
+// How the page header shows the 5-hour and weekly limits: coloured percents
+// with the 5-hour reset, the same with horizontal bars, or nothing. Values
+// from 0.4.22 builds before this one ("rings") read as the default.
 
-export const HEADER_SHOW = ["rings", "bars", "off"] as const;
+export const HEADER_SHOW = ["numbers", "bars", "off"] as const;
 export type HeaderShow = (typeof HEADER_SHOW)[number];
-export const DEFAULT_HEADER_SHOW: HeaderShow = "rings";
+export const DEFAULT_HEADER_SHOW: HeaderShow = "numbers";
 
 /** A stored setting value, or the default for anything unknown. */
 export function parseHeaderShow(value: unknown): HeaderShow {

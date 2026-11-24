@@ -46,7 +46,7 @@ export function useStrings(): Strings {
   return STRINGS[parseLang(useSettings().values?.language)];
 }
 
-/** The `headerShow` setting; rings until the settings load. */
+/** The `headerShow` setting; numbers until the settings load. */
 export function useHeaderShow(): HeaderShow {
   return parseHeaderShow(useSettings().values?.headerShow);
 }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 // The header limits: the 5-hour and weekly windows of one provider moved into
-// the page header row, rings or bars by the setting, and the limits card with
+// the page header row, coloured percents with the 5-hour reset (and bars by the setting), and the limits card with
 // its refresh and settings buttons on a press.
 
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
@@ -54,25 +54,27 @@ describe("header model", () => {
 });
 
 describe("HeaderLimits", () => {
-  it("sits in the header row before its actions, with a ring per window", async () => {
+  it("sits in the header row before its actions: coloured percents and the 5-hour reset", async () => {
     const row = headerRow();
     const b = backend({ snapshot: snapshot([provider("claude-code", [win("Current session", 42), weekly(7)])]), thread: threadState() });
     render(HeaderLimits, {}, b);
     const pill = await screen.findByTestId("header-limits");
     expect(pill.closest("[data-bb-plugin=usage-forecast]")!.nextElementSibling).toBe(row.querySelector("[data-actions]"));
-    expect(pill.dataset.style).toBe("rings");
+    expect(pill.dataset.style).toBe("numbers");
     await waitFor(() => expect(pill.querySelectorAll("[data-gauge]")).toHaveLength(2));
-    expect(pill.textContent).toBe("5H42W7");
+    expect(pill.textContent).toMatch(/^5H(2h|1h 59m)42%W7%$/);
+    expect(pill.querySelector("[data-gauge] [aria-hidden]")).toBeNull();
     expect(pill.getAttribute("aria-label")).toContain("Claude Code");
   });
 
-  it("draws bars by the setting and goes away when off", async () => {
+  it("draws horizontal bars by the setting, shows the reset as a time by resetShow, and goes away when off", async () => {
     headerRow();
     const b = backend({ snapshot: snapshot([provider("codex", [win("Current session", 42), weekly(7)])]) });
-    const view = render(HeaderLimits, {}, b, { settings: { headerShow: "bars" } });
+    const view = render(HeaderLimits, {}, b, { settings: { headerShow: "bars", resetShow: "time", limitsShow: "remaining" } });
     const pill = await screen.findByTestId("header-limits");
     expect(pill.dataset.style).toBe("bars");
-    await waitFor(() => expect(pill.textContent).toBe("5H42%W7%"));
+    await waitFor(() => expect(pill.querySelectorAll("[data-gauge] [aria-hidden]")).toHaveLength(2));
+    expect(pill.textContent).toMatch(/^5H(\S+ )?\d{1,2}:\d{2}( [AP]M)?58%W93%$/);
     view.unmount();
     render(HeaderLimits, {}, b, { settings: { headerShow: "off" } });
     await act(async () => {});
