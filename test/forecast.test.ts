@@ -9,7 +9,7 @@ import {
   typicalPeak,
 } from "../src/shared/forecast";
 import { windowForecastSchema } from "../src/shared/contract";
-import { contextTone, forecastWarns, limitTone } from "../src/shared/thresholds";
+import { contextTone, forecastWarns } from "../src/shared/thresholds";
 import { DAY_MS, HOUR_MS, windowDurationMs, windowKey } from "../src/shared/windows";
 
 const NOW = Date.UTC(2026, 10, 8, 12, 0, 0);
@@ -278,15 +278,6 @@ describe("thresholds", () => {
     [85, "red"],
   ] as const)("colours context %s %% as %s", (percent, tone) => {
     expect(contextTone(percent)).toBe(tone);
-  });
-
-  it.each([
-    [74, "normal"],
-    [75, "amber"],
-    [89, "amber"],
-    [90, "red"],
-  ] as const)("colours a limit at %s %% as %s", (percent, tone) => {
-    expect(limitTone(percent)).toBe(tone);
   });
 
   it("warns on a forecast above 100 %", () => {

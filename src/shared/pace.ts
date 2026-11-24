@@ -9,8 +9,8 @@
 //   hit       the limit is used up
 //
 // Only the current pace gives a state. An early window (the learned pace
-// speaks for it) or a window without a forecast has none and is coloured by
-// its used percent (`limitTone`), except at 100 %, which is always `hit`.
+// speaks for it) or a window without a forecast has none and is `muted` (not
+// coloured), except at 100 %, which is always `hit`.
 //
 // A worse state applies on the poll that reads it. A calmer one applies only
 // after every reading for CALM_HOLD_MS was calmer, and then it is the worst

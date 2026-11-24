@@ -31,14 +31,12 @@ import { AutoCompactor } from "./src/server/auto-compact";
 import { createCli } from "./src/server/cli";
 import { LimitNotifier } from "./src/server/limit-notifier";
 import { Poller, TICK_CRON } from "./src/server/poller";
-import { createService, hideProvider, setDisplay } from "./src/server/rpc";
+import { createService, hideProvider } from "./src/server/rpc";
 import { Storage } from "./src/server/storage";
 import { TokenCounter } from "./src/server/token-counter";
 import { parseSettings, type ThreadsSdk } from "./src/server/threads";
 import { DEFAULT_LANGUAGE, LANGUAGES } from "./src/shared/language";
 import { DEFAULT_HEADER_SHOW, HEADER_SHOW } from "./src/shared/header-show";
-import { DEFAULT_LIMITS_SHOW, LIMITS_SHOW } from "./src/shared/limits-show";
-import { DEFAULT_RESET_SHOW, RESET_SHOW } from "./src/shared/reset-show";
 
 export const POLL_SCHEDULE = "poll-limits";
 
@@ -130,22 +128,6 @@ export default async function plugin(bb: BbPluginApi) {
       options: [...LANGUAGES],
       experimental_optionLabels: { en: "English", ru: "Русский" },
       default: DEFAULT_LANGUAGE,
-    },
-    limitsShow: {
-      type: "select",
-      label: "Limits show",
-      description: "Show each limit window as the percent used or the percent left. A press on a percent in the band switches it too. The context bar always shows what is used.",
-      options: [...LIMITS_SHOW],
-      experimental_optionLabels: { used: "Used", remaining: "Remaining" },
-      default: DEFAULT_LIMITS_SHOW,
-    },
-    resetShow: {
-      type: "select",
-      label: "Reset shows",
-      description: "Show when a limit window resets as the time left until it or as the local time of the reset. A press on a reset time in the band switches it too.",
-      options: [...RESET_SHOW],
-      experimental_optionLabels: { countdown: "Countdown", time: "Exact time" },
-      default: DEFAULT_RESET_SHOW,
     },
     headerShow: {
       type: "select",
@@ -286,7 +268,6 @@ export default async function plugin(bb: BbPluginApi) {
     refresh: () => service.refresh(),
     compact: ({ threadId }) => service.compact(threadId),
     setThreadOverride: ({ threadId, override }) => service.setThreadOverride(threadId, override),
-    setDisplay: (input) => setDisplay((values) => settingsHandle.experimental_set(values), input),
     hideProvider: (input) =>
       hideProvider({ read: () => settingsHandle.get(), write: (values) => settingsHandle.experimental_set(values) }, input),
     tokens: ({ threadId, dayStart, monthStart }) => counter.view(threadId ?? null, dayStart, monthStart),

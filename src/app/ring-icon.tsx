@@ -22,7 +22,16 @@ export function Ring({
   return (
     <svg viewBox="0 0 16 16" fill="none" className={cn("size-4", className)} data-empty={worst === null || undefined}>
       <title>{title}</title>
-      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="2.5" opacity="0.25" />
+      {/* P4: no data is a dashed track, so it does not read as an empty, calm window. */}
+      <circle
+        cx="8"
+        cy="8"
+        r="6"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        opacity={worst === null ? 0.5 : 0.25}
+        strokeDasharray={worst === null ? "2.2 2.5" : undefined}
+      />
       {worst === null ? null : (
         <circle
           data-arc={percent}

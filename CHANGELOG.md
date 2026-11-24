@@ -14,10 +14,18 @@ listed here.
   the two windows stack in two lines.
 - Every expanded card (band, sidebar card, header card) ends with the last
   poll time, a refresh button and a settings button (a cog).
-- Tooltips on the band's press targets: the percent and the reset time say
-  what a press switches to, the ▼/▲ and ▸/▾ toggles say «Show details» or
-  «Hide details», and «Hide» names the provider it hides.
+- Tooltips on the band's buttons: the ▼/▲ and ▸/▾ toggles say «Show
+  details» or «Hide details», and «Hide» names the provider it hides.
 - Shorter UI texts in both languages.
+- One set of display rules everywhere. Percents are always the share used;
+  the «Limits show» and «Reset shows» settings and the press on a percent or
+  a reset time are gone (stored values stay in the settings and are no
+  longer read). A reset is a countdown in the band's and the header's rows
+  and the local time in the cards. Every limit bar gets a thin line where an
+  even pace would be now. A window without a forecast (early, unknown or on
+  a host that cannot be read) is grey instead of coloured by its percent;
+  only a used-up limit is red. With no data the ring is dashed and the
+  header shows «—»; stale data says in the tooltip when it was measured.
 
 ## 0.4.21 — 2026-11-16
 

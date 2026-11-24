@@ -7,8 +7,6 @@ import {
   usageForecastContract,
   type CompactLogEntry,
   type CompactResult,
-  type Display,
-  type DisplayInput,
   type HostLimits,
   type LimitsSnapshot,
   type LimitWindow,
@@ -131,7 +129,6 @@ export interface Backend {
   snapshot: LimitsSnapshot;
   thread: ThreadState;
   compact: () => Promise<CompactResult>;
-  setDisplay: (input: DisplayInput) => Promise<Display>;
   hideProvider: (input: { providerId: string }) => Promise<{ hiddenProviders: string[] }>;
   /** The `tokens` answer; nothing counted by default. */
   tokens: (input: TokensInput) => Promise<Tokens>;
@@ -139,12 +136,11 @@ export interface Backend {
   overrides: ThreadOverride[];
 }
 
-export function backend(over: Partial<Pick<Backend, "snapshot" | "thread" | "compact" | "setDisplay" | "hideProvider" | "tokens">> = {}): Backend {
+export function backend(over: Partial<Pick<Backend, "snapshot" | "thread" | "compact" | "hideProvider" | "tokens">> = {}): Backend {
   return {
     snapshot: over.snapshot ?? snapshot([provider("claude-code", [win("Current session", 40)])]),
     thread: over.thread ?? threadState(),
     compact: over.compact ?? (async () => ({ ok: true, message: null, entry: null })),
-    setDisplay: over.setDisplay ?? (async (input) => ({ limitsShow: "used", resetShow: "countdown", ...input })),
     hideProvider: over.hideProvider ?? (async (input) => ({ hiddenProviders: [input.providerId] })),
     tokens: over.tokens ?? (async () => ({ thread: null, providers: [], backfillDone: true })),
     calls: [],
@@ -175,7 +171,6 @@ export function render<P extends object>(
       refresh: log("refresh", () => b.snapshot),
       thread: log("thread", () => b.thread),
       compact: log("compact", () => b.compact()),
-      setDisplay: log("setDisplay", (input: DisplayInput) => b.setDisplay(input)),
       hideProvider: log("hideProvider", (input: { providerId: string }) => b.hideProvider(input)),
       tokens: log("tokens", (input: TokensInput) => b.tokens(input)),
       setThreadOverride: log("setThreadOverride", (input: { threadId: string; override: ThreadOverride }) => {

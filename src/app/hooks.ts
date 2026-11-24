@@ -14,12 +14,10 @@ import {
 import { STRINGS, type Strings } from "./i18n";
 import { createStore } from "./store";
 import { parseLang } from "../shared/language";
-import { parseLimitsShow, type LimitsShow } from "../shared/limits-show";
-import { parseResetShow, type ResetShow } from "../shared/reset-show";
 import { parseHeaderShow, type HeaderShow } from "../shared/header-show";
 import { parseHiddenProviders } from "../shared/hidden-providers";
 import { localPeriodStarts } from "../shared/tokens";
-import { normalizeOverride, usageForecastContract, type CompactResult, type Display, type ThreadOverride } from "../shared/contract";
+import { normalizeOverride, usageForecastContract, type CompactResult, type ThreadOverride } from "../shared/contract";
 
 export const SNAPSHOT_REFETCH_MS = 60_000;
 export const THREAD_ACTIVE_REFETCH_MS = 30_000;
@@ -54,73 +52,6 @@ export function useHeaderShow(): HeaderShow {
 /** The `showBand` setting; on until the settings load and unless it is switched off. */
 export function useBandShown(): boolean {
   return useSettings().values?.showBand !== false;
-}
-
-// A press on a percent or a reset time shows its result at once, before the
-// settings follow the save. The pressed value lives here, one per setting and
-// shared by every row: `base` is the settings value at the press. The override
-// stands while the settings still say `base`; once they say anything else
-// (the save landed, or the settings page or another device changed it) the
-// settings win and the override goes. A failed save drops it at once.
-
-type DisplayKey = keyof Display;
-interface DisplayOverride<K extends DisplayKey> {
-  value: Display[K];
-  base: Display[K];
-}
-const displayOverrides = createStore<{ [K in DisplayKey]?: DisplayOverride<K> }>({});
-const DISPLAY_PARSE: { [K in DisplayKey]: (value: unknown) => Display[K] } = {
-  limitsShow: parseLimitsShow,
-  resetShow: parseResetShow,
-};
-
-function setDisplayOverride<K extends DisplayKey>(key: K, override: DisplayOverride<K> | undefined) {
-  if (displayOverrides.get()[key] !== override) displayOverrides.set({ ...displayOverrides.get(), [key]: override });
-}
-
-/** Drops every pressed value; for tests, whose renders share this module. */
-export function clearDisplayOverrides() {
-  setDisplayOverride("limitsShow", undefined);
-  setDisplayOverride("resetShow", undefined);
-}
-
-function useDisplay<K extends DisplayKey>(key: K): Display[K] {
-  const setting = DISPLAY_PARSE[key](useSettings().values?.[key]);
-  const getOverride = () => displayOverrides.get()[key] as DisplayOverride<K> | undefined;
-  const override = useSyncExternalStore(displayOverrides.subscribe, getOverride, getOverride);
-  const stale = override !== undefined && override.base !== setting;
-  useEffect(() => {
-    if (stale && displayOverrides.get()[key] === override) setDisplayOverride(key, undefined);
-  }, [key, override, stale]);
-  return override === undefined || stale ? setting : override.value;
-}
-
-/** The `limitsShow` setting, or the value just pressed; used until the settings load. */
-export function useLimitsShow(): LimitsShow {
-  return useDisplay("limitsShow");
-}
-
-/** The `resetShow` setting, or the value just pressed; the countdown until the settings load. */
-export function useResetShow(): ResetShow {
-  return useDisplay("resetShow");
-}
-
-/** Saves one display setting from a press, showing it at once in every row. */
-export function useSetDisplay() {
-  const mutation = experimental_useRpcMutation({ contract: usageForecastContract, method: "setDisplay" });
-  const values = useSettings().values;
-  return useCallback(
-    <K extends DisplayKey>(key: K, value: Display[K]) => {
-      const base = DISPLAY_PARSE[key](values?.[key]);
-      const override = value === base ? undefined : { value, base };
-      setDisplayOverride(key, override);
-      mutation.mutate({ [key]: value }).catch(() => {
-        // No error banner: the row returns to what it showed before the press.
-        if (displayOverrides.get()[key] === override) setDisplayOverride(key, undefined);
-      });
-    },
-    [mutation, values],
-  );
 }
 
 // A press on Hide takes the provider out at once, before the settings follow

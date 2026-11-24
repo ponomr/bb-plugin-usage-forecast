@@ -16,7 +16,6 @@ import {
   windowLabel,
 } from "../src/app/format";
 import { parseLang } from "../src/shared/language";
-import { parseLimitsShow, shownPercent } from "../src/shared/limits-show";
 import { HOUR_MS } from "../src/shared/windows";
 import { backend, callsTo, entry, provider, render, snapshot } from "./app-fixtures";
 
@@ -106,15 +105,6 @@ describe("formatters", () => {
     expect(shortWindowLabel(ru, "Current session")).toBe("5ч");
     expect(shortWindowLabel(en, "Fable")).toBe("F");
     expect(shortWindowLabel(en, "Fable", "fable")).toBe("F");
-  });
-
-  it("shows limits as used by default and as left when asked", () => {
-    expect(parseLimitsShow("remaining")).toBe("remaining");
-    expect(parseLimitsShow("left")).toBe("used");
-    expect(parseLimitsShow(undefined)).toBe("used");
-    expect(shownPercent("used", 92)).toBe(92);
-    expect(shownPercent("remaining", 92)).toBe(8);
-    expect(shownPercent("remaining", 130)).toBe(0);
   });
 
   it("falls back to English for an unknown language", () => {

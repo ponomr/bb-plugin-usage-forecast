@@ -67,18 +67,28 @@ describe("HeaderLimits", () => {
     expect(pill.getAttribute("aria-label")).toContain("Claude Code");
   });
 
-  it("draws horizontal bars by the setting, shows the reset as a time by resetShow, and goes away when off", async () => {
+  it("draws horizontal bars with the even-pace tick by the setting, counts down the reset, and goes away when off", async () => {
     headerRow();
     const b = backend({ snapshot: snapshot([provider("codex", [win("Current session", 42), weekly(7)])]) });
-    const view = render(HeaderLimits, {}, b, { settings: { headerShow: "bars", resetShow: "time", limitsShow: "remaining" } });
+    const view = render(HeaderLimits, {}, b, { settings: { headerShow: "bars" } });
     const pill = await screen.findByTestId("header-limits");
     expect(pill.dataset.style).toBe("bars");
     await waitFor(() => expect(pill.querySelectorAll("[data-gauge] [aria-hidden]")).toHaveLength(2));
-    expect(pill.textContent).toMatch(/^5H(\S+ )?\d{1,2}:\d{2}( [AP]M)?58%W93%$/);
+    expect(pill.textContent).toMatch(/^5H(2h|1h 59m)42%W7%$/);
+    expect(pill.querySelectorAll("[data-even]").length).toBeGreaterThan(0);
     view.unmount();
     render(HeaderLimits, {}, b, { settings: { headerShow: "off" } });
     await act(async () => {});
     expect(screen.queryByTestId("header-limits")).toBeNull();
+  });
+
+  it("P4: without data shows a dash and says so", async () => {
+    headerRow();
+    render(HeaderLimits, {}, backend({ snapshot: snapshot([]) }));
+    const pill = await screen.findByTestId("header-limits");
+    await waitFor(() => expect(pill.dataset.data).toBe("none"));
+    expect(pill.textContent).toBe("—");
+    expect(pill.title).toBe("Usage limits: No limits data");
   });
 
   it("without a header row uses the shared fixed dock", async () => {

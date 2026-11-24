@@ -2,7 +2,7 @@
 
 A band above the composer of every thread. Collapsed, it is two lines: a headline («On track…», «At this pace you'll run out before the … reset.») with an auto-compact switch and a Compact button, and one row of short bars: one per limit window of the thread's provider (5H, W) and one for the context window (Ctx).
 
-Each limit bar shows the time to reset, the percent used or left, and a tick where the current pace ends at the reset. Expanded, the band lists every window with a pace note («At this pace lasts to reset – about 92% used, resets in 3d», or the time the limit runs out and the daily budget that would last), the context breakdown into messages, tools and other, one line per other provider and the latest compacts.
+Each limit bar shows the time to reset, the percent used, a tick where the current pace ends at the reset and a line where an even pace would be now. Expanded, the band lists every window with a pace note («At this pace lasts to reset – about 92% used, resets in 3d», or the time the limit runs out and the daily budget that would last), the context breakdown into messages, tools and other, one line per other provider and the latest compacts.
 
 A ring in the sidebar footer shows the worst limit window across every provider, filled to its used percent and coloured by its pace. Pressing it opens a compact card with every provider's windows, one line each, the plan name and the tokens used today and this month.
 
@@ -28,7 +28,7 @@ For a provider that cannot compact (custom ACP agents), an optional setting, off
 
 ## Settings and CLI
 
-Settings: context limits, auto-compact and its threshold, limit pushes and their threshold, the poll interval, the UI language (English or Russian), percent used or left, reset as a countdown or a time, providers to hide, and a switch for the band above the composer.
+Settings: context limits, auto-compact and its threshold, limit pushes and their threshold, the poll interval, the UI language (English or Russian), providers to hide, and a switch for the band above the composer.
 
 The `bb usage-forecast` command prints the status of every provider and a thread's context, compacts a thread and sets a thread's auto-compact mode. `bb usage-forecast headroom` tells an agent which provider has room left until its reset. Agents in bb threads get the same reference as a skill.
 

@@ -5,10 +5,9 @@
 // newest answer, and the ring counts it once.
 
 import type { HostLimits, LimitsSnapshot, ProviderLimits } from "../shared/contract";
-import { shownPercent, type LimitsShow } from "../shared/limits-show";
 import { paceRank, type PaceState } from "../shared/pace";
 import { formatPercent, type Tone } from "../shared/thresholds";
-import { providerName, windowLabel } from "./format";
+import { formatClock, providerName, windowLabel } from "./format";
 import type { Strings } from "./i18n";
 import { hostStale, windowView, withoutForecast } from "./model";
 import { accountGroups } from "../shared/accounts";
@@ -25,6 +24,8 @@ export interface WorstWindow {
   /** The shown pace state; null for a window without a current pace. */
   state: PaceState | null;
   tone: Tone;
+  /** P4: when the window's data comes from a host that cannot be read now, the time it was measured; else null. */
+  staleAt: number | null;
 }
 
 export interface IndicatorProvider {
@@ -73,16 +74,22 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number,
   const providersOf = hosts.map((h) => (hostStale(h) ? withoutForecast(h.providers) : h.providers).filter((p) => !isHidden(hidden, p.providerId)));
   const groups: IndicatorProvider[][] = hosts.map(() => []);
   const listed = new Set<number>();
+  const staleAt = new Map<ProviderLimits, number | null>();
 
   for (const { providerId, members } of accountGroups(hosts.map((h, i) => ({ hostId: h.hostId, providers: providersOf[i]! })))) {
     // Unlike the CLI's blocks, the card shows the newest answer that has data.
     let best: ProviderLimits | null = null;
+    let bestHost = -1;
     for (const i of members) {
       const p = providersOf[i]!.find((x) => x.providerId === providerId);
       if (p?.status !== "ok") continue;
-      if (best === null || (p.measuredAt ?? -Infinity) > (best.measuredAt ?? -Infinity)) best = p;
+      if (best === null || (p.measuredAt ?? -Infinity) > (best.measuredAt ?? -Infinity)) {
+        best = p;
+        bestHost = i;
+      }
     }
     if (best === null || best.windows.length === 0) continue;
+    staleAt.set(best, hostStale(hosts[bestHost]!) ? (best.measuredAt ?? hosts[bestHost]!.polledAt) : null);
     for (const i of members) {
       listed.add(i);
       groups[i]!.push({ provider: best, alsoOn: members.filter((j) => j !== i).map((j) => hostName(hosts[j]!)) });
@@ -105,6 +112,7 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number,
           resetsAt: window.resetsAt,
           state: view.pace,
           tone: view.tone,
+          staleAt: staleAt.get(provider) ?? null,
         };
         if (worst === null || compareWorst(candidate, worst) < 0) worst = candidate;
       }
@@ -121,13 +129,33 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number,
   };
 }
 
+/**
+ * P4: when a provider's data is not current, the time it was measured: every
+ * host that lists it with windows cannot be read now. Null while one can.
+ */
+export function providerStaleAt(snapshot: LimitsSnapshot, providerId: string): number | null {
+  let latest: number | null = null;
+  for (const host of snapshot.hosts) {
+    const p = host.providers.find((x) => x.providerId === providerId);
+    if (p?.status !== "ok" || p.windows.length === 0) continue;
+    if (!hostStale(host)) return null;
+    const at = p.measuredAt ?? host.polledAt;
+    if (at !== null && (latest === null || at > latest)) latest = at;
+  }
+  return latest;
+}
+
+/** P4: the note a title carries for data that is not current, e.g. ". Host unavailable, data from 12:05". */
+export function staleNote(s: Strings, staleAt: number | null, now: number): string {
+  return staleAt === null ? "" : `. ${s.hostStale(formatClock(s, staleAt, now))}`;
+}
+
 /** The ring's title, e.g. "laptop · Claude Code · 5 Hour: 92%, critical". */
-export function indicatorTitle(s: Strings, worst: WorstWindow | null, show: LimitsShow = "used"): string {
+export function indicatorTitle(s: Strings, worst: WorstWindow | null, now: number): string {
   if (worst === null) return `${s.indicatorLabel}: ${s.noLimitsData}`;
-  const percent = formatPercent(shownPercent(show, worst.usedPercent));
-  const value = show === "used" ? percent : s.percentLeft(percent);
+  const value = formatPercent(worst.usedPercent);
   const parts = [providerName(s, worst.providerId), windowLabel(s, worst.label, worst.model)];
   if (worst.hostName !== null) parts.unshift(worst.hostName);
   const state = worst.state === null ? "" : `, ${s.paceStateName[worst.state]}`;
-  return `${parts.join(" · ")}: ${value}${state}`;
+  return `${parts.join(" · ")}: ${value}${state}${staleNote(s, worst.staleAt, now)}`;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { formatTime } from "../src/app/format";
 import { en, ru } from "../src/app/i18n";
-import { headline, paceDetails, windowBudget, windowNote, windowView } from "../src/app/model";
+import { evenPercent, headline, paceDetails, windowBudget, windowNote, windowView } from "../src/app/model";
 import type { LimitWindow } from "../src/shared/contract";
 import { type ClosedWindow, forecastWindow } from "../src/shared/forecast";
 import { DAY_MS, HOUR_MS, MIN_MS } from "../src/shared/windows";
@@ -33,7 +33,7 @@ function win(label: string, usedPercent: number, remaining: number, durationMs: 
   };
 }
 
-const note = (w: LimitWindow, s = en, show: "used" | "remaining" = "used") => windowNote(s, windowView(w, NOW), NOW, show);
+const note = (w: LimitWindow, s = en) => windowNote(s, windowView(w, NOW), NOW);
 const budget = (w: LimitWindow, s = en) => windowBudget(s, windowView(w, NOW), NOW);
 
 describe("window note and budget", () => {
@@ -73,12 +73,9 @@ describe("window note and budget", () => {
     // 30 % after 2 of 5 hours: 75 % at the reset.
     const w = win("Current session", 30, 3 * HOUR_MS, FIVE_HOURS);
     expect(note(w)).toBe("Lasts, ~75% used, resets in 3h");
-    expect(note(w, en, "remaining")).toBe("Lasts, ~25% left, resets in 3h");
-    expect(note(w, ru, "remaining")).toBe("Хватит, останется ~25%, сброс через 3ч");
     expect(budget(w)).toBeNull();
     // 57 % at the reset: about 43 % left.
     const ae6 = win("Current session", 22.8, 3 * HOUR_MS, FIVE_HOURS);
-    expect(note(ae6, en, "remaining")).toContain("Lasts, ~43% left");
   });
 
   it("reads exactly 100 % as lasting, tight", () => {
@@ -95,7 +92,6 @@ describe("window note and budget", () => {
     expect(windowView(withHistory, NOW).status).toBe("early");
     expect(note(withHistory)).toBe("Too early, usually ~39%, resets in 4h 50m");
     expect(note(withHistory, ru)).toBe("Рано судить, обычно ~39%, сброс через 4ч 50м");
-    expect(note(withHistory, en, "remaining")).toBe("Too early, usually ~61% left, resets in 4h 50m");
     expect(note(early([]))).toBe("Too early, resets in 4h 50m");
     expect(note(early([]), ru)).toBe("Рано судить, сброс через 4ч 50м");
   });
@@ -103,7 +99,7 @@ describe("window note and budget", () => {
   it("AE4: an early window above 100 % by the usual pace does not warn", () => {
     const w = win("Current session", 3, FIVE_HOURS - 6 * MIN_MS, FIVE_HOURS, closed(110, 8));
     const v = windowView(w, NOW);
-    expect(v).toMatchObject({ status: "early", tone: "normal", marker: null, runOutAt: null });
+    expect(v).toMatchObject({ status: "early", tone: "muted", marker: null, runOutAt: null });
     expect(budget(w)).toBeNull();
     expect(headline(en, [v], NOW)).toBeNull();
   });
@@ -121,41 +117,6 @@ describe("window note and budget", () => {
     const unknown: LimitWindow = { ...win("Opus", 40, 2 * HOUR_MS, FIVE_HOURS), durationMs: null, forecast: null };
     expect(note(unknown)).toBe("No forecast yet – resets in 2h");
     expect(note({ ...unknown, resetsAt: null })).toBe("No reset time");
-  });
-});
-
-describe("window note with the exact reset time", () => {
-  const timed = (w: LimitWindow, s = en, show: "used" | "remaining" = "used") => windowNote(s, windowView(w, NOW), NOW, show, "time");
-  const at = (s = en, ms: number) => formatTime(s, NOW + ms);
-
-  it("names the reset time in every status that has one", () => {
-    expect(timed(win("Current session", 100, 2 * HOUR_MS, FIVE_HOURS))).toBe(`Limit reached – resets at ${at(en, 2 * HOUR_MS)}`);
-    expect(timed(win("Current session", 30, 3 * HOUR_MS, FIVE_HOURS))).toBe(
-      `Lasts, ~75% used, resets at ${at(en, 3 * HOUR_MS)}`,
-    );
-    expect(timed(win("Current session", 30, 3 * HOUR_MS, FIVE_HOURS), ru, "remaining")).toBe(
-      `Хватит, останется ~25%, сброс в ${at(ru, 3 * HOUR_MS)}`,
-    );
-    expect(timed(win("Current session", 40, 3 * HOUR_MS, FIVE_HOURS))).toBe(`Tight, ~100% used, resets at ${at(en, 3 * HOUR_MS)}`);
-    expect(timed(win("Current session", 3, FIVE_HOURS - 10 * MIN_MS, FIVE_HOURS))).toBe(
-      `Too early, resets at ${at(en, FIVE_HOURS - 10 * MIN_MS)}`,
-    );
-    const unknown: LimitWindow = { ...win("Opus", 40, 2 * HOUR_MS, FIVE_HOURS), durationMs: null, forecast: null };
-    expect(timed(unknown)).toBe(`No forecast yet – resets at ${at(en, 2 * HOUR_MS)}`);
-    expect(timed({ ...unknown, resetsAt: null })).toBe("No reset time");
-  });
-
-  it("gives the weekday for a reset on another day", () => {
-    // 10 % after 1 of 7 days: about 70 % at the reset, which is on Sunday.
-    const w = win("Weekly limit", 10, 6 * DAY_MS, WEEK);
-    expect(timed(w)).toBe(`Lasts, ~70% used, resets Sun ${at(en, 6 * DAY_MS)}`);
-    expect(timed(w, ru)).toBe(`Хватит, к сбросу ~70%, сброс в вс ${at(ru, 6 * DAY_MS)}`);
-  });
-
-  it("leaves the run-out wording and the budget line as they are", () => {
-    const w = win("Weekly limit", 60, 3 * DAY_MS, WEEK);
-    expect(timed(w)).toBe(note(w));
-    expect(timed(w, ru)).toBe(note(w, ru));
   });
 });
 
@@ -190,9 +151,7 @@ describe("pace state", () => {
     const w = win("Current session", 92, 5 * MIN_MS, FIVE_HOURS);
     expect(view(w)).toMatchObject({ status: "ok", raw: "tight", tone: "amber" });
     expect(note(w)).toBe("Tight, ~94% used, resets in 5m");
-    expect(note(w, en, "remaining")).toBe("Tight, ~6% left, resets in 5m");
     expect(note(w, ru)).toBe("Впритык, к сбросу ~94%, сброс через 5м");
-    expect(note(w, ru, "remaining")).toBe("Впритык, останется ~6%, сброс через 5м");
     expect(head([w])).toEqual({ text: `Tight: ~94% by the ${formatTime(en, NOW + 5 * MIN_MS)} reset.`, tone: "amber" });
     expect(head([w], ru)?.text).toBe(`Впритык: ~94% до сброса в ${formatTime(ru, NOW + 5 * MIN_MS)}.`);
   });
@@ -208,12 +167,12 @@ describe("pace state", () => {
     expect(head([w], ru)?.text).toBe("Кончится через 27м.");
   });
 
-  it("AE6: without a pace the used-percent thresholds colour the window", () => {
+  it("P1: without a pace the window is not coloured; only a reached limit is red", () => {
     const early = win("Current session", 3, FIVE_HOURS - 5 * MIN_MS, FIVE_HOURS);
-    expect(view(early)).toMatchObject({ status: "early", raw: null, pace: null, tone: "normal" });
+    expect(view(early)).toMatchObject({ status: "early", raw: null, pace: null, tone: "muted" });
     const unknown = (used: number): LimitWindow => ({ ...win("Opus", used, 2 * DAY_MS, WEEK), durationMs: null, forecast: null });
-    expect(view(unknown(80))).toMatchObject({ status: "idle", pace: null, tone: "amber" });
-    expect(view(unknown(92))).toMatchObject({ status: "idle", pace: null, tone: "red" });
+    expect(view(unknown(80))).toMatchObject({ status: "idle", pace: null, tone: "muted" });
+    expect(view(unknown(92))).toMatchObject({ status: "idle", pace: null, tone: "muted" });
     expect(view(unknown(100))).toMatchObject({ status: "hit", pace: "hit", tone: "red" });
   });
 
@@ -256,5 +215,22 @@ describe("pace state", () => {
     expect(head([calm, tight, short()])?.text).toMatch(/Runs out before/);
     expect(head([calm, tight])?.text).toMatch(/^Tight/);
     expect(head([calm])?.text).toMatch(/^On track/);
+  });
+});
+
+describe("even-pace tick", () => {
+  it("sits where an even pace would be now", () => {
+    expect(evenPercent({ resetsAt: NOW + 3 * HOUR_MS, durationMs: FIVE_HOURS }, NOW)).toBeCloseTo(40);
+    expect(windowView(win("Current session", 30, 3 * HOUR_MS, FIVE_HOURS), NOW).even).toBeCloseTo(40);
+  });
+
+  it("is absent without a duration, without a reset or after the reset", () => {
+    expect(evenPercent({ resetsAt: NOW + HOUR_MS, durationMs: null }, NOW)).toBeNull();
+    expect(evenPercent({ resetsAt: null, durationMs: FIVE_HOURS }, NOW)).toBeNull();
+    expect(evenPercent({ resetsAt: NOW, durationMs: FIVE_HOURS }, NOW)).toBeNull();
+  });
+
+  it("clamps a reset further away than the window", () => {
+    expect(evenPercent({ resetsAt: NOW + 2 * FIVE_HOURS, durationMs: FIVE_HOURS }, NOW)).toBe(0);
   });
 });
