@@ -71,7 +71,7 @@ describe("context card section", () => {
 
   it("says when the provider cannot compact and hides the button", async () => {
     render(Section, props, backend({ thread: threadState({ compactSupported: false, context: null }) }));
-    expect(await screen.findByText("The provider does not support compacting")).toBeTruthy();
+    expect(await screen.findByText("Provider cannot compact")).toBeTruthy();
     expect(screen.getByText("Context: not measured yet")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Compact" })).toBeNull();
   });
@@ -79,7 +79,7 @@ describe("context card section", () => {
   it("offers summary and clear when the provider cannot compact and the setting is on", async () => {
     const b = backend({ thread: threadState({ compactSupported: false, summaryClear: true, providerId: "acp-kaya" }) });
     render(Section, props, b);
-    expect(await screen.findByText(/Compact and auto compact ask the agent for a summary/)).toBeTruthy();
+    expect(await screen.findByText(/Compact asks for a summary/)).toBeTruthy();
     const button = screen.getByRole("button", { name: "Compact" });
     expect(button.closest("[title]")?.getAttribute("title")).toBe("Ask the agent for a summary, clear the context and send the summary back");
     fireEvent.click(button);

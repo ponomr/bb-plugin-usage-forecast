@@ -84,7 +84,7 @@ describe("band per host", () => {
     render(Banner, {}, backend({ snapshot: twoHosts({ pollError: "No answer within 30 s" }), thread: codexThread("host_mac") }));
     expect((await screen.findByTestId("stale")).textContent).toMatch(/^Host unavailable/);
     fireEvent.click(screen.getByRole("button", { name: "Show details" }));
-    expect((await bandText()).textContent).toContain("Last poll failed: No answer within 30 s");
+    expect((await bandText()).textContent).toContain("Poll failed: No answer within 30 s");
   });
 
   it("does not show the other host's poll error", async () => {
@@ -101,7 +101,7 @@ describe("band per host", () => {
 
   it("an unresolved host with two hosts known shows the host-unknown state and no windows", async () => {
     render(Banner, {}, backend({ snapshot: twoHosts(), thread: codexThread(null) }));
-    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("Limits unknown: this thread's host has no data"));
+    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("No data for this host"));
     expect(document.querySelector('[data-window="Weekly limit"]')).toBeNull();
   });
 
@@ -114,7 +114,7 @@ describe("band per host", () => {
   it("a resolved host absent from the snapshot shows the host-unknown state, even with one other host", async () => {
     const s = snapshot([], { hosts: [host("host_server", [codex(20, 57, "Pro")], { primary: true })] });
     render(Banner, {}, backend({ snapshot: s, thread: codexThread("host_mac") }));
-    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("Limits unknown: this thread's host has no data"));
+    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("No data for this host"));
     expect(document.querySelector('[data-window="Weekly limit"]')).toBeNull();
     expect(screen.getByTestId("usage-banner").textContent).not.toContain("57%");
   });
@@ -124,7 +124,7 @@ describe("band per host", () => {
     expect((await screen.findByTestId("stale")).textContent).toMatch(/^Хост недоступен, данные от .+/);
     cleanup();
     render(Banner, {}, backend({ snapshot: twoHosts(), thread: codexThread(null) }), { settings: { language: "ru" } });
-    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("Лимиты неизвестны: нет данных хоста этого треда"));
+    await waitFor(() => expect(screen.getByTestId("status").textContent).toBe("Нет данных хоста"));
   });
 });
 

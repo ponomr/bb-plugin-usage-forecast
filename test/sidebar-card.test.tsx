@@ -67,7 +67,7 @@ describe("SidebarCard", () => {
 
   it("without any ok provider says there is no data", async () => {
     render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [], { status: "not_installed" })]) }));
-    await waitFor(() => expect(card().textContent).toBe(en.noLimitsData));
+    await waitFor(() => expect(card().textContent).toContain(en.noLimitsData));
   });
 
   it("puts a window on one line and keeps the band's note in its tooltip", async () => {

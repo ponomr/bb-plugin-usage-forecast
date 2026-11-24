@@ -113,6 +113,16 @@ The settings.
   show as one entry naming all of them, and get one push, whose title names
   the hosts when there is more than one. History collected before 0.4.6
   belongs to bb's primary host.
+- **Limits in the page header.** At the top right of every page, next to
+  bb's own header buttons, the open thread's provider shows its 5-hour and
+  weekly windows (on a page without a thread: the provider of the worst
+  window). Each is a ring with the percent inside, or, with «Limits in the
+  header» set to Bars, a thin vertical bar beside a larger percent; the fill
+  and the number follow «Limits show». Pressing it opens the same card as
+  the sidebar ring. Works at phone width too.
+- **Refresh and settings in every card.** The expanded band, the sidebar
+  card and the header card end with the time of the last poll, a button that
+  polls the limits now and a button that opens the plugin's settings.
 - **Ring in the sidebar footer.** A small ring next to bb's own footer
   buttons shows the worst limit window across every host: filled to its used
   percent and coloured by its pace state. The worst window is the one with
@@ -209,6 +219,7 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Language | English | English, Русский | Language of the plugin UI |
 | Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used. A press on a percent in the band switches it |
 | Reset shows | Countdown | Countdown, Exact time | When a limit window resets: the time left until it, or the local time of the reset (the short weekday when not today). A press on a reset time in the band switches it |
+| Limits in the header | Rings | Rings, Bars, Off | The 5-hour and weekly windows at the top right of the page, as rings or as vertical bars with a larger percent. Off removes them |
 | Band above the composer | on | on, off | The limits and context band above the message field. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
 | Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |
 
@@ -359,6 +370,8 @@ kept for when the plugin is enabled again.
 
 To hide only the band above the composer, switch off «Band above the
 composer» in the plugin settings.
+
+To hide only the header limits, set «Limits in the header» to Off.
 
 To hide only the ring, open More in the sidebar footer → Customize footer →
 «Remove Usage limits from footer»; it moves into the More menu. bb has no

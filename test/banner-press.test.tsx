@@ -85,10 +85,10 @@ describe("press on a reset time", () => {
     await expand();
     const weekly = await expanded("claude-code", "Weekly limit");
     const note = within(weekly).getByRole("button", { name: /resets in 3d – Show reset time$/ });
-    expect(note.textContent).toBe("Tight – at this pace about 92% used, resets in 3d");
+    expect(note.textContent).toBe("Tight, ~92% used, resets in 3d");
     fireEvent.click(note);
     const at = formatResetAt(en, resetOf(b, "claude-code", "Weekly limit"), Date.now());
-    expect(note.textContent).toBe(`Tight – at this pace about 92% used, resets ${at}`);
+    expect(note.textContent).toBe(`Tight, ~92% used, resets ${at}`);
     await waitFor(() => expect(callsTo(b, "setDisplay").map((c) => c.input)).toEqual([{ resetShow: "time" }]));
   });
 
@@ -139,7 +139,7 @@ describe("press on a reset time", () => {
     render(Banner, {}, backend({ snapshot: s }), { settings: { resetShow: "time" } });
     await expand();
     const row = await expanded("claude-code", "Current session");
-    expect(row.textContent).toMatch(/At this pace runs out at .+ – 1h before reset/);
+    expect(row.textContent).toMatch(/Runs out at .+, 1h before reset/);
     expect(within(row).queryByRole("button", { name: /reset time|countdown/ })).toBeNull();
     expect(within(row).getAllByRole("button")).toHaveLength(1);
   });
@@ -179,9 +179,9 @@ describe("press on a percent", () => {
     await waitFor(() => expect(callsTo(b, "setDisplay").map((c) => c.input)).toEqual([{ limitsShow: "remaining" }]));
     await expand();
     const list = await expanded("claude-code", "Weekly limit");
-    expect(list.textContent).toContain("Tight – at this pace about 8% left");
+    expect(list.textContent).toContain("Tight, ~8% left");
     fireEvent.click(within(list).getByRole("button", { name: "8% – Show percent used" }));
-    expect(list.textContent).toContain("Tight – at this pace about 92% used");
+    expect(list.textContent).toContain("Tight, ~92% used");
     await waitFor(() => expect(callsTo(b, "setDisplay").map((c) => c.input)).toEqual([{ limitsShow: "remaining" }, { limitsShow: "used" }]));
   });
 

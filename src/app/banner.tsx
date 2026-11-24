@@ -13,7 +13,6 @@ import { formatPercent } from "../shared/thresholds";
 import { CompactButton, ContextPanel } from "./context-row";
 import {
   contextPercent,
-  formatAgo,
   formatClock,
   formatCost,
   formatResetAt,
@@ -58,6 +57,7 @@ import {
 import { shownPercent } from "../shared/limits-show";
 import { formatTokenCount, type TokenPair } from "../shared/tokens";
 import { RecentCompacts } from "./settings-section";
+import { CardActions } from "./card-actions";
 import { Bar, Ink, SegmentBar, Switch, Toned } from "./ui";
 import { Button } from "../../components/ui/button";
 import { cn } from "../../lib/utils";
@@ -560,14 +560,11 @@ function Band() {
               <RecentCompacts entries={data.recentCompactions} now={now} heading={false} />
             </Disclosure>
           )}
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-muted-foreground">
-              {ownHost?.polledAt == null ? null : s.updated(formatAgo(s, ownHost.polledAt, now))}
-            </span>
+          <CardActions polledAt={ownHost?.polledAt ?? null} now={now}>
             <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setExpanded(false)}>
               ▲ {s.collapse}
             </Button>
-          </div>
+          </CardActions>
         </div>
       ) : null}
     </div>

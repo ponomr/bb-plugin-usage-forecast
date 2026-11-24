@@ -4,6 +4,17 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## 0.4.22 — 2026-11-24
+
+- Limits in the page header: the 5-hour and weekly windows of the open
+  thread's provider at the top right, next to the header's buttons, as rings
+  with the percent inside or as vertical bars beside a larger percent (new
+  setting «Limits in the header»: Rings, Bars, Off). A press opens the limits
+  card. Works at phone width.
+- Every expanded card (band, sidebar card, header card) ends with the last
+  poll time, a refresh button and a settings button.
+- Shorter UI texts in both languages.
+
 ## 0.4.21 — 2026-11-16
 
 - One host that does not answer no longer marks the whole plugin as failed:

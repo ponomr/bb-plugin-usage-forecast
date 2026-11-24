@@ -36,6 +36,7 @@ import { Storage } from "./src/server/storage";
 import { TokenCounter } from "./src/server/token-counter";
 import { parseSettings, type ThreadsSdk } from "./src/server/threads";
 import { DEFAULT_LANGUAGE, LANGUAGES } from "./src/shared/language";
+import { DEFAULT_HEADER_SHOW, HEADER_SHOW } from "./src/shared/header-show";
 import { DEFAULT_LIMITS_SHOW, LIMITS_SHOW } from "./src/shared/limits-show";
 import { DEFAULT_RESET_SHOW, RESET_SHOW } from "./src/shared/reset-show";
 
@@ -145,6 +146,14 @@ export default async function plugin(bb: BbPluginApi) {
       options: [...RESET_SHOW],
       experimental_optionLabels: { countdown: "Countdown", time: "Exact time" },
       default: DEFAULT_RESET_SHOW,
+    },
+    headerShow: {
+      type: "select",
+      label: "Limits in the header",
+      description: "The 5-hour and weekly limits at the top right of the page: rings with the percent inside, or a vertical bar beside a larger percent. A press opens the limits card.",
+      options: [...HEADER_SHOW],
+      experimental_optionLabels: { rings: "Rings", bars: "Bars", off: "Off" },
+      default: DEFAULT_HEADER_SHOW,
     },
     showBand: {
       type: "boolean",

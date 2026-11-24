@@ -1,4 +1,4 @@
-// The card the footer ring opens: every provider's windows. With more than
+// The card the footer ring and the header limits open: every provider's windows. With more than
 // one host the hosts are tabs and the card shows one of them, first the host
 // of the ring's worst window. Compact: one
 // line per window (label, bar, percent, reset); the forecast is the bar's
@@ -18,6 +18,7 @@ import type { Strings } from "./i18n";
 import { indicatorView, type IndicatorProvider } from "./indicator";
 import { hostStale, paceDetails, windowNote, windowView } from "./model";
 import { cn } from "../../lib/utils";
+import { CardActions } from "./card-actions";
 import { Toned } from "./ui";
 
 type ProviderTokens = Tokens["providers"][number];
@@ -93,6 +94,15 @@ function ProviderSection({ entry, now, tokens }: { entry: IndicatorProvider; now
 }
 
 export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
+  return <LimitsCard />;
+}
+
+/**
+ * The limits card of the sidebar ring and of the header limits. `onNavigate`
+ * runs before the settings button leaves the page (the header closes its
+ * popover); `className` replaces the size and scroll of the sidebar card.
+ */
+export function LimitsCard({ onNavigate, className }: { onNavigate?: () => void; className?: string }) {
   const s = useStrings();
   const now = useNow();
   const hidden = useHiddenProviders();
@@ -102,6 +112,7 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
   const [picked, setPicked] = useState<string | null>(null);
   const snapshot = query.data;
   let body: React.ReactNode;
+  let polledAt: number | null = null;
   if (snapshot === undefined) {
     body = query.error ? <Toned tone="amber">{errorText(query.error)}</Toned> : <span className="text-muted-foreground">{s.loading}</span>;
   } else {
@@ -110,6 +121,7 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
       view.groups.find((g) => g.hostId === picked) ?? view.groups.find((g) => g.hostName === view.worst?.hostName) ?? view.groups[0];
     const tokensOf = (providerId: string) => tokens?.providers.find((p) => p.providerId === providerId);
     const host = shown === undefined ? undefined : snapshot.hosts.find((h) => h.hostId === shown.hostId);
+    polledAt = host?.polledAt ?? snapshot.polledAt;
     const stale = host !== undefined && hostStale(host) && host.polledAt !== null;
     const unavailable =
       view.unavailable.length === 0 ? null : (
@@ -157,8 +169,11 @@ export function SidebarCard(_props: ExperimentalSidebarFooterDisclosureProps) {
     );
   }
   return (
-    <div className="flex max-h-[19rem] flex-col gap-1.5 overflow-y-auto px-3 py-2 text-xs leading-4" data-testid="limits-card">
+    <div className={cn("flex flex-col gap-1.5 px-3 py-2 text-xs leading-4", className ?? "max-h-[19rem] overflow-y-auto")} data-testid="limits-card">
       {body}
+      <div className="border-border border-t pt-1">
+        <CardActions polledAt={polledAt} now={now} onNavigate={onNavigate} />
+      </div>
     </div>
   );
 }
