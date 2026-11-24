@@ -11,32 +11,24 @@ const WEDNESDAY = NOW + 2 * DAY_MS + 3 * HOUR_MS;
 describe("reset time", () => {
   it("AE4: a reset later today is the time alone", () => {
     expect(formatResetAt(en, TODAY, NOW)).toBe(formatTime(en, TODAY));
-    expect(formatResetIn(en, TODAY, NOW, "time")).toBe(`resets at ${formatTime(en, TODAY)}`);
-    expect(formatResetIn(ru, TODAY, NOW, "time")).toBe(`сброс в ${formatTime(ru, TODAY)}`);
   });
 
   it("a reset on another day carries the short weekday", () => {
     expect(formatResetAt(en, WEDNESDAY, NOW)).toBe(`Wed ${formatTime(en, WEDNESDAY)}`);
     expect(formatResetAt(ru, WEDNESDAY, NOW)).toBe(`ср ${formatTime(ru, WEDNESDAY)}`);
-    expect(formatResetIn(en, WEDNESDAY, NOW, "time")).toBe(`resets Wed ${formatTime(en, WEDNESDAY)}`);
-    expect(formatResetIn(ru, WEDNESDAY, NOW, "time")).toBe(`сброс в ср ${formatTime(ru, WEDNESDAY)}`);
   });
 
-  it("the countdown stays the default", () => {
+  it("P3: the reset in a line is a countdown", () => {
     expect(formatResetIn(en, TODAY, NOW)).toBe("resets in 4h");
-    expect(formatResetIn(en, TODAY, NOW, "countdown")).toBe("resets in 4h");
     expect(formatResetIn(ru, WEDNESDAY, NOW)).toBe("сброс через 2д 3ч");
   });
 
-  it("a reset already passed reads as now in both modes", () => {
-    for (const mode of ["countdown", "time"] as const) {
-      expect(formatResetIn(en, NOW - 1, NOW, mode)).toBe("resets now");
-      expect(formatResetIn(ru, NOW, NOW, mode)).toBe("сброс сейчас");
-    }
+  it("a reset already passed reads as now", () => {
+    expect(formatResetIn(en, NOW - 1, NOW)).toBe("resets now");
+    expect(formatResetIn(ru, NOW, NOW)).toBe("сброс сейчас");
   });
 
-  it("no reset time gives null in both modes", () => {
-    expect(formatResetIn(en, null, NOW, "time")).toBeNull();
-    expect(formatResetIn(en, null, NOW, "countdown")).toBeNull();
+  it("no reset time gives null", () => {
+    expect(formatResetIn(en, null, NOW)).toBeNull();
   });
 });

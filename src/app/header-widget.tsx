@@ -9,13 +9,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { LimitWindow } from "../shared/contract";
-import { shownPercent, type LimitsShow } from "../shared/limits-show";
 import type { HeaderShow } from "../shared/header-show";
-import type { ResetShow } from "../shared/reset-show";
 import { formatPercent } from "../shared/thresholds";
-import { formatResetAt, formatResetIn, formatSpan, providerName, shortWindowLabel, windowLabel } from "./format";
+import { formatResetIn, formatSpan, providerName, shortWindowLabel, windowLabel } from "./format";
 import { headerView, threadIdOfPath } from "./header-model";
-import { useHeaderShow, useHiddenProviders, useLimitsShow, useNow, useResetShow, useSnapshot, useStrings, useThreadState } from "./hooks";
+import { providerStaleAt, staleNote } from "./indicator";
+import { useHeaderShow, useHiddenProviders, useNow, useSnapshot, useStrings, useThreadState } from "./hooks";
 import type { Strings } from "./i18n";
 import { windowView, type WindowView } from "./model";
 import { LimitsCard } from "./sidebar-card";
@@ -101,35 +100,32 @@ interface Gauge {
   key: string;
   label: string;
   view: WindowView;
-  /** The shown percent (used or left), 0–100. */
+  /** The used percent, 0–100. */
   percent: number;
-  /** The bar's pace tick, used or left as the percent is. */
+  /** The bar's forecast tick. */
   marker: number | null;
-  /** The reset as a countdown or a local time (`resetShow`); only the 5-hour window carries it. */
+  /** The bar's even-pace tick. */
+  even: number | null;
+  /** The time left to the reset; only the 5-hour window carries it. */
   reset: string | null;
   title: string;
 }
 
-function gauge(s: Strings, w: LimitWindow, now: number, show: LimitsShow, resetShow: ResetShow, withReset: boolean): Gauge {
+function gauge(s: Strings, w: LimitWindow, now: number, withReset: boolean): Gauge {
   const view = windowView(w, now);
-  const percent = shownPercent(show, Math.max(0, Math.min(100, w.usedPercent)));
-  const value = show === "used" ? formatPercent(percent) : s.percentLeft(formatPercent(percent));
+  const percent = Math.max(0, Math.min(100, w.usedPercent));
   const state = view.pace === null ? "" : `, ${s.paceStateName[view.pace]}`;
-  const reset = !withReset || w.resetsAt === null ? null : resetText(s, w.resetsAt, now, resetShow);
+  const reset = !withReset || w.resetsAt === null ? null : formatSpan(s, Math.max(0, w.resetsAt - now));
   return {
     key: w.label,
     label: shortWindowLabel(s, w.label, w.model),
     view,
     percent,
-    marker: view.marker === null ? null : shownPercent(show, view.marker),
+    marker: view.marker,
+    even: view.even,
     reset,
-    title: `${windowLabel(s, w.label, w.model)}: ${value}${state}${reset === null ? "" : `, ${formatResetIn(s, w.resetsAt, now, resetShow)}`}`,
+    title: `${windowLabel(s, w.label, w.model)}: ${formatPercent(percent)}${state}${reset === null ? "" : `, ${formatResetIn(s, w.resetsAt, now)}`}`,
   };
-}
-
-/** The reset as the band's reset time says it: a countdown, or the local time while it is ahead. */
-function resetText(s: Strings, resetsAt: number, now: number, resetShow: ResetShow): string {
-  return resetShow === "time" && resetsAt > now ? formatResetAt(s, resetsAt, now) : formatSpan(s, Math.max(0, resetsAt - now));
 }
 
 /** One window as the band's collapsed row has it: label, reset, bar (with `bars`), coloured percent. */
@@ -139,7 +135,7 @@ export function HeaderGauge({ g, style }: { g: Gauge; style: Exclude<HeaderShow,
       <span className="font-semibold">{g.label}</span>
       {g.reset === null ? null : <span className="font-normal text-muted-foreground tabular-nums">{g.reset}</span>}
       {style === "bars" ? (
-        <Bar percent={g.percent} tone={g.view.tone} marker={g.marker} className="hidden w-10 shrink-0 sm:flex" />
+        <Bar percent={g.percent} tone={g.view.tone} marker={g.marker} even={g.even} className="hidden w-10 shrink-0 sm:flex" />
       ) : null}
       <Ink tone={g.view.tone} className="font-semibold tabular-nums">
         {formatPercent(g.percent)}
@@ -159,8 +155,6 @@ export function HeaderLimits() {
 function HeaderPill({ style, threadId }: { style: Exclude<HeaderShow, "off">; threadId: string | null }) {
   const s = useStrings();
   const now = useNow();
-  const show = useLimitsShow();
-  const resetShow = useResetShow();
   const hidden = useHiddenProviders();
   const snapshot = useSnapshot().data;
   const thread = useThreadState(threadId).data;
@@ -190,9 +184,13 @@ function HeaderPill({ style, threadId }: { style: Exclude<HeaderShow, "off">; th
   }, [open]);
 
   const gauges =
-    view === null ? [] : [view.session, view.weekly].flatMap((w, i) => (w === null ? [] : [gauge(s, w, now, show, resetShow, i === 0)]));
+    view === null ? [] : [view.session, view.weekly].flatMap((w, i) => (w === null ? [] : [gauge(s, w, now, i === 0)]));
   const name = view === null ? null : providerName(s, view.provider.providerId);
-  const label = view === null ? `${s.indicatorLabel}: ${s.noLimitsData}` : `${name} · ${gauges.map((g) => g.title).join(" · ")}`;
+  const staleAt = view === null || snapshot === undefined ? null : providerStaleAt(snapshot, view.provider.providerId);
+  const label =
+    view === null
+      ? `${s.indicatorLabel}: ${s.noLimitsData}`
+      : `${name} · ${gauges.map((g) => g.title).join(" · ")}${staleNote(s, staleAt, now)}`;
 
   return (
     <>
@@ -208,6 +206,7 @@ function HeaderPill({ style, threadId }: { style: Exclude<HeaderShow, "off">; th
         aria-haspopup="dialog"
         data-testid="header-limits"
         data-style={style}
+        data-data={view === null ? "none" : staleAt === null ? "current" : "stale"}
         onClick={() => setOpen(!open)}
       >
         {gauges.length === 0 ? <span className="text-muted-foreground">—</span> : null}

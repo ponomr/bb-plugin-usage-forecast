@@ -59,11 +59,11 @@ The settings.
   both opening on tap. The expanded part scrolls inside about half the screen
   height, so the header with its collapse button stays in view on a phone;
   there is a Collapse button at its bottom too. The expanded or collapsed state
-  is kept per device. A press on a reset time switches every row between the
-  countdown («3d», «resets in 3d») and the local time of the reset («Thu
-  19:59», «resets at 19:59» today); a press on a window's percent switches
-  every window between used and left. Both are the settings below, so the
-  choice reaches every device.
+  is kept per device. Every percent is the share used. A reset reads as a
+  countdown in the rows of the band and the header («3d», «resets in 3d»)
+  and as the local time in the cards («Thu 19:59», «19:59» today); the
+  tooltip gives the other one. Every limit bar has a thin line where an even
+  pace would be now, next to the grey forecast tick.
 - **Forecast to the reset.** From the current pace of the window, and from
   the pace of past windows of the same kind once the server has seen enough of
   them. The current pace is the main forecast: the note, the colour, the tick
@@ -82,8 +82,11 @@ The settings.
   follow it, and the headline speaks for the worst one. A worse state shows
   at once; a calmer one only after ten minutes of calmer polls, so the colour
   does not flicker while the text already says what the pace reads now. A
-  window in its first 5 % or without a forecast has no state and is coloured
-  by the percent used (amber from 75 %, red from 90 %).
+  window in its first 5 % or without a forecast has no state and stays
+  grey; only a used-up limit is red. A host that cannot be read now shows its
+  last values in grey, and the ring's and the header's tooltips say when they
+  were measured. With no limits data at all the ring is a dashed circle and
+  the header shows «—».
 - **Context against a working limit.** The context bar, its percent and the
   auto-compact threshold are measured against a limit in tokens, not against
   the model window. The limit follows the provider: a thread's own limit,
@@ -117,9 +120,8 @@ The settings.
   bb's own header buttons, the open thread's provider shows its 5-hour and
   weekly windows (on a page without a thread: the provider of the worst
   window) in a pill: «5H 4h 41m 97%  W 61%», each percent in its window's
-  colour, with the time to the 5-hour reset (a countdown or the reset time,
-  as «Reset shows» says). «Numbers and bars» adds a horizontal bar with the
-  pace tick to each window. The percent follows «Limits show». Pressing it
+  colour, with the time to the 5-hour reset. «Numbers and bars» adds a
+  horizontal bar with the pace ticks to each window. Pressing it
   opens the same card as the sidebar ring. On a phone the two windows stack
   in two lines and the bars drop out.
 - **Refresh and settings in every card.** The expanded band, the sidebar
@@ -219,8 +221,6 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Limit push threshold, % | 90 | 50–100 | Usage of a limit window that sends the push |
 | Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
 | Language | English | English, Русский | Language of the plugin UI |
-| Limits show | Used | Used, Remaining | Each limit window as the percent used or the percent left, in its bar, number, pace tick and note; the context bar always shows what is used. A press on a percent in the band switches it |
-| Reset shows | Countdown | Countdown, Exact time | When a limit window resets: the time left until it, or the local time of the reset (the short weekday when not today). A press on a reset time in the band switches it |
 | Limits in the header | Numbers | Numbers, Numbers and bars, Off | The 5-hour and weekly windows at the top right of the page as coloured percents with the time to the 5-hour reset; with bars each window also gets a horizontal bar (not on a phone). Off removes them |
 | Band above the composer | on | on, off | The limits and context band above the message field. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
 | Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |

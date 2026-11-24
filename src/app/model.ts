@@ -4,9 +4,7 @@
 // state of `src/shared/pace.ts`.
 
 import type { HostLimits, LimitsSnapshot, LimitWindow, ProviderLimits, ThreadContext } from "../shared/contract";
-import { contextTone, limitTone, type Tone } from "../shared/thresholds";
-import { shownPercent, type LimitsShow } from "../shared/limits-show";
-import type { ResetShow } from "../shared/reset-show";
+import { contextTone, type Tone } from "../shared/thresholds";
 import { lastingBudget, mainProjection } from "../shared/forecast";
 import { paceRank, paceStateTone, rawPaceState, worsePace, type PaceState } from "../shared/pace";
 import { DAY_MS } from "../shared/windows";
@@ -23,7 +21,7 @@ function windowScore(window: LimitWindow): number {
 }
 
 /** A window without a pace state ranks as the state of its threshold colour. */
-const TONE_STATE: Record<Tone, PaceState> = { normal: "calm", amber: "tight", red: "critical" };
+const TONE_STATE: Record<Tone, PaceState> = { muted: "calm", normal: "calm", amber: "tight", red: "critical" };
 
 /**
  * The provider of the worst window: the worst shown pace state, then the
@@ -163,24 +161,33 @@ export interface WindowView {
   /** Projected percent at the reset by the main projection; for `early`, the learned one. */
   projected: number | null;
   runOutAt: number | null;
-  /** From `pace`; without one, from the used percent. */
+  /** From `pace`; without one muted, red only when the limit is used up. */
   tone: Tone;
   /** Where the bar's forecast tick sits, in percent, or null for none. */
   marker: number | null;
+  /** Where an even pace would be now: the share of the window gone by, in percent; null without a duration or reset. */
+  even: number | null;
+}
+
+/** The share of a window gone by, 0–100, or null without a duration or a reset ahead. */
+export function evenPercent(window: Pick<LimitWindow, "resetsAt" | "durationMs">, now: number): number | null {
+  const { resetsAt, durationMs } = window;
+  if (resetsAt === null || durationMs === null || durationMs <= 0 || resetsAt <= now) return null;
+  return Math.max(0, Math.min(100, ((now - (resetsAt - durationMs)) / durationMs) * 100));
 }
 
 export function windowView(window: LimitWindow, now: number): WindowView {
   const used = window.usedPercent;
   const f = window.forecast;
   const raw = rawPaceState(window, now);
-  const base = { window, raw, projected: null, runOutAt: null, marker: null };
+  const base = { window, raw, projected: null, runOutAt: null, marker: null, even: evenPercent(window, now) };
   if (raw === "hit") return { ...base, status: "hit", pace: "hit", tone: "red" };
   const main = f ? mainProjection(f) : null;
   if (raw === null) {
     // No current pace: early (the learned pace, if any, speaks) or no forecast.
     const early = f?.early || main !== null;
     const status = early ? "early" : "idle";
-    return { ...base, status, pace: null, projected: early ? (f?.learned?.projectedPercent ?? null) : null, tone: limitTone(used) };
+    return { ...base, status, pace: null, projected: early ? (f?.learned?.projectedPercent ?? null) : null, tone: "muted" };
   }
   const pace = worsePace(raw, window.pace);
   const projected = main!.projectedPercent;
@@ -201,13 +208,13 @@ export function isWeekly(window: LimitWindow): boolean {
   return window.label === "Weekly limit" || (window.durationMs ?? 0) >= 7 * DAY_MS;
 }
 
-/** The note under a window: what its pace means before the reset, as used or as left, with the reset as a countdown or a time. */
-export function windowNote(s: Strings, view: WindowView, now: number, show: LimitsShow = "used", resetShow: ResetShow = "countdown"): string {
-  const reset = formatResetIn(s, view.window.resetsAt, now, resetShow);
-  // A projection as the note shows it: capped at 100 %, used or left.
-  const shown = (projected: number) => Math.round(shownPercent(show, Math.min(100, projected)));
-  const lasts = (projected: number) => (show === "used" ? s.lastsUsed : s.lastsLeft)(shown(projected), reset);
-  const tight = (projected: number) => (show === "used" ? s.tightUsed : s.tightLeft)(shown(projected), reset);
+/** The note under a window: what its pace means before the reset, with the reset as a countdown. */
+export function windowNote(s: Strings, view: WindowView, now: number): string {
+  const reset = formatResetIn(s, view.window.resetsAt, now);
+  // A projection as the note shows it: capped at 100 %.
+  const shown = (projected: number) => Math.round(Math.min(100, projected));
+  const lasts = (projected: number) => s.lastsUsed(shown(projected), reset);
+  const tight = (projected: number) => s.tightUsed(shown(projected), reset);
   const idle = reset === null ? s.noReset : `${s.noForecast} – ${reset}`;
   switch (view.status) {
     case "hit":
@@ -222,7 +229,7 @@ export function windowNote(s: Strings, view: WindowView, now: number, show: Limi
     case "ok":
       return (view.raw === "tight" ? tight : lasts)(view.projected!);
     case "early": {
-      const usual = view.projected === null ? null : (show === "used" ? s.usuallyUsed : s.usuallyLeft)(shown(view.projected));
+      const usual = view.projected === null ? null : s.usuallyUsed(shown(view.projected));
       return s.tooEarly(usual, reset);
     }
     case "idle":
@@ -239,13 +246,10 @@ export function windowBudget(s: Strings, view: WindowView, now: number): string 
 }
 
 /** Both projections, for the window's tooltip. */
-export function paceDetails(s: Strings, window: LimitWindow, show: LimitsShow = "used"): string | undefined {
+export function paceDetails(s: Strings, window: LimitWindow): string | undefined {
   const f = window.forecast;
   if (f === null || f.status === "hit") return undefined;
-  const pct = (projected: number) => {
-    const text = `${Math.round(shownPercent(show, projected))}%`;
-    return show === "used" ? text : s.percentLeft(text);
-  };
+  const pct = (projected: number) => `${Math.round(projected)}%`;
   const main = mainProjection(f);
   const both = f.current !== null && f.learned !== null;
   // With both lines, the one the band speaks from is marked.

@@ -13,7 +13,7 @@ import { planText } from "../shared/plan";
 import { formatTokenCount } from "../shared/tokens";
 import { ResetTime, WindowBar, WindowPercent } from "./banner";
 import { formatClock, formatRunOut, providerName, shortWindowLabel, windowLabel } from "./format";
-import { errorText, useHiddenProviders, useLimitsShow, useNow, useResetShow, useSnapshot, useStrings, useTokens } from "./hooks";
+import { errorText, useHiddenProviders, useNow, useSnapshot, useStrings, useTokens } from "./hooks";
 import type { Strings } from "./i18n";
 import { indicatorView, type IndicatorProvider } from "./indicator";
 import { hostStale, paceDetails, windowNote, windowView } from "./model";
@@ -30,11 +30,9 @@ function runOutParts(s: Strings, at: number, now: number): [string, string | nul
 
 function WindowRow({ window: w, now }: { window: LimitWindow; now: number }) {
   const s = useStrings();
-  const show = useLimitsShow();
-  const resetShow = useResetShow();
   const v = windowView(w, now);
-  const note = windowNote(s, v, now, show, resetShow);
-  const details = paceDetails(s, w, show);
+  const note = windowNote(s, v, now);
+  const details = paceDetails(s, w);
   // A label with no short form ("Fable") stays whole: its first letter says nothing here.
   const label = Object.hasOwn(s.shortWindow, w.label) ? shortWindowLabel(s, w.label, w.model) : windowLabel(s, w.label, w.model);
   return (
@@ -42,10 +40,10 @@ function WindowRow({ window: w, now }: { window: LimitWindow; now: number }) {
       <span className="flex items-center gap-2">
         <span className="w-12 shrink-0 truncate text-muted-foreground">{label}</span>
         <WindowBar view={v} className="min-w-0 flex-1" />
-        <WindowPercent view={v} className="w-9 shrink-0 text-right font-medium tabular-nums" pressable />
-        {/* A reset as a time ("Tue 10:00 AM") is longer than a countdown ("6d 9h"). */}
-        <span className={cn("shrink-0 whitespace-nowrap text-right", resetShow === "time" ? "w-24" : "w-16")} data-testid="window-reset">
-          {w.resetsAt === null ? <span className="text-muted-foreground">–</span> : <ResetTime resetsAt={w.resetsAt} now={now} className="" />}
+        <WindowPercent view={v} className="w-9 shrink-0 text-right font-medium tabular-nums" />
+        {/* The card names the reset's local time ("Tue 10:00 AM"); rows count down to it (P3). */}
+        <span className="w-24 shrink-0 whitespace-nowrap text-right" data-testid="window-reset">
+          {w.resetsAt === null ? <span className="text-muted-foreground">–</span> : <ResetTime resetsAt={w.resetsAt} now={now} exact className="" />}
         </span>
       </span>
       {v.status === "out" && v.runOutAt !== null ? (

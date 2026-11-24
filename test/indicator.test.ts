@@ -64,7 +64,7 @@ describe("indicatorView: the worst window", () => {
       state: "critical",
       tone: "red",
     });
-    expect(indicatorTitle(en, view.worst)).toBe("laptop · Claude Code · 5 Hour: 92%, critical");
+    expect(indicatorTitle(en, view.worst, NOW)).toBe("laptop · Claude Code · 5 Hour: 92%, critical");
   });
 
   it("AE2: all calm, the highest percent leads in the normal tone", () => {
@@ -83,13 +83,13 @@ describe("indicatorView: the worst window", () => {
     expect(view.worst).toMatchObject({ label: "Weekly limit", usedPercent: 71, state: "short", tone: "amber" });
   });
 
-  it("a window without a pace ranks as calm but keeps its threshold colour", () => {
+  it("P1: a window without a pace ranks as calm and is not coloured", () => {
     const view = indicatorView(
       snap([host("server", [prov("codex", [win("Current session", 40, "calm"), win("Weekly limit", 90, null)])])]),
       NOW,
     );
-    expect(view.worst).toMatchObject({ label: "Weekly limit", usedPercent: 90, state: null, tone: "red" });
-    expect(indicatorTitle(en, view.worst)).toBe("Codex · Weekly: 90%");
+    expect(view.worst).toMatchObject({ label: "Weekly limit", usedPercent: 90, state: null, tone: "muted" });
+    expect(indicatorTitle(en, view.worst, NOW)).toBe("Codex · Weekly: 90%");
   });
 
   it("on a tie of state and percent the nearer reset wins", () => {
@@ -145,18 +145,25 @@ describe("indicatorView: the worst window", () => {
     expect(view.groups.flatMap((g) => g.providers.map((p) => p.provider.providerId))).toEqual(["codex"]);
   });
 
-  it("a stale host shows no pace: its colour comes from the used percent", () => {
+  it("P1: a stale host shows no pace and is not coloured", () => {
     const view = indicatorView(
       snap([host("laptop", [prov("claude-code", [win("Current session", 50, "critical")])], { connected: false })]),
       NOW,
     );
-    expect(view.worst).toMatchObject({ usedPercent: 50, state: null, tone: "normal" });
+    expect(view.worst).toMatchObject({ usedPercent: 50, state: null, tone: "muted", staleAt: NOW });
+    // P4: the title says the data is not current and when it was measured.
+    expect(indicatorTitle(en, view.worst, NOW)).toMatch(/^Claude Code · 5 Hour: 50%\. Host unavailable, data from \d/);
   });
 
-  it("the title follows the language and the limitsShow setting", () => {
+  it("P4: a fresh window has no stale time", () => {
+    const view = indicatorView(snap([host("server", [prov("codex", [win("Current session", 10, "calm")])])]), NOW);
+    expect(view.worst?.staleAt).toBeNull();
+  });
+
+  it("the title follows the language", () => {
     const view = indicatorView(snap([host("server", [prov("claude-code", [win("Current session", 92, "critical")])])]), NOW);
-    expect(indicatorTitle(ru, view.worst)).toBe("Claude Code · 5 часов: 92%, критично");
-    expect(indicatorTitle(en, view.worst, "remaining")).toBe("Claude Code · 5 Hour: 8% left, critical");
+    expect(indicatorTitle(ru, view.worst, NOW)).toBe("Claude Code · 5 часов: 92%, критично");
+    expect(indicatorTitle(en, view.worst, NOW)).toBe("Claude Code · 5 Hour: 92%, critical");
   });
 });
 
@@ -227,7 +234,7 @@ describe("indicatorView: groups", () => {
     );
     expect(view.worst).toBeNull();
     expect(view.groups).toEqual([]);
-    expect(indicatorTitle(en, view.worst)).toBe("Usage limits: No limits data");
+    expect(indicatorTitle(en, view.worst, NOW)).toBe("Usage limits: No limits data");
   });
 
   it("no snapshot yet, or one never polled, gives no data", () => {
@@ -282,6 +289,6 @@ describe("indicatorView: hidden providers (UF-11)", () => {
     const view = indicatorView(s(), NOW, ["codex", "claude-code"]);
     expect(view.worst).toBeNull();
     expect(view.groups).toEqual([]);
-    expect(indicatorTitle(en, view.worst)).toBe(`${en.indicatorLabel}: ${en.noLimitsData}`);
+    expect(indicatorTitle(en, view.worst, NOW)).toBe(`${en.indicatorLabel}: ${en.noLimitsData}`);
   });
 });

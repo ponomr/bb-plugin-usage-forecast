@@ -2,10 +2,8 @@
 // the same service, so a change made from the CLI invalidates open pages too.
 
 import { isInheritOverride, normalizeOverride, type LimitsSnapshot, type ThreadOverride, type ThreadState, type CompactResult } from "../shared/contract";
-import type { Display, DisplayInput, HiddenProviders, HideProviderInput } from "../shared/contract";
+import type { HiddenProviders, HideProviderInput } from "../shared/contract";
 import { joinHiddenProviders, parseHiddenProviders } from "../shared/hidden-providers";
-import { parseLimitsShow } from "../shared/limits-show";
-import { parseResetShow } from "../shared/reset-show";
 import type { AutoCompactor } from "./auto-compact";
 import { readHosts, toSnapshot, type Poller } from "./poller";
 import type { Storage } from "./storage";
@@ -51,21 +49,6 @@ export function createService(deps: ServiceDeps): Service {
       return { override };
     },
   };
-}
-
-/** Writes the display settings a press in the band changes, through the plugin's settings handle. */
-export type DisplayWriter = (values: Partial<Display>) => Promise<Record<string, unknown>>;
-
-/**
- * RPC `setDisplay`: writes only the given keys and answers with both
- * effective values. The settings' onChange invalidates the open pages.
- */
-export async function setDisplay(write: DisplayWriter, input: DisplayInput): Promise<Display> {
-  const values: Partial<Display> = {};
-  if (input.limitsShow !== undefined) values.limitsShow = input.limitsShow;
-  if (input.resetShow !== undefined) values.resetShow = input.resetShow;
-  const next = await write(values);
-  return { limitsShow: parseLimitsShow(next.limitsShow), resetShow: parseResetShow(next.resetShow) };
 }
 
 /** Reads the plugin's settings and writes the `hiddenProviders` setting, through the settings handle. */

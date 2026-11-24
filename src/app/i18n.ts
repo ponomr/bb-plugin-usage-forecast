@@ -39,28 +39,15 @@ export interface Strings {
   runsOutShort(time: string, weekday: string | null): string;
   /** A window that lasts, with the projected percent used at the reset. */
   lastsUsed(percent: number, resetIn: string | null): string;
-  /** The same when the band shows what is left. */
-  lastsLeft(percent: number, resetIn: string | null): string;
-  /** A window that lasts with little to spare, as used and as left. */
+  /** A window that lasts with little to spare. */
   tightUsed(percent: number, resetIn: string | null): string;
-  tightLeft(percent: number, resetIn: string | null): string;
-  /** Too early in the window; `usual` from usuallyUsed or usuallyLeft, or null without past windows. */
+  /** Too early in the window; `usual` from usuallyUsed, or null without past windows. */
   tooEarly(usual: string | null, resetIn: string | null): string;
   usuallyUsed(percent: number): string;
-  usuallyLeft(percent: number): string;
   /** The rate that lasts to the reset; for `rest`, the percent left until it. */
   budget(percent: number, per: "day" | "hour" | "rest"): string;
-  /** "75% left", for the percent shown as what is left. */
-  percentLeft(percent: string): string;
   resetsIn(span: string): string;
-  /** The reset's local time in a sentence; the short weekday when not today. */
-  resetsAt(time: string, weekday: string | null): string;
   resetNow: string;
-  /** Labels of the press targets: what is shown, then what a press does. */
-  showResetTime: string;
-  showCountdown: string;
-  showPercentLeft: string;
-  showPercentUsed: string;
   noReset: string;
   noForecast: string;
   currentPace(percent: string): string;
@@ -216,22 +203,13 @@ export const en: Strings = {
   runsOutShort: (time, day) => `runs out ${day === null ? `at ${time}` : `${day} ${time}`}`,
   runsOut: (time, day, before) => `Runs out ${day === null ? `at ${time}` : `${day} ${time}`}, ${before} before reset`,
   lastsUsed: (p, reset) => `Lasts, ~${p}% used${reset === null ? "" : `, ${reset}`}`,
-  lastsLeft: (p, reset) => `Lasts, ~${p}% left${reset === null ? "" : `, ${reset}`}`,
   tightUsed: (p, reset) => `Tight, ~${p}% used${reset === null ? "" : `, ${reset}`}`,
-  tightLeft: (p, reset) => `Tight, ~${p}% left${reset === null ? "" : `, ${reset}`}`,
   tooEarly: (usual, reset) =>
     `Too early${usual === null ? "" : `, ${usual}`}${reset === null ? "" : `, ${reset}`}`,
   usuallyUsed: (p) => `usually ~${p}%`,
-  usuallyLeft: (p) => `usually ~${p}% left`,
   budget: (p, per) => (per === "rest" ? `${p}% left` : `≤${p}% ${per === "day" ? "a day" : "an hour"} to last`),
-  percentLeft: (p) => `${p} left`,
   resetsIn: (span) => `resets in ${span}`,
-  resetsAt: (time, day) => (day === null ? `resets at ${time}` : `resets ${day} ${time}`),
   resetNow: "resets now",
-  showResetTime: "Show reset time",
-  showCountdown: "Show countdown",
-  showPercentLeft: "Show percent left",
-  showPercentUsed: "Show percent used",
   noReset: "No reset time",
   noForecast: "No forecast yet",
   currentPace: (p) => `Current pace: ${p} by reset`,
@@ -398,22 +376,13 @@ export const ru: Strings = {
   runsOutShort: (time, day) => `кончится ${day === null ? `в ${time}` : `в ${day} ${time}`}`,
   runsOut: (time, day, before) => `Кончится ${day === null ? `в ${time}` : `в ${day} ${time}`}, за ${before} до сброса`,
   lastsUsed: (p, reset) => `Хватит, к сбросу ~${p}%${reset === null ? "" : `, ${reset}`}`,
-  lastsLeft: (p, reset) => `Хватит, останется ~${p}%${reset === null ? "" : `, ${reset}`}`,
   tightUsed: (p, reset) => `Впритык, к сбросу ~${p}%${reset === null ? "" : `, ${reset}`}`,
-  tightLeft: (p, reset) => `Впритык, останется ~${p}%${reset === null ? "" : `, ${reset}`}`,
   tooEarly: (usual, reset) =>
     `Рано судить${usual === null ? "" : `, ${usual}`}${reset === null ? "" : `, ${reset}`}`,
   usuallyUsed: (p) => `обычно ~${p}%`,
-  usuallyLeft: (p) => `обычно остаётся ~${p}%`,
   budget: (p, per) => (per === "rest" ? `осталось ${p}%` : `≤${p}% в ${per === "day" ? "день" : "час"}, чтобы хватило`),
-  percentLeft: (p) => `осталось ${p}`,
   resetsIn: (span) => `сброс через ${span}`,
-  resetsAt: (time, day) => (day === null ? `сброс в ${time}` : `сброс в ${day} ${time}`),
   resetNow: "сброс сейчас",
-  showResetTime: "Показать время сброса",
-  showCountdown: "Показать обратный отсчёт",
-  showPercentLeft: "Показать остаток",
-  showPercentUsed: "Показать расход",
   noReset: "Время сброса неизвестно",
   noForecast: "Прогноза пока нет",
   currentPace: (p) => `По текущему темпу к сбросу: ${p}`,

@@ -38,10 +38,11 @@ describe("Ring", () => {
     expect(arc(container)?.getAttribute("class")).toContain(cls);
   });
 
-  it("without data draws only the neutral track", () => {
+  it("P4: without data draws only a dashed neutral track", () => {
     const { container } = rtl(<Ring worst={null} title="Usage limits: No limits data" />);
     expect(arc(container)).toBeNull();
     expect(container.querySelector("svg")?.getAttribute("data-empty")).toBe("true");
+    expect(container.querySelector("circle")?.getAttribute("stroke-dasharray")).toBeTruthy();
     expect(container.querySelector("title")?.textContent).toBe("Usage limits: No limits data");
   });
 
@@ -60,7 +61,7 @@ describe("Ring", () => {
 });
 
 function worstOf(usedPercent: number, tone: "normal" | "amber" | "red") {
-  return { hostName: null, providerId: "claude-code", label: "Current session", model: null, usedPercent, resetsAt: null, state: null, tone };
+  return { hostName: null, providerId: "claude-code", label: "Current session", model: null, usedPercent, resetsAt: null, state: null, tone, staleAt: null };
 }
 
 describe("IndicatorFeeder", () => {
@@ -79,9 +80,9 @@ describe("IndicatorFeeder", () => {
     expect(getIndicatorState().title).toMatch(/^laptop · Claude Code · 5 Hour: 92%, critical$/);
   });
 
-  it("writes a Russian title, as left, when the settings say so", async () => {
-    render(IndicatorFeeder, {}, backend({ snapshot: critical() }), { settings: { language: "ru", limitsShow: "remaining" } });
-    await waitFor(() => expect(getIndicatorState().title).toMatch(/^laptop · Claude Code · 5 часов: осталось 8%, критично$/));
+  it("writes a Russian title when the settings say so", async () => {
+    render(IndicatorFeeder, {}, backend({ snapshot: critical() }), { settings: { language: "ru" } });
+    await waitFor(() => expect(getIndicatorState().title).toMatch(/^laptop · Claude Code · 5 часов: 92%, критично$/));
   });
 
   it("is registered with the icon", async () => {

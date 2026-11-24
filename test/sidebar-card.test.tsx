@@ -84,10 +84,11 @@ describe("SidebarCard", () => {
     expect(screen.queryByTestId("window-runs-out")).toBeNull();
   });
 
-  it("keeps a reset shown as a time on the window's line", async () => {
-    render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [win("Weekly limit", 40)])]) }), { settings: { resetShow: "time" } });
+  it("P3: the card shows the exact reset time on the window's line", async () => {
+    render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [win("Weekly limit", 40)])]) }));
     await waitFor(() => expect(screen.getByTestId("window-reset").className).toContain("whitespace-nowrap"));
     expect(screen.getByTestId("window-reset").className).toContain("w-24");
+    expect(screen.getByTestId("window-reset").textContent).toMatch(/\d{1,2}:\d{2}/);
   });
 
   it("spells out a window that runs out before its reset", async () => {
@@ -95,7 +96,7 @@ describe("SidebarCard", () => {
       forecast: { status: "running", current: { projectedPercent: 140, runOutAt: Date.now() + HOUR_MS }, learned: null, main: "current", early: false, warning: true },
     });
     render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [w])]) }));
-    await waitFor(() => expect(screen.getByTestId("window-runs-out").textContent).toMatch(/^runs out at \d/));
+    await waitFor(() => expect(screen.getByTestId("window-runs-out").textContent).toMatch(/^runs out (at )?\S/));
   });
 
   it("keeps a label with no short form whole", async () => {

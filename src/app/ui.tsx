@@ -8,6 +8,7 @@ import { cn } from "../../lib/utils";
 
 /** Warnings and errors: plain text in normal tone. */
 const TONE_CLASS: Record<Tone, string> = {
+  muted: "text-muted-foreground",
   normal: "",
   amber: "text-[#ea8a0c] dark:text-[#fbbf24]",
   red: "text-[#ef4444] dark:text-[#f87171]",
@@ -15,12 +16,14 @@ const TONE_CLASS: Record<Tone, string> = {
 
 /** Percent figures and the headline: green in normal tone. */
 export const INK_CLASS: Record<Tone, string> = {
+  muted: TONE_CLASS.muted,
   normal: "text-[#16a34a] dark:text-[#4ade80]",
   amber: TONE_CLASS.amber,
   red: TONE_CLASS.red,
 };
 
 const FILL_CLASS: Record<Tone, string> = {
+  muted: "bg-muted-foreground/60",
   normal: "bg-[#22b856] dark:bg-[#4ade80]",
   amber: "bg-[#ea8a0c] dark:bg-[#fbbf24]",
   red: "bg-[#ef4444] dark:bg-[#f87171]",
@@ -56,16 +59,21 @@ export function Ink({ tone, className, children }: Children) {
 
 const clampPercent = (p: number) => Math.max(0, Math.min(100, p));
 
-/** A limit bar; the grey tick marks where the window is on pace to be at the reset. */
+/**
+ * A limit bar. The grey block marks where the window is on pace to be at the
+ * reset (the forecast); the thin dark line, where an even pace would be now.
+ */
 export function Bar({
   percent,
   tone,
   marker = null,
+  even = null,
   className,
 }: {
   percent: number;
   tone: Tone;
   marker?: number | null;
+  even?: number | null;
   className?: string;
 }) {
   return (
@@ -76,6 +84,13 @@ export function Bar({
           data-marker={Math.round(marker)}
           className="absolute inset-y-0 w-[3px] bg-muted-foreground"
           style={{ left: `clamp(0px, calc(${clampPercent(marker)}% - 1.5px), calc(100% - 3px))` }}
+        />
+      )}
+      {even === null ? null : (
+        <span
+          data-even={Math.round(even)}
+          className="absolute inset-y-0 w-px bg-foreground/80"
+          style={{ left: `clamp(0px, calc(${clampPercent(even)}% - 0.5px), calc(100% - 1px))` }}
         />
       )}
     </span>

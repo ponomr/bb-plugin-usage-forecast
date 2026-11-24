@@ -340,7 +340,7 @@ describe("band, expanded", () => {
     await expand();
     const session = await findWindow("Current session", providerBlock("claude-code"));
     expect(session.textContent).toContain("Too early, usually ~100%, resets in 4h 54m");
-    expect(within(session).getByText("3%").getAttribute("data-tone")).toBe("normal");
+    expect(within(session).getByText("3%").getAttribute("data-tone")).toBe("muted");
     expect(session.querySelector("[data-marker]")).toBeNull();
     expect(screen.queryByTestId("window-budget")).toBeNull();
   });
@@ -432,50 +432,6 @@ describe("band, expanded", () => {
     cleanup();
     render(Banner, {}, backend());
     expect((await screen.findByRole("button", { name: "Hide details" })).getAttribute("aria-expanded")).toBe("true");
-  });
-});
-
-describe("band, limits shown as left", () => {
-  const remaining = { settings: { limitsShow: "remaining" } };
-  const fillWidth = (el: HTMLElement) => el.querySelector<HTMLElement>("[aria-hidden] > span")!.style.width;
-
-  it("shows what is left of each window and keeps the risk colours and the used context", async () => {
-    render(Banner, {}, backend({ snapshot: twoProviders() }), remaining);
-    const weekly = await findWindow("Weekly limit");
-    expect(weekly.textContent).toBe("W3d8%");
-    expect(within(weekly).getByText("8%").getAttribute("data-tone")).toBe("amber");
-    expect(fillWidth(weekly)).toBe("8%");
-    expect(weekly.title).toBe("Weekly – 8% left");
-    expect((await findWindow("Current session")).textContent).toBe("5H2h60%");
-    expect((await findWindow("context")).textContent).toBe("Ctx90k / 150k60%");
-  });
-
-  it("mirrors the pace tick: 60% used heading for 110% leaves 40% now and nothing at reset", async () => {
-    const s = snapshot([provider("codex", [win("Weekly limit", 60, { forecast: forecastOf(110), resetsAt: Date.now() + 5 * HOUR_MS })])]);
-    render(Banner, {}, backend({ snapshot: s, thread: threadState({ providerId: "codex" }) }), remaining);
-    const weekly = await findWindow("Weekly limit");
-    expect(fillWidth(weekly)).toBe("40%");
-    expect(weekly.querySelector("[data-marker]")!.getAttribute("data-marker")).toBe("0");
-  });
-
-  it("says in the details how much will be left at reset", async () => {
-    render(Banner, {}, backend({ snapshot: twoProviders() }), remaining);
-    fireEvent.click(await screen.findByRole("button", { name: "Show details" }));
-    const claude = providerBlock("claude-code");
-    expect((await findWindow("Current session", claude)).textContent).toContain("5 Hour60%");
-    expect((await findWindow("Weekly limit", claude)).textContent).toContain("Tight, ~8% left, resets in 3d");
-    const codex = providerBlock("codex");
-    expect(within(codex()!).getByRole("button").textContent).toBe("▸Codex5H 90%");
-    fireEvent.click(within(codex()!).getByRole("button"));
-    expect((await findWindow("Current session", codex)).title).toBe(
-      "Current pace: 80% left by reset (main forecast)\nUsual pace (3 past windows): 0% left",
-    );
-  });
-
-  it("speaks Russian", async () => {
-    render(Banner, {}, backend({ snapshot: twoProviders() }), { settings: { limitsShow: "remaining", language: "ru" } });
-    fireEvent.click(await screen.findByRole("button", { name: "Подробнее" }));
-    expect((await findWindow("Weekly limit", providerBlock("claude-code"))).textContent).toContain("Впритык, останется ~8%");
   });
 });
 

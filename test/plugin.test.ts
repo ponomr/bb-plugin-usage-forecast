@@ -201,34 +201,6 @@ describe("plugin wiring", () => {
     ).rejects.toThrow();
   });
 
-  it("declares resetShow next to limitsShow, countdown by default", async () => {
-    const { harness } = await load();
-    const descriptors = harness.registrations.settingsDescriptors;
-    const keys = Object.keys(descriptors);
-    expect(keys.indexOf("resetShow")).toBe(keys.indexOf("limitsShow") + 1);
-    expect(descriptors.resetShow).toMatchObject({ type: "select", options: ["countdown", "time"], default: "countdown" });
-  });
-
-  it("setDisplay writes only the given key, answers both effective values and invalidates", async () => {
-    const { harness, invalidations } = await load();
-    expect(await harness.callRpc("setDisplay", { resetShow: "time" })).toEqual({ limitsShow: "used", resetShow: "time" });
-    expect(invalidations()).toContainEqual(null);
-    expect(await harness.callRpc("setDisplay", { limitsShow: "remaining" })).toEqual({ limitsShow: "remaining", resetShow: "time" });
-    expect(await harness.callRpc("setDisplay", { limitsShow: "used", resetShow: "countdown" })).toEqual({
-      limitsShow: "used",
-      resetShow: "countdown",
-    });
-  });
-
-  it("setDisplay rejects an empty input, an unknown value and an unknown key", async () => {
-    const { harness } = await load();
-    await expect(harness.callRpc("setDisplay", {})).rejects.toThrow();
-    await expect(harness.callRpc("setDisplay", { resetShow: "clock" })).rejects.toThrow();
-    await expect(harness.callRpc("setDisplay", { limitsShow: "left" })).rejects.toThrow();
-    await expect(harness.callRpc("setDisplay", { language: "ru" })).rejects.toThrow();
-    expect(await harness.callRpc("setDisplay", { resetShow: "countdown" })).toEqual({ limitsShow: "used", resetShow: "countdown" });
-  });
-
   it("hideProvider appends the id once, keeps the other ids and invalidates (UF-11 R11)", async () => {
     const { harness, invalidations } = await load({ hiddenProviders: " Codex ,, nope" } as never);
     expect(await harness.callRpc("hideProvider", { providerId: "acp-opencode" })).toEqual({ hiddenProviders: ["codex", "nope", "acp-opencode"] });

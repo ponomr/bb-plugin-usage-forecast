@@ -2,7 +2,6 @@
 // times. Each takes the string table of the current language.
 
 import type { CompactLogEntry, ProviderStatus } from "../shared/contract";
-import type { ResetShow } from "../shared/reset-show";
 import { formatPercent } from "../shared/thresholds";
 import { DAY_MS, HOUR_MS, MIN_MS, showsModelTag } from "../shared/windows";
 import type { Strings } from "./i18n";
@@ -63,14 +62,10 @@ export function formatSpan(s: Strings, ms: number): string {
   return `${minutes}${s.unit.m}`;
 }
 
-/** The reset in a sentence: "resets in 4h 12m", or with `time` "resets at 19:59" / "resets Sat 19:59". */
-export function formatResetIn(s: Strings, resetsAt: number | null, now: number, mode: ResetShow = "countdown"): string | null {
+/** The reset in a sentence: "resets in 4h 12m". */
+export function formatResetIn(s: Strings, resetsAt: number | null, now: number): string | null {
   if (resetsAt === null) return null;
   if (resetsAt <= now) return s.resetNow;
-  if (mode === "time") {
-    const { time, weekday } = formatRunOut(s, resetsAt, now);
-    return s.resetsAt(time, weekday);
-  }
   return s.resetsIn(formatSpan(s, resetsAt - now));
 }
 

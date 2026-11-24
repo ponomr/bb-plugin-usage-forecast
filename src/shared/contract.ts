@@ -4,9 +4,7 @@
 
 import { defineRpcContract } from "@get-bb/plugin-sdk";
 import { z } from "zod";
-import { LIMITS_SHOW } from "./limits-show";
 import { PACE_STATES } from "./pace";
-import { RESET_SHOW } from "./reset-show";
 
 export const LIMITS_TAG = "limits";
 export const threadTag = (threadId: string) => `thread:${threadId}`;
@@ -283,19 +281,6 @@ export const compactResultSchema = z.object({
 });
 export type CompactResult = z.infer<typeof compactResultSchema>;
 
-// --- Display -----------------------------------------------------------------
-
-/** The display settings a press in the band changes; at least one is given. */
-export const displayInputSchema = z
-  .object({ limitsShow: z.enum(LIMITS_SHOW).optional(), resetShow: z.enum(RESET_SHOW).optional() })
-  .strict()
-  .refine((input) => input.limitsShow !== undefined || input.resetShow !== undefined, { message: "Nothing to set" });
-export type DisplayInput = z.infer<typeof displayInputSchema>;
-
-/** Both display settings as they are after the write. */
-export const displaySchema = z.object({ limitsShow: z.enum(LIMITS_SHOW), resetShow: z.enum(RESET_SHOW) });
-export type Display = z.infer<typeof displaySchema>;
-
 // --- Hidden providers --------------------------------------------------------
 
 /** The provider the band's Hide button adds to the `hiddenProviders` setting; one id, no separators. */
@@ -355,10 +340,6 @@ export const usageForecastContract = defineRpcContract({
   setThreadOverride: {
     input: z.object({ threadId: threadIdSchema, override: overrideSchema }),
     output: z.object({ override: overrideSchema }),
-  },
-  setDisplay: {
-    input: displayInputSchema,
-    output: displaySchema,
   },
   hideProvider: {
     input: hideProviderInputSchema,
