@@ -43,6 +43,12 @@ export interface Strings {
   headerShort(span: string): string;
   /** A provider's label in the header when bb has no icon for it. */
   providerShort: Readonly<Record<string, string>>;
+  /** A provider's name in the floating widget's lines: "Claude". */
+  providerBrief: Readonly<Record<string, string>>;
+  /** The floating panel's tooltip: a press folds it. */
+  floatFold: string;
+  /** The floating badge's tooltip: a press opens the panel. */
+  floatOpen: string;
   /** A window that lasts, with the projected percent used at the reset. */
   lastsUsed(percent: number, resetIn: string | null): string;
   /** A window that lasts with little to spare. */
@@ -210,6 +216,9 @@ export const en: Strings = {
   headerOut: (time) => `out ${time}`,
   headerShort: (span) => `short by ${span}`,
   providerShort: { "claude-code": "CC", codex: "CX" },
+  providerBrief: { "claude-code": "Claude", codex: "Codex" },
+  floatFold: "Press to fold, drag to move",
+  floatOpen: "Press to show the limits, drag to move",
   runsOut: (time, day, before) => `Runs out ${day === null ? `at ${time}` : `${day} ${time}`}, ${before} before reset`,
   lastsUsed: (p, reset) => `Lasts, ~${p}% used${reset === null ? "" : `, ${reset}`}`,
   tightUsed: (p, reset) => `Tight, ~${p}% used${reset === null ? "" : `, ${reset}`}`,
@@ -386,6 +395,9 @@ export const ru: Strings = {
   headerOut: (time) => `кончится ${time}`,
   headerShort: (span) => `не хватит ${span}`,
   providerShort: { "claude-code": "CC", codex: "CX" },
+  providerBrief: { "claude-code": "Claude", codex: "Codex" },
+  floatFold: "Нажмите, чтобы свернуть; перетащите, чтобы сдвинуть",
+  floatOpen: "Нажмите, чтобы показать лимиты; перетащите, чтобы сдвинуть",
   runsOut: (time, day, before) => `Кончится ${day === null ? `в ${time}` : `в ${day} ${time}`}, за ${before} до сброса`,
   lastsUsed: (p, reset) => `Хватит, к сбросу ~${p}%${reset === null ? "" : `, ${reset}`}`,
   tightUsed: (p, reset) => `Впритык, к сбросу ~${p}%${reset === null ? "" : `, ${reset}`}`,

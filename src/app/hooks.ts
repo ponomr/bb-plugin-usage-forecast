@@ -49,6 +49,11 @@ export function useHeaderShow(): HeaderShow {
   return parseHeaderShow(useSettings().values?.headerShow);
 }
 
+/** The `showFloat` setting; off until the settings load and unless it is switched on. */
+export function useFloatShown(): boolean {
+  return useSettings().values?.showFloat === true;
+}
+
 /** The `showBand` setting; on until the settings load and unless it is switched off. */
 export function useBandShown(): boolean {
   return useSettings().values?.showBand !== false;

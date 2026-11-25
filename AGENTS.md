@@ -25,7 +25,8 @@ auto-compact without open clients.
   (`indicator.ts` model, `ring-icon.tsx`, `indicator-store.ts` with its
   overlay feeder, the `store.ts` helper behind the module stores,
   `sidebar-card.tsx`), the page-header limits (`header-model.ts` model,
-  `header-widget.tsx` with its popover card), the cards' refresh and
+  `header-widget.tsx` with its popover card), the floating widget
+  (`float-widget.tsx`), the cards' refresh and
   settings row (`card-actions.tsx`); UI strings in `i18n.ts`.
 - `components/`, `lib/` — vendored BB UI components (only the ones `src/`
   imports); import them by relative path and keep them unchanged.

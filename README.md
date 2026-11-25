@@ -155,6 +155,14 @@ The settings.
   host the hosts are tabs and the card shows one host at a time, first the
   host of the ring's worst window; an account shared by several hosts is in
   each of their tabs («also laptop»).
+- **Floating widget.** Off by default; the «Floating limits widget» setting
+  turns it on. A small panel, about 120 px wide, at the right edge of the
+  window at mid-height, one line per provider with its 5-hour and weekly
+  percents in their colours («Claude 5H 41% W 38%»): in a thread its own
+  provider first, as in the header. A press folds it into a 44 px round
+  badge with two rings (5-hour outside, weekly inside) and a press on the
+  badge opens it again. Drag it up or down (or press ↑/↓ while it has
+  focus); the place and the fold are kept per device.
 - **Plan multiplier.** When bb reports a plan multiplier above 1 (the
   host's `plan.multiplier`), the band, the sidebar card and the CLI show it
   after the plan name: «Claude Code · Max 5×». A label that already names a
@@ -238,6 +246,7 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Language | English | English, Русский | Language of the plugin UI |
 | Limits in the header | Numbers | Numbers, Numbers and bars, Forecast first, All providers, Off | The limits at the top right of the page. Numbers: the 5-hour and weekly windows as coloured percents with the time to the 5-hour reset; with bars each window also gets a horizontal bar. Forecast first: a window that runs out before its reset goes first, with when. All providers: each provider's worst window by its icon. On a phone every mode but Off is a dot and the worst percent. Off removes them |
 | Sidebar icon | Two rings | Two rings, One ring | The limits button in the sidebar footer: the 5-hour (outside) and weekly (inside) windows of the worst window's provider, or one ring for the worst window with the even-pace tick. There is no Off: More → Customize footer → Remove Usage limits takes the button out of the footer |
+| Floating limits widget | off | on, off | A small panel at the right edge of the window, one line per provider with its 5-hour and weekly percents; a press folds it into a round badge with two rings; drag it up or down. The place and the fold are kept per device |
 | Band above the composer | on | on (Auto), off | The limits and context band above the message field. On: one row of bars while all is calm; the headline, the switch and Compact appear when a window runs out or hits its limit, or the context passes 80%. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
 | Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |
 
@@ -390,6 +399,8 @@ To hide only the band above the composer, switch off «Band above the
 composer» in the plugin settings.
 
 To hide only the header limits, set «Limits in the header» to Off.
+
+The floating widget shows only while «Floating limits widget» is on.
 
 To hide only the ring, open More in the sidebar footer → Customize footer →
 «Remove Usage limits from footer»; it moves into the More menu. bb has no

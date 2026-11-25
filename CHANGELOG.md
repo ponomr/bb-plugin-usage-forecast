@@ -40,6 +40,11 @@ listed here.
   the ▼ toggle. A window that runs out before its reset or hits its limit, or
   a context past 80%, opens it to the headline with the auto-compact switch
   and Compact, also on a phone. «Band above the composer» on means Auto.
+- Floating limits widget, off by default (new setting «Floating limits
+  widget»): a small panel at the right edge of the window, one line per
+  provider with its 5-hour and weekly percents («Claude 5H 41% W 38%»). A
+  press folds it into a 44 px round badge with two rings and back; it is
+  dragged up or down, and the place and the fold are kept per device.
 
 ## 0.4.21 — 2026-11-16
 
