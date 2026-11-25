@@ -6,12 +6,18 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CardActions } from "../src/app/card-actions";
-import { headerView, headerWindows, threadIdOfPath } from "../src/app/header-model";
+import { headerProviders, headerView, headerWindows, threadIdOfPath, worstWindowOf } from "../src/app/header-model";
 import { HeaderLimits } from "../src/app/header-widget";
 import { pluginSettingsPath } from "../src/app/hooks";
 import { en } from "../src/app/i18n";
 import { DAY_MS } from "../src/shared/windows";
-import { backend, callsTo, host, provider, render, snapshot, T, threadState, win } from "./app-fixtures";
+import { backend, callsTo, forecastOf, host, provider, render, snapshot, T, threadState, win } from "./app-fixtures";
+
+const desktop = (pill: HTMLElement) => within(pill).getByTestId("header-limits-desktop");
+const phone = (pill: HTMLElement) => within(pill).getByTestId("header-limits-phone");
+/** A window on course to run out: `inMin` minutes from now, before its reset. */
+const runsOut = (label: string, used: number, inMin: number, over: Parameters<typeof win>[2] = {}) =>
+  win(label, used, { forecast: { ...forecastOf(150)!, current: { projectedPercent: 150, runOutAt: Date.now() + inMin * 60_000 } }, ...over });
 
 const weekly = (used: number) => win("Weekly limit", used, { durationMs: 7 * DAY_MS, resetsAt: Date.now() + 3 * DAY_MS });
 
@@ -51,6 +57,20 @@ describe("header model", () => {
     expect(headerView(en, s, undefined, Date.now())?.provider.providerId).toBe("codex");
     expect(headerView(en, snapshot([provider("codex", [])]), undefined, Date.now())).toBeNull();
   });
+
+  it("lists the thread's provider first for the providers mode, and only providers with windows", () => {
+    const s = snapshot([provider("claude-code", [win("Current session", 10)]), provider("codex", [win("Current session", 95)]), provider("acp-x", [])]);
+    expect(headerProviders(en, s, { providerId: "codex", hostId: null }, Date.now()).map((p) => p.providerId)).toEqual(["codex", "claude-code"]);
+    expect(headerProviders(en, s, undefined, Date.now()).map((p) => p.providerId)).toEqual(["claude-code", "codex"]);
+  });
+
+  it("takes the worst window by pace state before the used percent", () => {
+    const calm = win("Weekly limit", 80);
+    const out = runsOut("Current session", 40, 30);
+    expect(worstWindowOf([calm, out], Date.now())).toBe(out);
+    expect(worstWindowOf([win("Current session", 20), calm], Date.now())).toBe(calm);
+    expect(worstWindowOf([], Date.now())).toBeNull();
+  });
 });
 
 describe("HeaderLimits", () => {
@@ -62,7 +82,7 @@ describe("HeaderLimits", () => {
     expect(pill.closest("[data-bb-plugin=usage-forecast]")!.nextElementSibling).toBe(row.querySelector("[data-actions]"));
     expect(pill.dataset.style).toBe("numbers");
     await waitFor(() => expect(pill.querySelectorAll("[data-gauge]")).toHaveLength(2));
-    expect(pill.textContent).toMatch(/^5H(2h|1h 59m)42%W7%$/);
+    expect(desktop(pill).textContent).toMatch(/^5H(2h|1h 59m)42%W7%$/);
     expect(pill.querySelector("[data-gauge] [aria-hidden]")).toBeNull();
     expect(pill.getAttribute("aria-label")).toContain("Claude Code");
   });
@@ -74,7 +94,7 @@ describe("HeaderLimits", () => {
     const pill = await screen.findByTestId("header-limits");
     expect(pill.dataset.style).toBe("bars");
     await waitFor(() => expect(pill.querySelectorAll("[data-gauge] [aria-hidden]")).toHaveLength(2));
-    expect(pill.textContent).toMatch(/^5H(2h|1h 59m)42%W7%$/);
+    expect(desktop(pill).textContent).toMatch(/^5H(2h|1h 59m)42%W7%$/);
     expect(pill.querySelectorAll("[data-even]").length).toBeGreaterThan(0);
     view.unmount();
     render(HeaderLimits, {}, b, { settings: { headerShow: "off" } });
@@ -87,8 +107,73 @@ describe("HeaderLimits", () => {
     render(HeaderLimits, {}, backend({ snapshot: snapshot([]) }));
     const pill = await screen.findByTestId("header-limits");
     await waitFor(() => expect(pill.dataset.data).toBe("none"));
-    expect(pill.textContent).toBe("—");
+    expect(desktop(pill).textContent).toBe("—");
+    expect(phone(pill).textContent).toBe("—");
     expect(pill.title).toBe("Usage limits: No limits data");
+  });
+
+  it("B5: on a phone shows a dot and the worst window's percent in its tone, whatever the desktop mode", async () => {
+    headerRow();
+    const s = snapshot([provider("codex", [runsOut("Current session", 30, 20), weekly(61)])]);
+    for (const headerShow of ["numbers", "bars", "forecast", "providers"]) {
+      const view = render(HeaderLimits, {}, backend({ snapshot: s }), { settings: { headerShow } });
+      const pill = await screen.findByTestId("header-limits");
+      await waitFor(() => expect(phone(pill).textContent).toBe("●30%"));
+      expect(phone(pill).className).toContain("sm:hidden");
+      expect(desktop(pill).className).toContain("hidden");
+      expect(phone(pill).querySelector("[data-phone]")?.getAttribute("data-tone")).not.toBe("muted");
+      view.unmount();
+    }
+  });
+
+  it("B3: while every window lasts, forecast shows the numbers", async () => {
+    headerRow();
+    render(HeaderLimits, {}, backend({ snapshot: snapshot([provider("codex", [win("Current session", 42), weekly(7)])]) }), { settings: { headerShow: "forecast" } });
+    const pill = await screen.findByTestId("header-limits");
+    await waitFor(() => expect(pill.querySelectorAll("[data-gauge]")).toHaveLength(2));
+    expect(desktop(pill).textContent).toMatch(/^5H(2h|1h 59m)42%W7%$/);
+    expect(pill.querySelector("[data-forecast]")).toBeNull();
+  });
+
+  it("B3: a window that runs out goes first with its run-out; a later day says how long it falls short", async () => {
+    headerRow();
+    const soon = Date.now() + 20 * 60_000;
+    const sameDay = new Date(soon).toDateString() === new Date().toDateString();
+    const late = runsOut("Weekly limit", 74, 2 * 24 * 60, { durationMs: 7 * DAY_MS, resetsAt: Date.now() + 3 * DAY_MS });
+    const s = snapshot([provider("codex", [runsOut("Current session", 41, 20), late])]);
+    render(HeaderLimits, {}, backend({ snapshot: s }), { settings: { headerShow: "forecast" } });
+    const pill = await screen.findByTestId("header-limits");
+    await waitFor(() => expect(pill.querySelectorAll("[data-forecast]")).toHaveLength(2));
+    const gauges = Array.from(pill.querySelectorAll<HTMLElement>("[data-gauge]"));
+    expect(gauges.map((g) => g.dataset.gauge)).toEqual(["Current session", "Weekly limit"]);
+    if (sameDay) expect(gauges[0]!.textContent).toMatch(/^5H41%· out \S+/);
+    expect(gauges[1]!.textContent).toBe("W74%· short by 1d");
+  });
+
+  it("B3: the window that runs out leads even when it is the weekly one; the other loses its reset", async () => {
+    headerRow();
+    const late = runsOut("Weekly limit", 74, 2 * 24 * 60, { durationMs: 7 * DAY_MS, resetsAt: Date.now() + 3 * DAY_MS });
+    render(HeaderLimits, {}, backend({ snapshot: snapshot([provider("codex", [win("Current session", 41), late])]) }), {
+      settings: { headerShow: "forecast" },
+    });
+    const pill = await screen.findByTestId("header-limits");
+    await waitFor(() => expect(pill.querySelector("[data-gauge]")?.getAttribute("data-gauge")).toBe("Weekly limit"));
+    expect(desktop(pill).textContent).toBe("W74%· short by 1d5H41%");
+  });
+
+  it("B4: every provider by bb's icon with its worst percent; a provider without artwork by its short label", async () => {
+    headerRow();
+    const s = snapshot([provider("claude-code", [win("Current session", 97), weekly(40)]), provider("codex", [win("Current session", 10), weekly(30)])]);
+    const providers = { status: "ready" as const, providers: [{ id: "claude-code", logoUrl: "/api/v1/system/providers/claude-code/logo" }] };
+    render(HeaderLimits, {}, backend({ snapshot: s }), { settings: { headerShow: "providers" }, providers: providers as never });
+    const pill = await screen.findByTestId("header-limits");
+    await waitFor(() => expect(pill.querySelectorAll("[data-provider]")).toHaveLength(2));
+    const [cc, cx] = Array.from(pill.querySelectorAll<HTMLElement>("[data-provider]"));
+    expect(cc!.querySelector("[data-provider-id=claude-code]")?.getAttribute("data-provider-logo")).toContain("claude-code");
+    expect(cc!.textContent).toMatch(/^97%(2h|1h 59m)$/);
+    expect(cx!.querySelector("[data-provider-label]")?.textContent).toBe("CX");
+    expect(cx!.textContent).toMatch(/^CX30%/);
+    expect(pill.getAttribute("aria-label")).toMatch(/^Claude Code · 5 Hour: 97%.* · Codex · Weekly: 30%/);
   });
 
   it("without a header row uses the shared fixed dock", async () => {

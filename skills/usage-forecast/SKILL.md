@@ -112,7 +112,7 @@ Usage Forecast.
 | `limitNotifyPercent` | 90 | 50–100 |
 | `pollIntervalMinutes` | 2 | 1–10 |
 | `language` | `en` | `en`, `ru` (UI language) |
-| `headerShow` | `numbers` | `numbers`, `bars`, `off` (the 5-hour and weekly windows at the top right of the page header as coloured percents with the 5-hour reset; `bars` adds horizontal bars; a press opens the limits card) |
+| `headerShow` | `numbers` | `numbers`, `bars`, `forecast`, `providers`, `off` (the limits at the top right of the page header: `numbers` the 5-hour and weekly windows as coloured percents with the 5-hour reset; `bars` adds horizontal bars; `forecast` puts a window that runs out before its reset first, with its run-out; `providers` each provider's worst window by its icon; on a phone every mode but `off` is a dot and the worst percent; a press opens the limits card) |
 | `sidebarShow` | `rings` | `rings`, `ring` (the sidebar footer icon: two rings for the 5-hour and weekly windows, or one ring for the worst window with the even-pace tick) |
 | `showBand` | `true` | — (the band above the composer; off removes the band and its Compact button, everything else works as before) |
 | `hiddenProviders` | empty | provider ids separated by commas or spaces; left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom` |
