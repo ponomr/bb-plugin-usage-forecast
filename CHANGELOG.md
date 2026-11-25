@@ -10,8 +10,12 @@ listed here.
   thread's provider at the top right, next to the header's buttons: a pill
   with each window's percent in its colour and the time to the 5-hour reset,
   optionally with horizontal bars (new setting «Limits in the header»:
-  Numbers, Numbers and bars, Off). A press opens the limits card. On a phone
-  the two windows stack in two lines.
+  Numbers, Numbers and bars, Forecast first, All providers, Off). Forecast
+  first shows the numbers while all is calm and puts a window on course to
+  run out first, with «out 14:20» or «short by 1d 6h». All providers shows
+  each provider's worst window by bb's provider icon (a short label such as
+  «CX» when bb has none). A press opens the limits card. On a phone every
+  mode but Off shows a dot in the worst window's colour and its percent.
 - Every expanded card (band, sidebar card, header card) ends with the last
   poll time, a refresh button and a settings button (a cog).
 - Tooltips on the band's buttons: the ▼/▲ and ▸/▾ toggles say «Show

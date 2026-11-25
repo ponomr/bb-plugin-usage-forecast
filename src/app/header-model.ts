@@ -6,8 +6,8 @@
 
 import type { LimitWindow, LimitsSnapshot, ProviderLimits } from "../shared/contract";
 import type { Strings } from "./i18n";
-import { indicatorView } from "./indicator";
-import { bannerView, isWeekly } from "./model";
+import { compareWorst, indicatorView } from "./indicator";
+import { bannerView, isWeekly, windowView } from "./model";
 
 export interface HeaderView {
   provider: ProviderLimits;
@@ -54,6 +54,36 @@ export function headerView(
   const { session, weekly } = headerWindows(provider);
   if (session === null && weekly === null) return null;
   return { provider, session, weekly };
+}
+
+/**
+ * The providers the `providers` mode lists, each with windows: in a thread
+ * the band's (its own provider first, then the others of its host), else
+ * those of the host of the worst window.
+ */
+export function headerProviders(
+  s: Strings,
+  snapshot: LimitsSnapshot | undefined,
+  thread: { providerId: string | null; hostId: string | null } | undefined,
+  now: number,
+  hidden: readonly string[] = [],
+): ProviderLimits[] {
+  if (snapshot === undefined) return [];
+  if (thread !== undefined) {
+    const band = bannerView(s, snapshot, null, thread, now, hidden);
+    if (band.kind === "limits") return [band.primary, ...band.others].filter((p) => p.windows.length > 0);
+  }
+  const view = indicatorView(snapshot, now, hidden);
+  const worst = view.worst;
+  const group = view.groups.find((g) => worst === null || worst.hostName === null || g.hostName === worst.hostName) ?? view.groups[0];
+  return (group?.providers ?? []).map((e) => e.provider).filter((p) => p.windows.length > 0);
+}
+
+/** The worst of the windows by the indicator's order (shown pace state, used percent, nearer reset), or null for none. */
+export function worstWindowOf(windows: readonly LimitWindow[], now: number): LimitWindow | null {
+  const ranked = windows.map((w) => ({ w, state: windowView(w, now).pace, usedPercent: w.usedPercent, resetsAt: w.resetsAt }));
+  ranked.sort(compareWorst);
+  return ranked[0]?.w ?? null;
 }
 
 /** The thread id of an app path such as `/projects/<id>/threads/<threadId>`, or null. */

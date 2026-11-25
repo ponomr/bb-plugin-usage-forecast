@@ -133,9 +133,10 @@ export default async function plugin(bb: BbPluginApi) {
     headerShow: {
       type: "select",
       label: "Limits in the header",
-      description: "The 5-hour and weekly limits at the top right of the page, with the time to the 5-hour reset. Bars adds a progress bar to each. A press opens the limits card.",
+      description:
+        "The limits at the top right of the page; a press opens the limits card. Numbers: the 5-hour and weekly percents with the time to the 5-hour reset. Bars adds a progress bar to each. Forecast: the same while all is calm; a window on course to run out before its reset goes first, with when it runs out. Providers: every provider's worst window by its icon. On a phone every mode but Off shows a dot and the worst percent.",
       options: [...HEADER_SHOW],
-      experimental_optionLabels: { numbers: "Numbers", bars: "Numbers and bars", off: "Off" },
+      experimental_optionLabels: { numbers: "Numbers", bars: "Numbers and bars", forecast: "Forecast first", providers: "All providers", off: "Off" },
       default: DEFAULT_HEADER_SHOW,
     },
     sidebarShow: {

@@ -121,9 +121,14 @@ The settings.
   weekly windows (on a page without a thread: the provider of the worst
   window) in a pill: «5H 4h 41m 97%  W 61%», each percent in its window's
   colour, with the time to the 5-hour reset. «Numbers and bars» adds a
-  horizontal bar with the pace ticks to each window. Pressing it
-  opens the same card as the sidebar ring. On a phone the two windows stack
-  in two lines and the bars drop out.
+  horizontal bar with the pace ticks to each window. «Forecast first» shows
+  the numbers while all is calm; once a window is on course to run out
+  before its reset, it goes first with when: «5H 82% · out 14:20», or on a
+  later day «W 74% · short by 1d 6h». «All providers» shows every provider
+  of the host by bb's provider icon with its worst window's percent and
+  reset. Pressing it opens the same card as the sidebar ring. On a phone
+  every mode shows only a dot in the worst window's colour and its percent
+  («● 97%»).
 - **Refresh and settings in every card.** The expanded band, the sidebar
   card and the header card end with the time of the last poll, a button that
   polls the limits now and a button that opens the plugin's settings.
@@ -224,7 +229,7 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Limit push threshold, % | 90 | 50–100 | Usage of a limit window that sends the push |
 | Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
 | Language | English | English, Русский | Language of the plugin UI |
-| Limits in the header | Numbers | Numbers, Numbers and bars, Off | The 5-hour and weekly windows at the top right of the page as coloured percents with the time to the 5-hour reset; with bars each window also gets a horizontal bar (not on a phone). Off removes them |
+| Limits in the header | Numbers | Numbers, Numbers and bars, Forecast first, All providers, Off | The limits at the top right of the page. Numbers: the 5-hour and weekly windows as coloured percents with the time to the 5-hour reset; with bars each window also gets a horizontal bar. Forecast first: a window that runs out before its reset goes first, with when. All providers: each provider's worst window by its icon. On a phone every mode but Off is a dot and the worst percent. Off removes them |
 | Sidebar icon | Two rings | Two rings, One ring | The limits button in the sidebar footer: the 5-hour (outside) and weekly (inside) windows of the worst window's provider, or one ring for the worst window with the even-pace tick. There is no Off: More → Customize footer → Remove Usage limits takes the button out of the footer |
 | Band above the composer | on | on, off | The limits and context band above the message field. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
 | Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |

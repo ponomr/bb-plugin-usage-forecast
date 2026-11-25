@@ -37,6 +37,12 @@ export interface Strings {
   runsOut(time: string, weekday: string | null, beforeReset: string): string;
   /** The sidebar card's one-line form of `runsOut`. */
   runsOutShort(time: string, weekday: string | null): string;
+  /** The header's forecast for a window that runs out today: "out 14:20". */
+  headerOut(time: string): string;
+  /** The header's forecast for a window that runs out on a later day: how long before the reset. */
+  headerShort(span: string): string;
+  /** A provider's label in the header when bb has no icon for it. */
+  providerShort: Readonly<Record<string, string>>;
   /** A window that lasts, with the projected percent used at the reset. */
   lastsUsed(percent: number, resetIn: string | null): string;
   /** A window that lasts with little to spare. */
@@ -201,6 +207,9 @@ export const en: Strings = {
   fullWindow: { "Current session": "5 Hour", "Weekly limit": "Weekly" },
   hitNote: (reset) => (reset === null ? "Limit reached" : `Limit reached – ${reset}`),
   runsOutShort: (time, day) => `runs out ${day === null ? `at ${time}` : `${day} ${time}`}`,
+  headerOut: (time) => `out ${time}`,
+  headerShort: (span) => `short by ${span}`,
+  providerShort: { "claude-code": "CC", codex: "CX" },
   runsOut: (time, day, before) => `Runs out ${day === null ? `at ${time}` : `${day} ${time}`}, ${before} before reset`,
   lastsUsed: (p, reset) => `Lasts, ~${p}% used${reset === null ? "" : `, ${reset}`}`,
   tightUsed: (p, reset) => `Tight, ~${p}% used${reset === null ? "" : `, ${reset}`}`,
@@ -374,6 +383,9 @@ export const ru: Strings = {
   fullWindow: { "Current session": "5 часов", "Weekly limit": "Неделя" },
   hitNote: (reset) => (reset === null ? "Лимит исчерпан" : `Лимит исчерпан – ${reset}`),
   runsOutShort: (time, day) => `кончится ${day === null ? `в ${time}` : `в ${day} ${time}`}`,
+  headerOut: (time) => `кончится ${time}`,
+  headerShort: (span) => `не хватит ${span}`,
+  providerShort: { "claude-code": "CC", codex: "CX" },
   runsOut: (time, day, before) => `Кончится ${day === null ? `в ${time}` : `в ${day} ${time}`}, за ${before} до сброса`,
   lastsUsed: (p, reset) => `Хватит, к сбросу ~${p}%${reset === null ? "" : `, ${reset}`}`,
   tightUsed: (p, reset) => `Впритык, к сбросу ~${p}%${reset === null ? "" : `, ${reset}`}`,

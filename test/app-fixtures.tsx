@@ -152,7 +152,11 @@ export function render<P extends object>(
   component: ComponentType<P>,
   props: P,
   b: Backend,
-  options: { threadContextKind?: "banner" | "card"; settings?: Record<string, string | number | boolean> } = {},
+  options: {
+    threadContextKind?: "banner" | "card";
+    settings?: Record<string, string | number | boolean>;
+    providers?: Parameters<typeof renderSlot>[2]["providers"];
+  } = {},
 ) {
   const log =
     <R,>(method: string, fn: (input: never) => R | Promise<R>) =>
@@ -165,6 +169,7 @@ export function render<P extends object>(
     pluginId: "usage-forecast",
     composer: { scope: { kind: "thread", threadId: T } },
     threadContextKind: options.threadContextKind ?? "card",
+    ...(options.providers === undefined ? {} : { providers: options.providers }),
     settings: options.settings ?? { autoCompactEnabled: false, autoCompactThresholdPercent: 80, pollIntervalMinutes: 2 },
     rpc: {
       snapshot: log("snapshot", () => b.snapshot),
