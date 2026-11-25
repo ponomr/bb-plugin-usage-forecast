@@ -3,11 +3,11 @@
 // window with the even-pace tick. There is no "off": bb's own More →
 // Customize footer takes the button out of the footer.
 
+import { oneOf } from "./language";
+
 export const SIDEBAR_SHOW = ["rings", "ring"] as const;
 export type SidebarShow = (typeof SIDEBAR_SHOW)[number];
 export const DEFAULT_SIDEBAR_SHOW: SidebarShow = "rings";
 
 /** A stored setting value, or the default for anything unknown. */
-export function parseSidebarShow(value: unknown): SidebarShow {
-  return (SIDEBAR_SHOW as readonly unknown[]).includes(value) ? (value as SidebarShow) : DEFAULT_SIDEBAR_SHOW;
-}
+export const parseSidebarShow = (value: unknown): SidebarShow => oneOf(SIDEBAR_SHOW, value, DEFAULT_SIDEBAR_SHOW);

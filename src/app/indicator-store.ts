@@ -12,7 +12,7 @@ import { providerName, windowLabel } from "./format";
 import { headerView } from "./header-model";
 import { en, type Strings } from "./i18n";
 import { indicatorTitle, indicatorView, providerStaleAt, staleNote, type WorstWindow } from "./indicator";
-import { windowView } from "./model";
+import { ringWindow, windowView } from "./model";
 import type { RingWindow } from "./ring-icon";
 import { createStore } from "./store";
 import { useHiddenProviders, useNow, useSnapshot, useStrings } from "./hooks";
@@ -48,10 +48,6 @@ export const setIndicatorState = store.set;
 
 export function useIndicatorState(): IndicatorState {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
-}
-
-function ringWindow(w: LimitWindow | null, now: number): RingWindow | null {
-  return w === null ? null : { usedPercent: w.usedPercent, tone: windowView(w, now).tone };
 }
 
 /** C1's title: the provider, then each ring, e.g. "Claude Code · 5 Hour: 29%, tight · Weekly: 41%". */

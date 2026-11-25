@@ -13,6 +13,7 @@ import {
 } from "@get-bb/plugin-sdk/app";
 import { STRINGS, type Strings } from "./i18n";
 import { createStore } from "./store";
+import { threadIdOfPath } from "./header-model";
 import { parseLang } from "../shared/language";
 import { parseHeaderShow, type HeaderShow } from "../shared/header-show";
 import { parseHiddenProviders } from "../shared/hidden-providers";
@@ -195,28 +196,58 @@ export function useSetOverride(threadId: string) {
   return { set, pending: mutation.isPending, error };
 }
 
+/** A per-device value from `localStorage`, or null where storage is unavailable. */
+export function readStored(key: string): string | null {
+  try {
+    return globalThis.localStorage?.getItem(key) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeStored(key: string, value: string) {
+  try {
+    globalThis.localStorage?.setItem(key, value);
+  } catch {
+    // Storage can be unavailable (private mode); the state still works in memory.
+  }
+}
+
 /** Banner expanded/collapsed, kept per device. Collapsed by default. */
 export function useExpanded(): [boolean, (expanded: boolean) => void] {
   const key = `${experimental_usePluginId()}:banner-expanded`;
-  const [expanded, setExpanded] = useState(() => {
-    try {
-      return globalThis.localStorage?.getItem(key) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [expanded, setExpanded] = useState(() => readStored(key) === "1");
   const update = useCallback(
     (next: boolean) => {
       setExpanded(next);
-      try {
-        globalThis.localStorage?.setItem(key, next ? "1" : "0");
-      } catch {
-        // Storage can be unavailable (private mode); the state still works in memory.
-      }
+      writeStored(key, next ? "1" : "0");
     },
     [key],
   );
   return [expanded, update];
+}
+
+/** The open thread from the app path; bb's router changes the path without an event, so it is reread after page changes too. */
+export function usePathThreadId(): string | null {
+  const [threadId, setThreadId] = useState(() => threadIdOfPath(window.location.pathname));
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      setThreadId(threadIdOfPath(window.location.pathname));
+    };
+    const observer = new MutationObserver(() => {
+      if (frame === 0) frame = requestAnimationFrame(update);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener("popstate", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("popstate", update);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+  return threadId;
 }
 
 /** Re-renders every minute so "resets in 2h" and "5m ago" stay current. */

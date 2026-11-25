@@ -11,20 +11,19 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { experimental_ProviderIcon as ProviderIcon, experimental_useProviders } from "@get-bb/plugin-sdk/app";
+import { experimental_ProviderIcon as ProviderIcon, experimental_usePluginId, experimental_useProviders } from "@get-bb/plugin-sdk/app";
 import type { LimitWindow, ProviderLimits } from "../shared/contract";
 import type { HeaderShow } from "../shared/header-show";
 import { formatPercent } from "../shared/thresholds";
 import { formatResetIn, formatRunOut, formatSpan, providerName, shortWindowLabel, windowLabel } from "./format";
-import { headerProviders, headerView, threadIdOfPath, worstWindowOf } from "./header-model";
+import { headerProviders, headerView, worstWindowOf } from "./header-model";
 import { providerStaleAt, staleNote } from "./indicator";
-import { useHeaderShow, useHiddenProviders, useNow, useSnapshot, useStrings, useThreadState } from "./hooks";
+import { useHeaderShow, useHiddenProviders, useNow, usePathThreadId, useSnapshot, useStrings, useThreadState } from "./hooks";
 import type { Strings } from "./i18n";
 import { windowView, type WindowView } from "./model";
 import { LimitsCard } from "./sidebar-card";
 import { Bar, Ink } from "./ui";
 
-const PLUGIN = "usage-forecast";
 const HEADER_ROW = "[data-testid=app-page-header-content-row]";
 const DOCK = "data-bb-header-addons";
 /** The card's width, 22rem. */
@@ -57,14 +56,14 @@ function releaseEmptyDock() {
   for (const dock of Array.from(document.querySelectorAll<HTMLElement>(`[${DOCK}]`))) if (dock.childElementCount === 0) dock.remove();
 }
 
-/** An element of this plugin's own that follows the header row; also tracks the path's thread. */
-function useHeaderHost(enabled: boolean): { host: HTMLElement | null; threadId: string | null } {
+/** An element of this plugin's own that follows the header row. */
+function useHeaderHost(enabled: boolean): HTMLElement | null {
+  const pluginId = experimental_usePluginId();
   const [host, setHost] = useState<HTMLElement | null>(null);
-  const [threadId, setThreadId] = useState(() => threadIdOfPath(window.location.pathname));
   useEffect(() => {
     if (!enabled) return;
     const target = document.createElement("div");
-    target.dataset.bbPlugin = PLUGIN;
+    target.dataset.bbPlugin = pluginId;
     target.dataset.bbPluginRoot = "";
     target.className = "usage-forecast-header";
     // The phone's header row passes no pointer events through.
@@ -73,7 +72,6 @@ function useHeaderHost(enabled: boolean): { host: HTMLElement | null; threadId: 
     let frame = 0;
     const attach = () => {
       frame = 0;
-      setThreadId(threadIdOfPath(window.location.pathname));
       const parent = headerParent();
       if (target.parentElement === parent) return;
       if (parent.hasAttribute(DOCK)) parent.append(target);
@@ -95,8 +93,8 @@ function useHeaderHost(enabled: boolean): { host: HTMLElement | null; threadId: 
       releaseEmptyDock();
       setHost(null);
     };
-  }, [enabled]);
-  return { host, threadId };
+  }, [enabled, pluginId]);
+  return host;
 }
 
 /** One window: what it shows and says. */
@@ -259,13 +257,14 @@ function PhoneDot({ view, percent }: { view: WindowView | null; percent: number 
 /** The app overlay; renders into the header, or nothing when `headerShow` is off. */
 export function HeaderLimits() {
   const style = useHeaderShow();
-  const { host, threadId } = useHeaderHost(style !== "off");
+  const host = useHeaderHost(style !== "off");
   if (style === "off" || host === null) return null;
-  return createPortal(<HeaderPill style={style} threadId={threadId} />, host);
+  return createPortal(<HeaderPill style={style} />, host);
 }
 
-function HeaderPill({ style, threadId }: { style: Exclude<HeaderShow, "off">; threadId: string | null }) {
+function HeaderPill({ style }: { style: Exclude<HeaderShow, "off"> }) {
   const s = useStrings();
+  const threadId = usePathThreadId();
   const now = useNow();
   const hidden = useHiddenProviders();
   const snapshot = useSnapshot().data;
@@ -354,6 +353,7 @@ function HeaderPill({ style, threadId }: { style: Exclude<HeaderShow, "off">; th
 /** The limits card, fixed below the pill and kept inside the viewport. */
 function Popover({ anchor, cardRef, onClose }: { anchor: HTMLElement | null; cardRef: React.RefObject<HTMLDivElement | null>; onClose: () => void }) {
   const s = useStrings();
+  const pluginId = experimental_usePluginId();
   const [place, setPlace] = useState<{ top: number; right: number } | null>(null);
   useLayoutEffect(() => {
     const update = () => {
@@ -372,7 +372,7 @@ function Popover({ anchor, cardRef, onClose }: { anchor: HTMLElement | null; car
   return createPortal(
     <div
       ref={cardRef}
-      data-bb-plugin={PLUGIN}
+      data-bb-plugin={pluginId}
       data-bb-plugin-root=""
       role="dialog"
       aria-label={s.indicatorLabel}

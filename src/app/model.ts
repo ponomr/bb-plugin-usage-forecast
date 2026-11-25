@@ -11,6 +11,7 @@ import { DAY_MS } from "../shared/windows";
 import { isHidden } from "../shared/hidden-providers";
 import { formatClock, formatResetIn, formatRunOut, formatSpan, formatTime, providerName, statusText } from "./format";
 import type { Strings } from "./i18n";
+import type { RingWindow } from "./ring-icon";
 
 // --- Which provider --------------------------------------------------------
 
@@ -379,4 +380,9 @@ export function contextView(ctx: ThreadContext): ContextView {
     segments: grouped.length > 0 ? grouped : [{ key: "used", tokens: ctx.usedTokens }],
     bufferTokens: shownBuffer,
   };
+}
+
+/** A window as a ring: its percent in its tone. */
+export function ringWindow(w: LimitWindow | null, now: number): RingWindow | null {
+  return w === null ? null : { usedPercent: w.usedPercent, tone: windowView(w, now).tone };
 }
