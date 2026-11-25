@@ -17,6 +17,7 @@ import { threadIdOfPath } from "./header-model";
 import { parseLang } from "../shared/language";
 import { parsePercentMode } from "../shared/percent-mode";
 import { parseHeaderShow, type HeaderShow } from "../shared/header-show";
+import { parseFloatStyle, type FloatStyle } from "../shared/float-style";
 import { parseHiddenProviders } from "../shared/hidden-providers";
 import { localPeriodStarts } from "../shared/tokens";
 import { normalizeOverride, usageForecastContract, type CompactResult, type ThreadOverride } from "../shared/contract";
@@ -57,6 +58,11 @@ export function useHeaderShow(): HeaderShow {
 /** The `showFloat` setting; off until the settings load and unless it is switched on. */
 export function useFloatShown(): boolean {
   return useSettings().values?.showFloat === true;
+}
+
+/** The `floatStyle` setting; lines until the settings load. */
+export function useFloatStyle(): FloatStyle {
+  return parseFloatStyle(useSettings().values?.floatStyle);
 }
 
 /** The `showBand` setting; on until the settings load and unless it is switched off. */

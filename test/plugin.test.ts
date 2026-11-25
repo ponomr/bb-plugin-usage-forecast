@@ -47,6 +47,24 @@ async function load(settings: Record<string, boolean | number> = {}, limits: () 
 describe("plugin wiring", () => {
   afterEach(() => vi.useRealTimers());
 
+  it("defines the settings grouped by order and label prefix", async () => {
+    const { bb } = createFakePluginHost({ pluginId: "usage-forecast", sdk: { subscribe: (() => () => undefined) as never } });
+    const define = vi.spyOn(bb.settings, "define");
+    await plugin(bb);
+    const defs = define.mock.calls[0]![0] as Record<string, { label: string; description: string }>;
+    expect(Object.keys(defs)).toEqual([
+      "language", "percentMode", "headerShow", "sidebarShow", "showBand", "showFloat", "floatStyle",
+      "limitNotifyEnabled", "limitNotifyPercent", "pollIntervalMinutes", "hiddenProviders",
+      "contextLimitTokens", "claudeCodeContextLimitTokens", "codexContextLimitTokens",
+      "autoCompactEnabled", "autoCompactThresholdPercent", "summaryClearEnabled",
+    ]);
+    expect(Object.values(defs).map((d) => d.label.split(":")[0])).toEqual([
+      ...Array(7).fill("Display"), ...Array(4).fill("Limits"), ...Array(6).fill("Context"),
+    ]);
+    for (const d of Object.values(defs)) expect(d.description.length).toBeLessThanOrEqual(170);
+    expect(defs.contextLimitTokens!.description).toContain("10k–2M");
+  });
+
   it("polls on the schedule and serves the snapshot without account identifiers", async () => {
     const { harness, invalidations } = await load();
     const empty = (await harness.callRpc("snapshot", null)) as LimitsSnapshot;
