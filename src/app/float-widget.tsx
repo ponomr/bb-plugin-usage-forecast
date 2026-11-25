@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { experimental_usePluginId } from "@get-bb/plugin-sdk/app";
 import type { ProviderLimits } from "../shared/contract";
 import { formatPercent } from "../shared/thresholds";
-import { providerName, shortWindowLabel } from "./format";
+import { limitPercent, limitPercentText, providerName, shortWindowLabel } from "./format";
 import { headerProviders, headerView, headerWindows } from "./header-model";
 import { readStored, useFloatShown, useHiddenProviders, useNow, usePathThreadId, useSnapshot, useStrings, useThreadState, writeStored } from "./hooks";
 import type { Strings } from "./i18n";
@@ -54,7 +54,7 @@ function briefName(s: Strings, providerId: string): string {
 /** One provider's line: «Claude 5H 41% W 38%». */
 function lineText(s: Strings, p: ProviderLimits): string {
   const { session, weekly } = headerWindows(p);
-  const parts = [session, weekly].flatMap((w) => (w === null ? [] : [`${shortWindowLabel(s, w.label, w.model)} ${formatPercent(w.usedPercent)}`]));
+  const parts = [session, weekly].flatMap((w) => (w === null ? [] : [`${shortWindowLabel(s, w.label, w.model)} ${limitPercentText(s, w.usedPercent)}`]));
   return [briefName(s, p.providerId), ...parts].join(" ");
 }
 
@@ -68,7 +68,7 @@ function FloatLine({ s, provider, now }: { s: Strings; provider: ProviderLimits;
           <span key={w.label} className="inline-flex items-baseline gap-0.5" data-window={w.label}>
             <span className="text-muted-foreground">{shortWindowLabel(s, w.label, w.model)}</span>
             <Ink tone={windowView(w, now).tone} className="font-semibold tabular-nums">
-              {formatPercent(w.usedPercent)}
+              {formatPercent(limitPercent(s, w.usedPercent))}
             </Ink>
           </span>
         ),
@@ -123,8 +123,8 @@ function FloatWidget() {
   const own = thread?.threadId === threadId ? thread : undefined;
   const providers = headerProviders(s, snapshot, own, now, hidden);
   const badge = headerView(s, snapshot, own, now, hidden);
-  const outer = ringWindow(badge?.session ?? null, now);
-  const inner = ringWindow(badge?.weekly ?? null, now);
+  const outer = ringWindow(s, badge?.session ?? null, now);
+  const inner = ringWindow(s, badge?.weekly ?? null, now);
   const summary = providers.length === 0 ? `${s.indicatorLabel}: ${s.noLimitsData}` : providers.map((p) => lineText(s, p)).join(" · ");
   const top = floatTopPx(share, viewport, height);
 

@@ -23,7 +23,7 @@ import { isNewWindow } from "../shared/forecast";
 import { isHidden } from "../shared/hidden-providers";
 import { formatPercent } from "../shared/thresholds";
 import { windowKey } from "../shared/windows";
-import { formatResetIn, providerName, windowLabel } from "../app/format";
+import { formatResetIn, limitPercent, showsLeft, providerName, windowLabel } from "../app/format";
 import { STRINGS } from "../app/i18n";
 import { cleanMessage } from "./messages";
 import type { Notified, Storage, StoredProvider } from "./storage";
@@ -110,7 +110,7 @@ export class LimitNotifier {
     try {
       const settings = await this.deps.settings();
       if (!settings.limitNotifyEnabled) return;
-      const s = STRINGS[settings.language];
+      const s = { ...STRINGS[settings.language], percentMode: settings.percentMode };
       const sent = await this.deps.storage.notified();
       const named = hosts.length > 1;
       let changed = false;
@@ -144,7 +144,7 @@ export class LimitNotifier {
           const provName = providerName(s, provider.providerId);
           const window = windowLabel(s, w.label, w.model);
           const title =
-            level === "reached" ? s.pushReachedTitle(provName, window) : s.pushTitle(provName, window, formatPercent(w.usedPercent));
+            level === "reached" ? s.pushReachedTitle(provName, window) : s.pushTitle(provName, window, formatPercent(limitPercent(s, w.usedPercent)), showsLeft(s));
           const message: PushMessage = {
             title: named ? s.pushOnHosts(title, members.map((m) => m.name ?? m.hostId ?? "").join(", ")) : title,
             body: s.pushBody(formatResetIn(s, w.resetsAt, now)),

@@ -45,6 +45,13 @@ listed here.
   provider with its 5-hour and weekly percents («Claude 5H 41% W 38%»). A
   press folds it into a 44 px round badge with two rings and back; it is
   dragged up or down, and the place and the fold are kept per device.
+- New setting «Limit percents» (`percentMode`): every limit indicator shows
+  the share of the window left (the new default) or the share used. Rings and
+  bars drain as a window is used, their forecast and even-pace ticks follow;
+  percents, pace notes, tooltips and limit pushes say «left». **Changes the
+  default:** until now everything showed the share used; set it to Used to
+  keep that. The colours still follow the pace, so little left is red. Context
+  fill, thresholds and the CLI keep the share used.
 - Internal clean-up with no change in behaviour: the header and the floating
   widget share one hook for the open thread and one pair of storage helpers,
   the setting parsers share `oneOf`, and exports used only inside their file

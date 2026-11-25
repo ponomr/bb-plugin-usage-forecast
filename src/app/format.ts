@@ -132,3 +132,23 @@ export function shortWindowLabel(s: Strings, label: string, model: string | null
   const short = Object.hasOwn(s.shortWindow, label) ? s.shortWindow[label]! : (Array.from(label)[0] ?? "").toUpperCase();
   return withModel(short, label, model);
 }
+
+/** True while limit indicators show the share left (the `percentMode` setting). */
+export function showsLeft(s: Strings): boolean {
+  return s.percentMode === "left";
+}
+
+/**
+ * A limit window's percent as the indicators show it: the share left, or the
+ * share used. Also mirrors a point on a bar or ring (a marker, the even-pace
+ * tick) so it stays where the fill would be.
+ */
+export function limitPercent(s: Strings, usedPercent: number): number {
+  return showsLeft(s) ? 100 - Math.max(0, Math.min(100, usedPercent)) : usedPercent;
+}
+
+/** The same in a title or label: "59% left" while showing the share left, else "41%". */
+export function limitPercentText(s: Strings, usedPercent: number): string {
+  const text = formatPercent(limitPercent(s, usedPercent));
+  return showsLeft(s) ? s.percentLeft(text) : text;
+}

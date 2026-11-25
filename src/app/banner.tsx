@@ -15,6 +15,7 @@ import {
   contextPercent,
   formatClock,
   formatCost,
+  limitPercent,
   formatResetAt,
   formatSpan,
   formatTokens,
@@ -159,16 +160,19 @@ const ITEM_CLASS = "flex min-w-0 flex-auto items-center gap-1.5";
 /** A collapsed-row bar: fills its item, hidden in a band narrower than 24rem. */
 const BAR_FIT = "hidden min-w-3 flex-1 @sm:flex";
 
-/** A window's bar: the used part, the forecast tick and the even-pace tick. */
+/** A window's bar: the part left or used, the forecast tick and the even-pace tick, mirrored with it. */
 export function WindowBar({ view, className }: { view: WindowView; className?: string }) {
-  return <Bar percent={view.window.usedPercent} tone={view.tone} marker={view.marker} even={view.even} className={className} />;
+  const s = useStrings();
+  const at = (p: number | null) => (p === null ? null : limitPercent(s, p));
+  return <Bar percent={limitPercent(s, view.window.usedPercent)} tone={view.tone} marker={at(view.marker)} even={at(view.even)} className={className} />;
 }
 
-/** A window's used percent in its tone. */
+/** A window's percent left or used, in its tone. */
 export function WindowPercent({ view, className }: { view: WindowView; className?: string }) {
+  const s = useStrings();
   return (
     <Ink tone={view.tone} className={className}>
-      {formatPercent(view.window.usedPercent)}
+      {formatPercent(limitPercent(s, view.window.usedPercent))}
     </Ink>
   );
 }

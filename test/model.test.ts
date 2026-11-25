@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { formatTime } from "../src/app/format";
+import { formatTime, limitPercent, limitPercentText } from "../src/app/format";
+import { parsePercentMode } from "../src/shared/percent-mode";
 import { en, ru } from "../src/app/i18n";
 import { evenPercent, headline, paceDetails, windowBudget, windowNote, windowView } from "../src/app/model";
 import type { LimitWindow } from "../src/shared/contract";
@@ -232,5 +233,31 @@ describe("even-pace tick", () => {
 
   it("clamps a reset further away than the window", () => {
     expect(evenPercent({ resetsAt: NOW + 2 * FIVE_HOURS, durationMs: FIVE_HOURS }, NOW)).toBe(0);
+  });
+});
+
+describe("percent mode: left", () => {
+  const left = { ...en, percentMode: "left" as const };
+  const leftRu = { ...ru, percentMode: "left" as const };
+
+  it("defaults to the share left and reads anything unknown as it", () => {
+    expect(parsePercentMode(undefined)).toBe("left");
+    expect(parsePercentMode("x")).toBe("left");
+    expect(parsePercentMode("used")).toBe("used");
+  });
+
+  it("speaks of the share left at the reset", () => {
+    // 30 % after 2 of 5 hours: 75 % used, 25 % left at the reset.
+    const w = win("Current session", 30, 3 * HOUR_MS, FIVE_HOURS);
+    expect(note(w, left)).toBe("Lasts, ~25% left, resets in 3h");
+    expect(note(w, leftRu)).toBe("Хватит, к сбросу останется ~25%, сброс через 3ч");
+    expect(paceDetails(left, w)).toBe("Current pace: 25% left by reset");
+  });
+
+  it("formats a percent for titles", () => {
+    expect(limitPercentText(left, 41)).toBe("59% left");
+    expect(limitPercentText(leftRu, 41)).toBe("осталось 59%");
+    expect(limitPercentText(en, 41)).toBe("41%");
+    expect(limitPercent(left, 120)).toBe(0);
   });
 });

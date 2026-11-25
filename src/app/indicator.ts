@@ -6,8 +6,8 @@
 
 import type { HostLimits, LimitsSnapshot, ProviderLimits } from "../shared/contract";
 import { paceRank, type PaceState } from "../shared/pace";
-import { formatPercent, type Tone } from "../shared/thresholds";
-import { formatClock, providerName, windowLabel } from "./format";
+import type { Tone } from "../shared/thresholds";
+import { formatClock, limitPercentText, providerName, windowLabel } from "./format";
 import type { Strings } from "./i18n";
 import { hostStale, windowView, withoutForecast } from "./model";
 import { accountGroups } from "../shared/accounts";
@@ -156,7 +156,7 @@ export function staleNote(s: Strings, staleAt: number | null, now: number): stri
 /** The ring's title, e.g. "laptop · Claude Code · 5 Hour: 92%, critical". */
 export function indicatorTitle(s: Strings, worst: WorstWindow | null, now: number): string {
   if (worst === null) return `${s.indicatorLabel}: ${s.noLimitsData}`;
-  const value = formatPercent(worst.usedPercent);
+  const value = limitPercentText(s, worst.usedPercent);
   const parts = [providerName(s, worst.providerId), windowLabel(s, worst.label, worst.model)];
   if (worst.hostName !== null) parts.unshift(worst.hostName);
   const state = worst.state === null ? "" : `, ${s.paceStateName[worst.state]}`;

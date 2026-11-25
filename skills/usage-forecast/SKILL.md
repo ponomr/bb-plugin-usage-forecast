@@ -112,6 +112,7 @@ Usage Forecast.
 | `limitNotifyPercent` | 90 | 50–100 |
 | `pollIntervalMinutes` | 2 | 1–10 |
 | `language` | `en` | `en`, `ru` (UI language) |
+| `percentMode` | `left` | `left`, `used` (what the UI's limit rings, bars, percents, notes and pushes show; the CLI and its JSON always give the share used) |
 | `headerShow` | `numbers` | `numbers`, `bars`, `forecast`, `providers`, `off` (the limits at the top right of the page header: `numbers` the 5-hour and weekly windows as coloured percents with the 5-hour reset; `bars` adds horizontal bars; `forecast` puts a window that runs out before its reset first, with its run-out; `providers` each provider's worst window by its icon; on a phone every mode but `off` is a dot and the worst percent; a press opens the limits card) |
 | `sidebarShow` | `rings` | `rings`, `ring` (the sidebar footer icon: two rings for the 5-hour and weekly windows, or one ring for the worst window with the even-pace tick) |
 | `showFloat` | `false` | — (a floating panel at the window's right edge, one line per provider; folds into a round badge with two rings, dragged up or down) |

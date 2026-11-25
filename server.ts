@@ -36,6 +36,7 @@ import { Storage } from "./src/server/storage";
 import { TokenCounter } from "./src/server/token-counter";
 import { parseSettings, type ThreadsSdk } from "./src/server/threads";
 import { DEFAULT_LANGUAGE, LANGUAGES } from "./src/shared/language";
+import { DEFAULT_PERCENT_MODE, PERCENT_MODES } from "./src/shared/percent-mode";
 import { DEFAULT_HEADER_SHOW, HEADER_SHOW } from "./src/shared/header-show";
 import { DEFAULT_SIDEBAR_SHOW, SIDEBAR_SHOW } from "./src/shared/sidebar-show";
 
@@ -129,6 +130,15 @@ export default async function plugin(bb: BbPluginApi) {
       options: [...LANGUAGES],
       experimental_optionLabels: { en: "English", ru: "Русский" },
       default: DEFAULT_LANGUAGE,
+    },
+    percentMode: {
+      type: "select",
+      label: "Limit percents",
+      description:
+        "What every limit indicator shows: the share of the window left or the share used. Rings, bars, percents, notes, tooltips and limit notifications follow it; the colours do not (little left is red). Context fill, thresholds and the CLI always speak of the share used.",
+      options: [...PERCENT_MODES],
+      experimental_optionLabels: { left: "Left", used: "Used" },
+      default: DEFAULT_PERCENT_MODE,
     },
     headerShow: {
       type: "select",

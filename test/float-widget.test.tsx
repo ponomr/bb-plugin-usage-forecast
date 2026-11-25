@@ -58,6 +58,17 @@ describe("float widget", () => {
     expect(widget.style.top).toBe(`${floatTopPx(0.5, window.innerHeight, 0)}px`);
   });
 
+  it("shows the share left by the percent mode", async () => {
+    render(FloatLimits, {}, backend({ snapshot: two(), thread: threadState({ providerId: "codex" }) }), { settings: { ...on, percentMode: "left" } });
+    const widget = await screen.findByTestId("float-limits");
+    await waitFor(() => expect(widget.querySelectorAll("[data-provider]")).toHaveLength(2));
+    expect(Array.from(widget.querySelectorAll("[data-provider]")).map((l) => l.textContent)).toEqual(["Codex5H95%W78%", "Claude5H59%W62%"]);
+    expect(widget.getAttribute("aria-label")).toMatch(/^Codex 5H 95% left W 78% left · /);
+    fireEvent.click(widget);
+    await waitFor(() => expect(widget.querySelector("[data-ring=outer]")?.getAttribute("data-arc")).toBe("95"));
+    expect(widget.querySelector("[data-ring=inner]")?.getAttribute("data-arc")).toBe("78");
+  });
+
   it("F2: a press folds it into a badge with two rings and back, kept per device", async () => {
     render(FloatLimits, {}, backend({ snapshot: two() }), { settings: on });
     const widget = await screen.findByTestId("float-limits");

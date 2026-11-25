@@ -9,7 +9,7 @@ import { lastingBudget, mainProjection } from "../shared/forecast";
 import { paceRank, paceStateTone, rawPaceState, worsePace, type PaceState } from "../shared/pace";
 import { DAY_MS } from "../shared/windows";
 import { isHidden } from "../shared/hidden-providers";
-import { formatClock, formatResetIn, formatRunOut, formatSpan, formatTime, providerName, statusText } from "./format";
+import { formatClock, formatResetIn, formatRunOut, formatSpan, formatTime, limitPercent, providerName, showsLeft, statusText } from "./format";
 import type { Strings } from "./i18n";
 import type { RingWindow } from "./ring-icon";
 
@@ -212,10 +212,11 @@ export function isWeekly(window: LimitWindow): boolean {
 /** The note under a window: what its pace means before the reset, with the reset as a countdown. */
 export function windowNote(s: Strings, view: WindowView, now: number): string {
   const reset = formatResetIn(s, view.window.resetsAt, now);
-  // A projection as the note shows it: capped at 100 %.
-  const shown = (projected: number) => Math.round(Math.min(100, projected));
-  const lasts = (projected: number) => s.lastsUsed(shown(projected), reset);
-  const tight = (projected: number) => s.tightUsed(shown(projected), reset);
+  // A projection as the note shows it: capped at 100 %, as the share left or used.
+  const left = showsLeft(s);
+  const shown = (projected: number) => Math.round(limitPercent(s, Math.min(100, projected)));
+  const lasts = (projected: number) => s.lastsUsed(shown(projected), reset, left);
+  const tight = (projected: number) => s.tightUsed(shown(projected), reset, left);
   const idle = reset === null ? s.noReset : `${s.noForecast} – ${reset}`;
   switch (view.status) {
     case "hit":
@@ -230,7 +231,7 @@ export function windowNote(s: Strings, view: WindowView, now: number): string {
     case "ok":
       return (view.raw === "tight" ? tight : lasts)(view.projected!);
     case "early": {
-      const usual = view.projected === null ? null : s.usuallyUsed(shown(view.projected));
+      const usual = view.projected === null ? null : s.usuallyUsed(shown(view.projected), left);
       return s.tooEarly(usual, reset);
     }
     case "idle":
@@ -250,14 +251,15 @@ export function windowBudget(s: Strings, view: WindowView, now: number): string 
 export function paceDetails(s: Strings, window: LimitWindow): string | undefined {
   const f = window.forecast;
   if (f === null || f.status === "hit") return undefined;
-  const pct = (projected: number) => `${Math.round(projected)}%`;
+  const left = showsLeft(s);
+  const pct = (projected: number) => `${Math.round(limitPercent(s, projected))}%`;
   const main = mainProjection(f);
   const both = f.current !== null && f.learned !== null;
   // With both lines, the one the band speaks from is marked.
   const mark = (line: string, p: object) => (both && p === main ? s.mainPace(line) : line);
   const lines: string[] = [];
-  if (f.current !== null) lines.push(mark(s.currentPace(pct(f.current.projectedPercent)), f.current));
-  if (f.learned !== null) lines.push(mark(s.usualPace(pct(f.learned.projectedPercent), f.learned.basedOnWindows), f.learned));
+  if (f.current !== null) lines.push(mark(s.currentPace(pct(f.current.projectedPercent), left), f.current));
+  if (f.learned !== null) lines.push(mark(s.usualPace(pct(f.learned.projectedPercent), f.learned.basedOnWindows, left), f.learned));
   return lines.length === 0 ? undefined : lines.join("\n");
 }
 
@@ -302,8 +304,8 @@ export function headline(s: Strings, views: readonly WindowView[], now: number):
   if (short !== undefined) return { text: s.willRunOut(resetName(s, short.window.resetsAt!, now)), tone: short.tone };
   const tight = [...withReset("tight")].sort((a, b) => b.projected! - a.projected!)[0];
   if (tight !== undefined) {
-    const percent = Math.round(Math.min(100, tight.projected!));
-    return { text: s.tightHeadline(percent, resetName(s, tight.window.resetsAt!, now)), tone: tight.tone };
+    const percent = Math.round(limitPercent(s, Math.min(100, tight.projected!)));
+    return { text: s.tightHeadline(percent, resetName(s, tight.window.resetsAt!, now), showsLeft(s)), tone: tight.tone };
   }
   const calm = withReset("calm");
   const lead = calm.find((v) => isWeekly(v.window)) ?? calm[0];
@@ -382,7 +384,7 @@ export function contextView(ctx: ThreadContext): ContextView {
   };
 }
 
-/** A window as a ring: its percent in its tone. */
-export function ringWindow(w: LimitWindow | null, now: number): RingWindow | null {
-  return w === null ? null : { usedPercent: w.usedPercent, tone: windowView(w, now).tone };
+/** A window as a ring: its percent as the indicators show it, in its tone. */
+export function ringWindow(s: Strings, w: LimitWindow | null, now: number): RingWindow | null {
+  return w === null ? null : { percent: limitPercent(s, w.usedPercent), tone: windowView(w, now).tone };
 }

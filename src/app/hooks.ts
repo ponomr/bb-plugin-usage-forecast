@@ -15,6 +15,7 @@ import { STRINGS, type Strings } from "./i18n";
 import { createStore } from "./store";
 import { threadIdOfPath } from "./header-model";
 import { parseLang } from "../shared/language";
+import { parsePercentMode } from "../shared/percent-mode";
 import { parseHeaderShow, type HeaderShow } from "../shared/header-show";
 import { parseHiddenProviders } from "../shared/hidden-providers";
 import { localPeriodStarts } from "../shared/tokens";
@@ -42,7 +43,10 @@ export function errorText(error: unknown): string {
 
 /** The table for the `language` setting; English until the settings load. */
 export function useStrings(): Strings {
-  return STRINGS[parseLang(useSettings().values?.language)];
+  const values = useSettings().values;
+  const lang = parseLang(values?.language);
+  const percentMode = parsePercentMode(values?.percentMode);
+  return useMemo(() => ({ ...STRINGS[lang], percentMode }), [lang, percentMode]);
 }
 
 /** The `headerShow` setting; numbers until the settings load. */
