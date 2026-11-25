@@ -59,7 +59,7 @@ The settings.
   note. In a narrow band the bars shrink, then the
   reset times and bars drop out.
   Expanded, it lists every window with a pace note («At this pace lasts to
-  reset – about 92% used, resets in 3d», or «At this pace runs out Thu 4:00
+  reset – about 8% left, resets in 3d», or «At this pace runs out Thu 4:00
   AM – 8h before reset» with a budget line «to last: up to 13% a day») and the
   context breakdown; the other providers are
   one line each («Codex · 5H 6% · W 56%») and the latest compacts one row,
@@ -244,6 +244,7 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Limit push threshold, % | 90 | 50–100 | Usage of a limit window that sends the push |
 | Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
 | Language | English | English, Русский | Language of the plugin UI |
+| Limit percents | Left | Left, Used | What every limit indicator shows: the share of the window left (rings and bars drain) or the share used. Percents, notes, tooltips and limit pushes follow it; the colours do not, so little left is red. Context fill, thresholds and the CLI always speak of the share used |
 | Limits in the header | Numbers | Numbers, Numbers and bars, Forecast first, All providers, Off | The limits at the top right of the page. Numbers: the 5-hour and weekly windows as coloured percents with the time to the 5-hour reset; with bars each window also gets a horizontal bar. Forecast first: a window that runs out before its reset goes first, with when. All providers: each provider's worst window by its icon. On a phone every mode but Off is a dot and the worst percent. Off removes them |
 | Sidebar icon | Two rings | Two rings, One ring | The limits button in the sidebar footer: the 5-hour (outside) and weekly (inside) windows of the worst window's provider, or one ring for the worst window with the even-pace tick. There is no Off: More → Customize footer → Remove Usage limits takes the button out of the footer |
 | Floating limits widget | off | on, off | A small panel at the right edge of the window, one line per provider with its 5-hour and weekly percents; a press folds it into a round badge with two rings; drag it up or down. The place and the fold are kept per device |

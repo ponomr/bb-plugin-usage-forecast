@@ -74,7 +74,7 @@ describe("plugin wiring", () => {
     await harness.callRpc("refresh", null);
     const calls = harness.sdk.callsTo("plugins.callRpc");
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toMatchObject([{ pluginId: "push-notifications", method: "notifications.send", input: { title: "Claude Code: 5 Hour limit at 92%" } }]);
+    expect(calls[0]).toMatchObject([{ pluginId: "push-notifications", method: "notifications.send", input: { title: "Claude Code: 5 Hour limit, 8% left" } }]);
     expect(JSON.stringify(calls[0])).not.toContain("owner@example.com");
   });
 

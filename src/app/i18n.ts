@@ -5,12 +5,21 @@
 import type { CompactLogEntry, ContextLimitSource, ProviderStatus, ThreadOverride } from "../shared/contract";
 import type { Lang } from "../shared/language";
 import type { PaceState } from "../shared/pace";
+import type { PercentMode } from "../shared/percent-mode";
 import { SUMMARY_MARKER } from "../shared/summary";
 
 export interface Strings {
   lang: Lang;
   /** BCP 47 locale for clock times. */
   locale: string;
+  /**
+   * What limit percents show, from the `percentMode` setting; set by
+   * `useStrings` and the push texts. The bare tables leave it out and show
+   * the share used.
+   */
+  percentMode?: PercentMode;
+  /** A percent left in a title or label: "59% left". */
+  percentLeft(percent: string): string;
   /** Duration units: "2d 20h", "4h 17m", "23m". */
   unit: { d: string; h: string; m: string };
 
@@ -20,7 +29,7 @@ export interface Strings {
   /** A window that runs out within a tenth of its length: the span until then. */
   runOutIn(span: string): string;
   /** A window that lasts with little to spare: the projected percent used at the reset. */
-  tightHeadline(percent: number, resetName: string): string;
+  tightHeadline(percent: number, resetName: string, left: boolean): string;
   onTrack(resetName: string): string;
   /** A reset less than a day away: "the 4:30 PM reset". */
   resetAtTime(time: string): string;
@@ -50,20 +59,20 @@ export interface Strings {
   /** The floating badge's tooltip: a press opens the panel. */
   floatOpen: string;
   /** A window that lasts, with the projected percent used at the reset. */
-  lastsUsed(percent: number, resetIn: string | null): string;
+  lastsUsed(percent: number, resetIn: string | null, left: boolean): string;
   /** A window that lasts with little to spare. */
-  tightUsed(percent: number, resetIn: string | null): string;
+  tightUsed(percent: number, resetIn: string | null, left: boolean): string;
   /** Too early in the window; `usual` from usuallyUsed, or null without past windows. */
   tooEarly(usual: string | null, resetIn: string | null): string;
-  usuallyUsed(percent: number): string;
+  usuallyUsed(percent: number, left: boolean): string;
   /** The rate that lasts to the reset; for `rest`, the percent left until it. */
   budget(percent: number, per: "day" | "hour" | "rest"): string;
   resetsIn(span: string): string;
   resetNow: string;
   noReset: string;
   noForecast: string;
-  currentPace(percent: string): string;
-  usualPace(percent: string, windows: number): string;
+  currentPace(percent: string, left: boolean): string;
+  usualPace(percent: string, windows: number, left: boolean): string;
   /** Marks the tooltip line of the projection the band speaks from. */
   mainPace(line: string): string;
   cost(used: string, limit: string): string;
@@ -185,7 +194,7 @@ export interface Strings {
   providerUsageNote: string;
 
   /** Push title when a limit window crosses the notify threshold or runs out. */
-  pushTitle(provider: string, window: string, percent: string): string;
+  pushTitle(provider: string, window: string, percent: string, left: boolean): string;
   pushReachedTitle(provider: string, window: string): string;
   /** A push title with the hosts it is about, when more than one host is known. */
   pushOnHosts(title: string, hosts: string): string;
@@ -198,12 +207,13 @@ const EN_WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Fr
 export const en: Strings = {
   lang: "en",
   locale: "en-US",
+  percentLeft: (p) => `${p} left`,
   unit: { d: "d", h: "h", m: "m" },
 
   limitReached: (at) => (at === null ? "Limit reached." : `Limit reached. Back ${at}.`),
   willRunOut: (reset) => `Runs out before ${reset}.`,
   runOutIn: (span) => `Runs out in ${span}.`,
-  tightHeadline: (p, reset) => `Tight: ~${p}% by ${reset}.`,
+  tightHeadline: (p, reset, left) => `Tight: ~${p}%${left ? " left" : ""} by ${reset}.`,
   onTrack: (reset) => `On track to ${reset}.`,
   resetAtTime: (time) => `the ${time} reset`,
   resetOnDay: (day) => `${EN_WEEKDAYS[day]}'s reset`,
@@ -220,18 +230,18 @@ export const en: Strings = {
   floatFold: "Press to fold, drag to move",
   floatOpen: "Press to show the limits, drag to move",
   runsOut: (time, day, before) => `Runs out ${day === null ? `at ${time}` : `${day} ${time}`}, ${before} before reset`,
-  lastsUsed: (p, reset) => `Lasts, ~${p}% used${reset === null ? "" : `, ${reset}`}`,
-  tightUsed: (p, reset) => `Tight, ~${p}% used${reset === null ? "" : `, ${reset}`}`,
+  lastsUsed: (p, reset, left) => `Lasts, ~${p}% ${left ? "left" : "used"}${reset === null ? "" : `, ${reset}`}`,
+  tightUsed: (p, reset, left) => `Tight, ~${p}% ${left ? "left" : "used"}${reset === null ? "" : `, ${reset}`}`,
   tooEarly: (usual, reset) =>
     `Too early${usual === null ? "" : `, ${usual}`}${reset === null ? "" : `, ${reset}`}`,
-  usuallyUsed: (p) => `usually ~${p}%`,
+  usuallyUsed: (p, left) => `usually ~${p}%${left ? " left" : ""}`,
   budget: (p, per) => (per === "rest" ? `${p}% left` : `≤${p}% ${per === "day" ? "a day" : "an hour"} to last`),
   resetsIn: (span) => `resets in ${span}`,
   resetNow: "resets now",
   noReset: "No reset time",
   noForecast: "No forecast yet",
-  currentPace: (p) => `Current pace: ${p} by reset`,
-  usualPace: (p, n) => `Usual pace (${n} past windows): ${p}`,
+  currentPace: (p, left) => `Current pace: ${p}${left ? " left" : ""} by reset`,
+  usualPace: (p, n, left) => `Usual pace (${n} past windows): ${p}${left ? " left" : ""}`,
   mainPace: (line) => `${line} (main forecast)`,
   cost: (used, limit) => `${used} of ${limit}`,
   dataFrom: (clock) => `data from ${clock}`,
@@ -365,7 +375,8 @@ export const en: Strings = {
   pollError: (m) => `Poll error: ${m}`,
   providerUsageNote: "The built-in «Provider usage» plugin can stay on.",
 
-  pushTitle: (provider, window, percent) => `${provider}: ${window} limit at ${percent}`,
+  pushTitle: (provider, window, percent, left) =>
+    left ? `${provider}: ${window} limit, ${percent} left` : `${provider}: ${window} limit at ${percent}`,
   pushReachedTitle: (provider, window) => `${provider}: ${window} limit reached`,
   pushOnHosts: (title, hosts) => `${title} on ${hosts}`,
   pushBody: (resetIn) => (resetIn === null ? "Usage limit is close." : `The limit ${resetIn}.`),
@@ -377,12 +388,13 @@ const RU_WEEKDAYS_ACC = ["в воскресенье", "в понедельник
 export const ru: Strings = {
   lang: "ru",
   locale: "ru-RU",
+  percentLeft: (p) => `осталось ${p}`,
   unit: { d: "д", h: "ч", m: "м" },
 
   limitReached: (at) => (at === null ? "Лимит исчерпан." : `Лимит исчерпан. Снова ${at}.`),
   willRunOut: (reset) => `Кончится до ${reset}.`,
   runOutIn: (span) => `Кончится через ${span}.`,
-  tightHeadline: (p, reset) => `Впритык: ~${p}% до ${reset}.`,
+  tightHeadline: (p, reset, left) => (left ? `Впритык: останется ~${p}% до ${reset}.` : `Впритык: ~${p}% до ${reset}.`),
   onTrack: (reset) => `Хватит до ${reset}.`,
   resetAtTime: (time) => `сброса в ${time}`,
   resetOnDay: (day) => `сброса ${RU_WEEKDAYS_ACC[day]}`,
@@ -399,18 +411,18 @@ export const ru: Strings = {
   floatFold: "Нажмите, чтобы свернуть; перетащите, чтобы сдвинуть",
   floatOpen: "Нажмите, чтобы показать лимиты; перетащите, чтобы сдвинуть",
   runsOut: (time, day, before) => `Кончится ${day === null ? `в ${time}` : `в ${day} ${time}`}, за ${before} до сброса`,
-  lastsUsed: (p, reset) => `Хватит, к сбросу ~${p}%${reset === null ? "" : `, ${reset}`}`,
-  tightUsed: (p, reset) => `Впритык, к сбросу ~${p}%${reset === null ? "" : `, ${reset}`}`,
+  lastsUsed: (p, reset, left) => `Хватит, к сбросу ${left ? "останется " : ""}~${p}%${reset === null ? "" : `, ${reset}`}`,
+  tightUsed: (p, reset, left) => `Впритык, к сбросу ${left ? "останется " : ""}~${p}%${reset === null ? "" : `, ${reset}`}`,
   tooEarly: (usual, reset) =>
     `Рано судить${usual === null ? "" : `, ${usual}`}${reset === null ? "" : `, ${reset}`}`,
-  usuallyUsed: (p) => `обычно ~${p}%`,
+  usuallyUsed: (p, left) => `обычно ${left ? "остаётся " : ""}~${p}%`,
   budget: (p, per) => (per === "rest" ? `осталось ${p}%` : `≤${p}% в ${per === "day" ? "день" : "час"}, чтобы хватило`),
   resetsIn: (span) => `сброс через ${span}`,
   resetNow: "сброс сейчас",
   noReset: "Время сброса неизвестно",
   noForecast: "Прогноза пока нет",
-  currentPace: (p) => `По текущему темпу к сбросу: ${p}`,
-  usualPace: (p, n) => `По прошлым окнам (${n}): ${p}`,
+  currentPace: (p, left) => `По текущему темпу к сбросу${left ? " останется" : ""}: ${p}`,
+  usualPace: (p, n, left) => `По прошлым окнам (${n})${left ? " останется" : ""}: ${p}`,
   mainPace: (line) => `${line} (основной прогноз)`,
   cost: (used, limit) => `${used} из ${limit}`,
   dataFrom: (clock) => `данные от ${clock}`,
@@ -544,7 +556,8 @@ export const ru: Strings = {
   pollError: (m) => `Ошибка опроса: ${m}`,
   providerUsageNote: "Встроенный плагин «Provider usage» можно не выключать.",
 
-  pushTitle: (provider, window, percent) => `${provider}: лимит «${window}» — ${percent}`,
+  pushTitle: (provider, window, percent, left) =>
+    left ? `${provider}: лимит «${window}» — осталось ${percent}` : `${provider}: лимит «${window}» — ${percent}`,
   pushReachedTitle: (provider, window) => `${provider}: лимит «${window}» исчерпан`,
   pushOnHosts: (title, hosts) => `${title} на ${hosts}`,
   pushBody: (resetIn) => (resetIn === null ? "Лимит почти исчерпан." : `Лимит: ${resetIn}.`),

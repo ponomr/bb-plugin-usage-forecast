@@ -219,3 +219,28 @@ describe("CardActions", () => {
     expect(popped).toEqual(["/settings/plugins/usage-forecast"]);
   });
 });
+
+describe("percent mode: left (the default)", () => {
+  it("shows the share left, mirrors the bar and keeps the tones of the share used", async () => {
+    headerRow();
+    const b = backend({ snapshot: snapshot([provider("codex", [win("Current session", 42), weekly(7)])]) });
+    render(HeaderLimits, {}, b, { settings: { headerShow: "bars", percentMode: "left" } });
+    const pill = await screen.findByTestId("header-limits");
+    await waitFor(() => expect(pill.querySelectorAll("[data-gauge]")).toHaveLength(2));
+    expect(desktop(pill).textContent).toMatch(/^5H(2h|1h 59m)58%W93%$/);
+    expect(pill.querySelector<HTMLElement>("[data-gauge] [aria-hidden] > span")!.style.width).toBe("58%");
+    expect(pill.querySelector("[data-gauge]")!.getAttribute("title")).toMatch(/^5 Hour: 58% left/);
+    expect(phone(pill).textContent).toBe("●58%");
+  });
+
+  it("a nearly used-up window shows little left in red", async () => {
+    headerRow();
+    const b = backend({ snapshot: snapshot([provider("codex", [runsOut("Current session", 95, 10), weekly(7)])]) });
+    render(HeaderLimits, {}, b, { settings: { percentMode: "left" } });
+    const pill = await screen.findByTestId("header-limits");
+    await waitFor(() => expect(pill.querySelectorAll("[data-gauge]")).toHaveLength(2));
+    const gauge = pill.querySelector<HTMLElement>("[data-gauge='Current session']")!;
+    expect(gauge.textContent).toContain("5%");
+    expect(gauge.dataset.tone).toBe("red");
+  });
+});

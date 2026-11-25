@@ -17,6 +17,7 @@ export function settingsOf(over: Partial<PluginSettings> = {}): () => Promise<Pl
   const value: PluginSettings = {
     autoCompactEnabled: true,
     summaryClearEnabled: false,
+    percentMode: "used",
     autoCompactThresholdPercent: 80,
     pollIntervalMinutes: 2,
     contextLimitTokens: 150_000,

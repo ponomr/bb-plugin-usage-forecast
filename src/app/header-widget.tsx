@@ -15,7 +15,7 @@ import { experimental_ProviderIcon as ProviderIcon, experimental_usePluginId, ex
 import type { LimitWindow, ProviderLimits } from "../shared/contract";
 import type { HeaderShow } from "../shared/header-show";
 import { formatPercent } from "../shared/thresholds";
-import { formatResetIn, formatRunOut, formatSpan, providerName, shortWindowLabel, windowLabel } from "./format";
+import { formatResetIn, formatRunOut, formatSpan, limitPercent, limitPercentText, providerName, shortWindowLabel, windowLabel } from "./format";
 import { headerProviders, headerView, worstWindowOf } from "./header-model";
 import { providerStaleAt, staleNote } from "./indicator";
 import { useHeaderShow, useHiddenProviders, useNow, usePathThreadId, useSnapshot, useStrings, useThreadState } from "./hooks";
@@ -123,7 +123,8 @@ interface Gauge {
 
 function gauge(s: Strings, w: LimitWindow, now: number, withReset: boolean): Gauge {
   const view = windowView(w, now);
-  const percent = Math.max(0, Math.min(100, w.usedPercent));
+  const percent = limitPercent(s, Math.max(0, Math.min(100, w.usedPercent)));
+  const at = (p: number | null) => (p === null ? null : limitPercent(s, p));
   const state = view.pace === null ? "" : `, ${s.paceStateName[view.pace]}`;
   const span = w.resetsAt === null ? null : formatSpan(s, Math.max(0, w.resetsAt - now));
   const reset = withReset ? span : null;
@@ -142,12 +143,12 @@ function gauge(s: Strings, w: LimitWindow, now: number, withReset: boolean): Gau
     label: shortWindowLabel(s, w.label, w.model),
     view,
     percent,
-    marker: view.marker,
-    even: view.even,
+    marker: at(view.marker),
+    even: at(view.even),
     reset,
     forecast,
     outAt,
-    title: `${windowLabel(s, w.label, w.model)}: ${formatPercent(percent)}${state}${reset === null ? "" : `, ${formatResetIn(s, w.resetsAt, now)}`}`,
+    title: `${windowLabel(s, w.label, w.model)}: ${limitPercentText(s, w.usedPercent)}${state}${reset === null ? "" : `, ${formatResetIn(s, w.resetsAt, now)}`}`,
   };
 }
 
@@ -336,7 +337,7 @@ function HeaderPill({ style }: { style: Exclude<HeaderShow, "off"> }) {
       >
         {/* Narrower than 40rem (a phone) the header has no room for the windows: B5, a dot and the worst percent. */}
         <span className="sm:hidden" data-testid="header-limits-phone">
-          <PhoneDot view={empty ? null : worstView} percent={worst === null ? null : Math.max(0, Math.min(100, worst.usedPercent))} />
+          <PhoneDot view={empty ? null : worstView} percent={worst === null ? null : limitPercent(s, Math.max(0, Math.min(100, worst.usedPercent)))} />
         </span>
         <span className="hidden items-center gap-3 sm:inline-flex" data-testid="header-limits-desktop">
           {empty ? <span className="text-muted-foreground">—</span> : null}

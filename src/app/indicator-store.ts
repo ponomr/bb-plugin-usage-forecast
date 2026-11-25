@@ -6,19 +6,20 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useSettings } from "@get-bb/plugin-sdk/app";
 import type { LimitWindow } from "../shared/contract";
-import { formatPercent } from "../shared/thresholds";
 import { parseSidebarShow, type SidebarShow } from "../shared/sidebar-show";
-import { providerName, windowLabel } from "./format";
+import { limitPercent, limitPercentText, providerName, windowLabel } from "./format";
 import { headerView } from "./header-model";
 import { en, type Strings } from "./i18n";
-import { indicatorTitle, indicatorView, providerStaleAt, staleNote, type WorstWindow } from "./indicator";
+import { indicatorTitle, indicatorView, providerStaleAt, staleNote } from "./indicator";
 import { ringWindow, windowView } from "./model";
 import type { RingWindow } from "./ring-icon";
 import { createStore } from "./store";
 import { useHiddenProviders, useNow, useSnapshot, useStrings } from "./hooks";
 
 interface IndicatorState {
-  worst: WorstWindow | null;
+  /** C5: the worst window as its ring draws it, and the even-pace tick on that ring. */
+  worst: RingWindow | null;
+  even?: number | null;
   title: string;
   /** The `sidebarShow` setting; two rings when absent. */
   style?: SidebarShow;
@@ -29,13 +30,12 @@ interface IndicatorState {
 
 /** Everything the icon draws; an equal state does not notify. */
 function drawn(s: IndicatorState): string {
-  const ring = (w: RingWindow | null | undefined) => (w == null ? null : [w.usedPercent, w.tone]);
+  const ring = (w: RingWindow | null | undefined) => (w == null ? null : [w.percent, w.tone]);
   return JSON.stringify([
     s.title,
     s.style ?? null,
-    s.worst?.usedPercent ?? null,
-    s.worst?.tone ?? null,
-    s.worst?.even === undefined || s.worst.even === null ? null : Math.round(s.worst.even),
+    ring(s.worst),
+    s.even == null ? null : Math.round(s.even),
     ring(s.outer),
     ring(s.inner),
   ]);
@@ -55,7 +55,7 @@ function ringsTitle(s: Strings, host: string | null, provider: string, windows: 
   const parts = windows.flatMap((w) => {
     if (w === null) return [];
     const pace = windowView(w, now).pace;
-    return [`${windowLabel(s, w.label, w.model)}: ${formatPercent(w.usedPercent)}${pace === null ? "" : `, ${s.paceStateName[pace]}`}`];
+    return [`${windowLabel(s, w.label, w.model)}: ${limitPercentText(s, w.usedPercent)}${pace === null ? "" : `, ${s.paceStateName[pace]}`}`];
   });
   const head = host === null ? providerName(s, provider) : `${host} · ${providerName(s, provider)}`;
   return `${head} · ${parts.join(" · ")}${staleNote(s, stale, now)}`;
@@ -75,12 +75,14 @@ export function IndicatorFeeder() {
   if (style === "rings" && snapshot !== undefined) {
     const view = headerView(s, snapshot, undefined, now, hidden);
     if (view !== null) {
-      outer = ringWindow(view.session, now);
-      inner = ringWindow(view.weekly, now);
+      outer = ringWindow(s, view.session, now);
+      inner = ringWindow(s, view.weekly, now);
       const id = view.provider.providerId;
       title = ringsTitle(s, worst?.hostName ?? null, id, [view.session, view.weekly], now, providerStaleAt(snapshot, id));
     }
   }
-  useEffect(() => setIndicatorState({ worst, title, style, outer, inner }));
+  const ring = worst === null ? null : { percent: limitPercent(s, worst.usedPercent), tone: worst.tone };
+  const even = worst === null || worst.even === null ? null : limitPercent(s, worst.even);
+  useEffect(() => setIndicatorState({ worst: ring, even, title, style, outer, inner }));
   return null;
 }

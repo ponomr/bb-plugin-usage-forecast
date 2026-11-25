@@ -11,9 +11,9 @@ import { useIndicatorState } from "./indicator-store";
 
 export const RING_ICON = "usage-forecast/ring";
 
-/** One window as a ring draws it. */
+/** One window as a ring draws it: the percent the indicators show (left or used). */
 export interface RingWindow {
-  usedPercent: number;
+  percent: number;
   tone: Tone;
 }
 
@@ -69,7 +69,7 @@ function Track({ r, width, empty }: { r: number; width: number; empty: boolean }
 }
 
 function Arc({ r, width, w, ring }: { r: number; width: number; w: RingWindow; ring?: string }) {
-  const percent = clamp(w.usedPercent);
+  const percent = clamp(w.percent);
   const dark = useDark();
   const color = TONE_COLOR[w.tone];
   return (
@@ -195,7 +195,7 @@ export function RingIcon({ className }: { className?: string }) {
     ? { width: FOOTER_RING_PX, height: FOOTER_RING_PX, margin: offset, flex: "none", maxWidth: "none" }
     : undefined;
   if (state.style === "ring") {
-    return <Ring svgRef={probe} worst={state.worst} even={state.worst?.even ?? null} title={state.title} className={className} style={style} />;
+    return <Ring svgRef={probe} worst={state.worst} even={state.even ?? null} title={state.title} className={className} style={style} />;
   }
   return <Rings svgRef={probe} outer={state.outer ?? null} inner={state.inner ?? null} title={state.title} className={className} style={style} />;
 }

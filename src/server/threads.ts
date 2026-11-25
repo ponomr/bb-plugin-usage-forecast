@@ -28,6 +28,7 @@ import {
   type ThreadState,
 } from "../shared/contract";
 import { parseLang, type Lang } from "../shared/language";
+import { parsePercentMode, type PercentMode } from "../shared/percent-mode";
 import { parseHiddenProviders } from "../shared/hidden-providers";
 import type { Storage } from "./storage";
 
@@ -47,6 +48,8 @@ export interface PluginSettings {
   limitNotifyEnabled: boolean;
   limitNotifyPercent: number;
   language: Lang;
+  /** What limit percents in push texts show. */
+  percentMode: PercentMode;
   /** Provider ids left out of the band, the sign, limit pushes and `headroom`. */
   hiddenProviders: string[];
 }
@@ -97,6 +100,7 @@ export function parseSettings(raw: Record<string, unknown> | null | undefined): 
       LIMIT_NOTIFY_DEFAULT_PERCENT,
     ),
     language: parseLang(raw?.language),
+    percentMode: parsePercentMode(raw?.percentMode),
     hiddenProviders: parseHiddenProviders(raw?.hiddenProviders),
   };
 }

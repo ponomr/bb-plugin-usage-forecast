@@ -23,7 +23,7 @@ describe("Ring", () => {
     [100, "100"],
     [130, "100"],
   ])("draws %i %% as an arc of %s", (used, drawn) => {
-    const { container } = rtl(<Ring worst={{ usedPercent: used, tone: "normal" }} title="t" />);
+    const { container } = rtl(<Ring worst={{ percent: used, tone: "normal" }} title="t" />);
     expect(arc(container)?.getAttribute("data-arc")).toBe(drawn);
     expect(arc(container)?.getAttribute("stroke-dasharray")).toBe(`${drawn} 100`);
   });
@@ -34,7 +34,7 @@ describe("Ring", () => {
     ["red", "rgb(239, 68, 68)", "rgb(248, 113, 113)"],
   ] as const)("colours the arc for the %s tone inline, in light and dark", async (tone, light, dark) => {
     // Inline: the icon renders outside the plugin slot, where the scoped tone classes do not apply.
-    const { container } = rtl(<Ring worst={{ usedPercent: 50, tone }} title="t" />);
+    const { container } = rtl(<Ring worst={{ percent: 50, tone }} title="t" />);
     expect(arc(container)?.getAttribute("data-tone")).toBe(tone);
     expect((arc(container) as SVGElement).style.color).toBe(light);
     document.documentElement.classList.add("dark");
@@ -57,7 +57,7 @@ describe("Ring", () => {
 
   it("RingIcon draws one ring with the even tick when the store says ring", () => {
     const { container } = rtl(<RingIcon />);
-    act(() => setIndicatorState({ worst: { ...worstOf(92, "red"), even: 40 }, title: "Claude Code · 5 Hour: 92%, critical", style: "ring" }));
+    act(() => setIndicatorState({ worst: worstOf(92, "red"), even: 40, title: "Claude Code · 5 Hour: 92%, critical", style: "ring" }));
     expect(container.querySelector("svg")?.getAttribute("data-style")).toBe("ring");
     expect(arc(container)?.getAttribute("data-arc")).toBe("92");
     expect(container.querySelector("[data-even]")?.getAttribute("data-even")).toBe("40");
@@ -67,7 +67,7 @@ describe("Ring", () => {
   it("RingIcon draws two rings by default: 5-hour outside, weekly inside", () => {
     const { container } = rtl(<RingIcon />);
     act(() =>
-      setIndicatorState({ worst: worstOf(92, "red"), title: "t", outer: { usedPercent: 92, tone: "red" }, inner: { usedPercent: 41, tone: "normal" } }),
+      setIndicatorState({ worst: worstOf(92, "red"), title: "t", outer: { percent: 92, tone: "red" }, inner: { percent: 41, tone: "normal" } }),
     );
     expect(container.querySelector("svg")?.getAttribute("data-style")).toBe("rings");
     expect(container.querySelector("[data-ring=outer]")?.getAttribute("data-arc")).toBe("92");
@@ -83,8 +83,8 @@ describe("Ring", () => {
   });
 });
 
-function worstOf(usedPercent: number, tone: "normal" | "amber" | "red") {
-  return { hostName: null, providerId: "claude-code", label: "Current session", model: null, usedPercent, resetsAt: null, state: null, tone, staleAt: null, even: null };
+function worstOf(percent: number, tone: "normal" | "amber" | "red") {
+  return { percent, tone };
 }
 
 describe("IndicatorFeeder", () => {
@@ -98,9 +98,16 @@ describe("IndicatorFeeder", () => {
 
   it("writes the worst window and an English title by default", async () => {
     render(IndicatorFeeder, {}, backend({ snapshot: critical() }));
-    await waitFor(() => expect(getIndicatorState().worst?.usedPercent).toBe(92));
+    await waitFor(() => expect(getIndicatorState().worst?.percent).toBe(92));
     expect(getIndicatorState().worst?.tone).toBe("red");
     expect(getIndicatorState().title).toMatch(/^laptop · Claude Code · 5 Hour: 92%, critical$/);
+  });
+
+  it("draws the share left by the percent mode, in the same tones", async () => {
+    render(IndicatorFeeder, {}, backend({ snapshot: critical() }), { settings: { percentMode: "left", sidebarShow: "ring" } });
+    await waitFor(() => expect(getIndicatorState().worst?.percent).toBe(8));
+    expect(getIndicatorState().worst?.tone).toBe("red");
+    expect(getIndicatorState().title).toMatch(/^laptop · Claude Code · 5 Hour: 8% left, critical$/);
   });
 
   it("writes a Russian title when the settings say so", async () => {
@@ -111,9 +118,9 @@ describe("IndicatorFeeder", () => {
   it("writes the 5-hour and weekly rings of the worst window's provider", async () => {
     const s = snapshot([provider("codex", [win("Current session", 30), win("Weekly limit", 60)])]);
     render(IndicatorFeeder, {}, backend({ snapshot: s }));
-    await waitFor(() => expect(getIndicatorState().outer?.usedPercent).toBe(30));
+    await waitFor(() => expect(getIndicatorState().outer?.percent).toBe(30));
     expect(getIndicatorState().style).toBe("rings");
-    expect(getIndicatorState().inner?.usedPercent).toBe(60);
+    expect(getIndicatorState().inner?.percent).toBe(60);
     expect(getIndicatorState().title).toMatch(/^Codex · 5 Hour: 30%.* · Weekly: 60%/);
   });
 

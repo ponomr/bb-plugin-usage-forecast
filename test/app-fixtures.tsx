@@ -170,7 +170,8 @@ export function render<P extends object>(
     composer: { scope: { kind: "thread", threadId: T } },
     threadContextKind: options.threadContextKind ?? "card",
     ...(options.providers === undefined ? {} : { providers: options.providers }),
-    settings: options.settings ?? { autoCompactEnabled: false, autoCompactThresholdPercent: 80, pollIntervalMinutes: 2 },
+    // The tests below were written for the share used; the share left (the default) has its own tests.
+    settings: { percentMode: "used", ...(options.settings ?? { autoCompactEnabled: false, autoCompactThresholdPercent: 80, pollIntervalMinutes: 2 }) },
     rpc: {
       snapshot: log("snapshot", () => b.snapshot),
       refresh: log("refresh", () => b.snapshot),
