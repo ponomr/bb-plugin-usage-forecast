@@ -10,6 +10,11 @@ listed here.
   (as before, the default) and Big numbers, where each provider shows its
   short name over the 5-hour and weekly percents in large type. The fold
   into the ring badge and the drag stay the same.
+- Limits card: new setting «Display: Limits card style» with Rows (the
+  compact card, the default) and Big numbers, where each window is only its
+  percent in large type over its label. Host tabs, the provider name with
+  its tooltip and the refresh and settings buttons stay. It applies to the
+  card from the sidebar icon and from the header.
 - Settings page reordered into three groups by label prefix (bb's form has
   no sections): Display (language, percents, header, sidebar icon, band,
   floating widget and its style), Limits (pushes, their threshold, poll

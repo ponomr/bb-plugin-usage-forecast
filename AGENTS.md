@@ -11,7 +11,7 @@ auto-compact without open clients.
 - `src/shared/` — RPC contract, window table, thresholds, the forecast
   (`forecast.ts`, adapted from `claude-code-usage-quota-mod`, see `NOTICE`)
   and the window's pace state with its hold (`pace.ts`), the display
-  settings (`sidebar-show.ts`, `header-show.ts`, `language.ts` with the `oneOf` parser, `percent-mode.ts`: limits shown as left or used, `float-style.ts`: the floating widget's lines or big numbers), account grouping across hosts
+  settings (`sidebar-show.ts`, `header-show.ts`, `language.ts` with the `oneOf` parser, `percent-mode.ts`: limits shown as left or used, `float-style.ts`, `card-style.ts`: the floating widget's and the limits card's big-number styles), account grouping across hosts
   (`accounts.ts`: `accountGroups` is the one grouping for the sidebar card
   and the CLI; a `sharedWith` link counts from either side), the CLI's window verdict and provider headroom
   (`headroom.ts`), the plan multiplier and its text (`plan.ts`) and the

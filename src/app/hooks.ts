@@ -18,6 +18,7 @@ import { parseLang } from "../shared/language";
 import { parsePercentMode } from "../shared/percent-mode";
 import { parseHeaderShow, type HeaderShow } from "../shared/header-show";
 import { parseFloatStyle, type FloatStyle } from "../shared/float-style";
+import { parseCardStyle, type CardStyle } from "../shared/card-style";
 import { parseHiddenProviders } from "../shared/hidden-providers";
 import { localPeriodStarts } from "../shared/tokens";
 import { normalizeOverride, usageForecastContract, type CompactResult, type ThreadOverride } from "../shared/contract";
@@ -63,6 +64,11 @@ export function useFloatShown(): boolean {
 /** The `floatStyle` setting; lines until the settings load. */
 export function useFloatStyle(): FloatStyle {
   return parseFloatStyle(useSettings().values?.floatStyle);
+}
+
+/** The `cardStyle` setting; rows until the settings load. */
+export function useCardStyle(): CardStyle {
+  return parseCardStyle(useSettings().values?.cardStyle);
 }
 
 /** The `showBand` setting; on until the settings load and unless it is switched off. */
