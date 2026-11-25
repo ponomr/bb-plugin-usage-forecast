@@ -29,7 +29,6 @@ export function PreviewSection() {
   const header = useHeaderShow();
   return (
     <div className="flex flex-col gap-4 text-sm" data-testid="usage-preview">
-      <span className="text-muted-foreground">{s.previewNote}</span>
       <Part name={s.previewHeader} off={header === "off"}>
         <div className="w-fit">
           <HeaderPill style={header === "off" ? "numbers" : header} />

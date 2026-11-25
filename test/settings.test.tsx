@@ -127,7 +127,10 @@ describe("preview section", () => {
     await waitFor(() => expect(root.querySelector("[data-testid=header-limits]")).toBeTruthy());
     expect(parts(root)).toEqual(["Header · off", "Sidebar icon", "Band above the composer · off", "Floating widget · off", "Limits card"]);
     expect(root.querySelector("[data-testid=header-limits]")!.getAttribute("data-style")).toBe("numbers");
-    expect(root.querySelector("[data-testid=band-preview] [data-testid=collapsed-row]")).toBeTruthy();
+    expect(Array.from(root.querySelectorAll("[data-testid=band-preview] [data-window]")).map((w) => w.getAttribute("data-window"))).toEqual([
+      "Current session",
+      "Weekly limit",
+    ]);
     expect(root.querySelector("[data-testid=limits-card]")).toBeTruthy();
     await waitFor(() => expect(root.querySelector("[data-testid=float-preview] [data-provider=claude-code]")).toBeTruthy());
     expect(root.querySelector("[data-testid=float-preview]")!.getAttribute("data-style")).toBe("big");
