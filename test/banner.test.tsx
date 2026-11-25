@@ -4,7 +4,7 @@
 
 import { loadPluginApp } from "@get-bb/plugin-sdk/testing/app";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { CompactResult, Tokens } from "../src/shared/contract";
 import { HOUR_MS } from "../src/shared/windows";
 import { worstProvider } from "../src/app/model";
@@ -46,6 +46,9 @@ async function findWindow(label: string, root: () => HTMLElement | null = () => 
   return found!;
 }
 
+/** Opens the details before the band renders, as a device that kept them open. */
+const opened = () => localStorage.setItem("usage-forecast:banner-expanded", "1");
+
 const providerBlock = (id: string) => () => document.querySelector<HTMLElement>(`[data-provider="${id}"]`);
 
 describe("band, collapsed", () => {
@@ -64,6 +67,10 @@ describe("band, collapsed", () => {
     expect(within(weekly).getByText("92%").getAttribute("data-tone")).toBe("amber");
     expect(weekly.querySelector("[data-marker]")).toBeNull();
     expect((await findWindow("Current session")).textContent).toBe("5H2h40%");
+    // C2: tight is not an alert, so the band is the one row of windows.
+    expect(screen.getByTestId("usage-banner").getAttribute("data-band")).toBe("calm");
+    expect(screen.queryByTestId("headline")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Show details" }));
     // AE8: the tight weekly window speaks over the calm session.
     const head = await screen.findByTestId("headline");
     expect(head.textContent).toMatch(/^Tight: ~92% by \w+'s reset\.$/);
@@ -109,6 +116,7 @@ describe("band, collapsed", () => {
 
   it("names the provider and plan when no window has a forecast", async () => {
     const s = snapshot([provider("claude-code", [win("Current session", 30, { forecast: null })], { planLabel: "Max" })]);
+    opened();
     render(Banner, {}, backend({ snapshot: s }));
     expect(await screen.findByText("Claude Code · Max")).toBeTruthy();
     expect(screen.queryByTestId("headline")).toBeNull();
@@ -116,6 +124,7 @@ describe("band, collapsed", () => {
 
   it("joins the plan multiplier to the plan name (UF-11 AE1)", async () => {
     const s = snapshot([provider("claude-code", [win("Current session", 30, { forecast: null })], { planLabel: "Max", planMultiplier: 5 })]);
+    opened();
     render(Banner, {}, backend({ snapshot: s }));
     expect(await screen.findByText("Claude Code · Max 5×")).toBeTruthy();
   });
@@ -147,6 +156,7 @@ describe("band, collapsed", () => {
 });
 
 describe("band, auto compact", () => {
+  beforeEach(opened);
   const toggle = () => screen.findByRole("switch", { name: "Auto compact" });
   const actsAt = async () => (await screen.findByTestId("auto-compact-at")).textContent;
 
@@ -218,6 +228,7 @@ describe("band, auto compact", () => {
 });
 
 describe("band, compact button", () => {
+  beforeEach(opened);
   it("is disabled while the agent answers", async () => {
     render(Banner, {}, backend({ thread: threadState({ active: true }) }));
     expect(((await screen.findByRole("button", { name: "Compact" })) as HTMLButtonElement).disabled).toBe(true);
@@ -333,11 +344,11 @@ describe("band, expanded", () => {
       warning: false,
     };
     const w = win("Current session", 3, { forecast, resetsAt: Date.now() + 5 * HOUR_MS - 6 * 60_000 });
+    opened();
     render(Banner, {}, backend({ snapshot: snapshot([provider("claude-code", [w])]) }));
     // No headline at all: the band names the provider, as with no forecast.
-    expect(await screen.findByText("Claude Code")).toBeTruthy();
+    expect((await screen.findAllByText("Claude Code")).length).toBeGreaterThan(0);
     expect(screen.queryByTestId("headline")).toBeNull();
-    await expand();
     const session = await findWindow("Current session", providerBlock("claude-code"));
     expect(session.textContent).toContain("Too early, usually ~100%, resets in 4h 54m");
     expect(within(session).getByText("3%").getAttribute("data-tone")).toBe("muted");
@@ -415,14 +426,48 @@ describe("band, expanded", () => {
     expect(localStorage.getItem("usage-forecast:banner-expanded")).toBe("0");
   });
 
-  it("keeps the collapsed band to two lines: one metrics row, the controls hidden on a phone", async () => {
+  it("C2: a calm band is one row of windows with the toggle, no headline and no controls", async () => {
     render(Banner, {}, backend({ snapshot: twoProviders() }));
     const row = await screen.findByTestId("collapsed-row");
     expect(row.className).toContain("flex-nowrap");
-    const controls = (await screen.findByTestId("controls")).className.split(" ");
-    expect(controls).toEqual(expect.arrayContaining(["hidden", "@2xl:block"]));
+    await waitFor(() => expect(screen.getByTestId("usage-banner").getAttribute("data-band")).toBe("calm"));
+    expect(screen.queryByTestId("headline")).toBeNull();
+    expect(screen.queryByTestId("controls")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Compact" })).toBeNull();
     await expand();
+    expect(screen.getByTestId("usage-banner").getAttribute("data-band")).toBe("expanded");
     expect((await screen.findByTestId("controls")).className.split(" ")).not.toContain("hidden");
+  });
+
+  it("C2: a window that runs out opens the band to the headline and Compact at any width", async () => {
+    const forecast = { ...forecastOf(160)!, current: { projectedPercent: 160, runOutAt: Date.now() + HOUR_MS } };
+    render(Banner, {}, backend({ snapshot: snapshot([provider("claude-code", [win("Current session", 70, { forecast })])]) }));
+    expect((await screen.findByTestId("headline")).textContent).toMatch(/^Runs out/);
+    expect(screen.getByTestId("usage-banner").getAttribute("data-band")).toBe("alert");
+    expect(await screen.findByTestId("collapsed-row")).toBeTruthy();
+    expect((await screen.findByTestId("controls")).className.split(" ")).not.toContain("hidden");
+    expect(await screen.findByRole("button", { name: "Compact" })).toBeTruthy();
+  });
+
+  it("C2: a reached limit is an alert too", async () => {
+    const hit = { status: "hit" as const, current: null, learned: null, main: null, early: false, warning: true };
+    render(Banner, {}, backend({ snapshot: snapshot([provider("claude-code", [win("Current session", 100, { forecast: hit })])]) }));
+    await screen.findByTestId("headline");
+    expect(screen.getByTestId("usage-banner").getAttribute("data-band")).toBe("alert");
+  });
+
+  it("C2: an expired sign-in keeps the full band with its note", async () => {
+    const s = snapshot([provider("codex", [win("Weekly limit", 6)], { status: "error", message: "session expired" })]);
+    render(Banner, {}, backend({ snapshot: s, thread: threadState({ providerId: "codex" }) }));
+    await screen.findByTestId("collapsed-row");
+    await waitFor(() => expect(screen.getByTestId("usage-banner").getAttribute("data-band")).toBe("full"));
+    expect(screen.getByTestId("usage-banner").textContent).toContain("session expired");
+  });
+
+  it("C2: a red context is an alert while the limits are calm", async () => {
+    render(Banner, {}, backend({ snapshot: twoProviders(), thread: threadState({ context: { ...threadState().context!, percent: 85 } }) }));
+    await screen.findByTestId("headline");
+    expect(screen.getByTestId("usage-banner").getAttribute("data-band")).toBe("alert");
   });
 
   it("keeps the expanded state per device", async () => {
@@ -439,10 +484,10 @@ describe("band, Russian", () => {
   it("follows the language setting", async () => {
     render(Banner, {}, backend({ snapshot: twoProviders() }), { settings: { language: "ru" } });
     expect((await findWindow("Weekly limit")).textContent).toBe("Нед3д92%");
+    fireEvent.click(screen.getByRole("button", { name: "Подробнее" }));
     expect((await screen.findByTestId("headline")).textContent).toMatch(/^Впритык: ~92% до сброса .+\.$/);
     expect(await screen.findByRole("button", { name: "Сжать" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "Авто-компакт" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Подробнее" }));
     expect((await screen.findByTestId("context-details")).textContent).toContain("Контекст занято 60%");
   });
 });
@@ -481,8 +526,8 @@ describe("band, pace state", () => {
   it("a held will-not-last window stays amber while its note says it lasts", async () => {
     render(Banner, {}, backend({ snapshot: one(win("Current session", 40, { forecast: forecastOf(80), pace: "short" })) }));
     expect(within(await findWindow("Current session")).getByText("40%").getAttribute("data-tone")).toBe("amber");
-    expect((await screen.findByTestId("headline")).textContent).toMatch(/^On track/);
     await expand();
+    expect((await screen.findByTestId("headline")).textContent).toMatch(/^On track/);
     const row = await findWindow("Current session", providerBlock("claude-code"));
     expect(within(row).getByText(/Lasts, ~80% used/).getAttribute("data-tone")).toBe("amber");
     expect(screen.queryByTestId("window-budget")).toBeNull();

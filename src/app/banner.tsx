@@ -41,6 +41,7 @@ import {
 } from "./hooks";
 import {
   bannerView,
+  bandAlert,
   contextView,
   headline,
   paceDetails,
@@ -409,9 +410,68 @@ function Band() {
   const ctx = state?.context ? contextView(state.context) : null;
   const asking = askAt !== null && ctx !== null && Math.round(ctx.percent) >= askAt;
   const data = snapshot.data;
+  // C2: while all is calm and the details are closed, the band is the one row of windows.
+  const alert = bandAlert(view, ctx?.tone ?? null, now);
+  // Stale data (P4) or a provider error (an expired sign-in) keeps the full band, so its note stays in view.
+  const calm =
+    !expanded &&
+    !alert &&
+    view.kind === "limits" &&
+    view.staleSince === null &&
+    statusText(s, view.primary.status, view.primary.message) === null;
+  const askRow =
+    asking && ctx !== null && askAt !== null ? (
+      <div className="flex flex-wrap items-center gap-2" role="alert">
+        <Toned tone="amber">{s.askPast(contextPercent(ctx.percent, ctx.estimated), formatPercent(askAt))}</Toned>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-6 px-2 text-xs"
+          disabled={state?.active || compact.pending}
+          onClick={() => {
+            compact.compact();
+            setAskAt(null);
+          }}
+        >
+          {s.now}
+        </Button>
+        <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setAskAt(null)}>
+          {s.afterNextReply}
+        </Button>
+      </div>
+    ) : null;
+  const toggle = (
+    // The vendored Button takes no title: the tooltip sits on a wrapper.
+    <span className="order-2 inline-flex shrink-0 @2xl:order-3" title={expanded ? s.hideDetails : s.showDetails}>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-6 w-6 px-0 text-xs"
+        aria-label={expanded ? s.hideDetails : s.showDetails}
+        aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+      >
+        {expanded ? "▲" : "▼"}
+      </Button>
+    </span>
+  );
+
+  if (calm) {
+    return (
+      <div className="@container flex flex-col gap-2 px-3 py-1.5 text-xs" data-testid="usage-banner" data-band="calm">
+        <div className="flex min-w-0 items-center gap-x-3">
+          <div className="min-w-0 flex-1">
+            <CollapsedRow provider={primary} state={state} now={now} />
+          </div>
+          {toggle}
+        </div>
+        {askRow}
+      </div>
+    );
+  }
 
   return (
-    <div className="@container flex flex-col gap-2 px-3 py-1.5 text-xs" data-testid="usage-banner">
+    <div className="@container flex flex-col gap-2 px-3 py-1.5 text-xs" data-testid="usage-banner" data-band={expanded ? "expanded" : alert ? "alert" : "full"}>
       {/* Narrower than 42rem (a phone): the headline and the toggle share the first row; the
           controls take the next one when expanded and are hidden when collapsed, so the
           collapsed band is two lines. Wider: all in one row, the controls wrapping first. */}
@@ -421,47 +481,17 @@ function Band() {
         </span>
         {state === undefined ? null : (
           <div
-            className={`order-3 w-full @2xl:order-2 @2xl:block @2xl:w-auto ${expanded ? "" : "hidden"}`}
+            // On an alert Compact is in view at any width.
+            className={`order-3 w-full @2xl:order-2 @2xl:block @2xl:w-auto ${expanded || alert ? "" : "hidden"}`}
             data-testid="controls"
           >
             <AutoCompactControls state={state} compact={compact} onArm={setAskAt} onDisarm={() => setAskAt(null)} />
           </div>
         )}
-        {/* The vendored Button takes no title: the tooltip sits on a wrapper. */}
-        <span className="order-2 inline-flex shrink-0 @2xl:order-3" title={expanded ? s.hideDetails : s.showDetails}>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 w-6 px-0 text-xs"
-            aria-label={expanded ? s.hideDetails : s.showDetails}
-            aria-expanded={expanded}
-            onClick={() => setExpanded(!expanded)}
-          >
-            {expanded ? "▲" : "▼"}
-          </Button>
-        </span>
+        {toggle}
       </div>
 
-      {asking && ctx !== null && askAt !== null ? (
-        <div className="flex flex-wrap items-center gap-2" role="alert">
-          <Toned tone="amber">{s.askPast(contextPercent(ctx.percent, ctx.estimated), formatPercent(askAt))}</Toned>
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 text-xs"
-            disabled={state?.active || compact.pending}
-            onClick={() => {
-              compact.compact();
-              setAskAt(null);
-            }}
-          >
-            {s.now}
-          </Button>
-          <Button size="sm" variant="ghost" className="h-6 px-2 text-xs" onClick={() => setAskAt(null)}>
-            {s.afterNextReply}
-          </Button>
-        </div>
-      ) : null}
+      {askRow}
 
       {expanded ? null : <CollapsedRow provider={primary} state={state} now={now} />}
 

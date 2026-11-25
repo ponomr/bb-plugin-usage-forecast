@@ -11,9 +11,10 @@ before it overflows.
 
 ## Screenshots
 
-The collapsed band above the composer: the headline with the forecast, the
-auto-compact switch, the Compact button and one bar per limit window plus the
-context bar. The ring in the sidebar footer (bottom left) shows the busiest
+The collapsed band above the composer when a limit needs attention: the
+headline with the forecast, the auto-compact switch, the Compact button and
+one bar per limit window plus the context bar. While all is calm the band is
+only the row of bars. The ring in the sidebar footer (bottom left) shows the busiest
 limit window.
 
 ![The collapsed Usage Forecast band above the composer and the ring in the sidebar footer](docs/screenshots/band.png)
@@ -47,10 +48,16 @@ The settings.
   row has a bar per limit window of the thread's provider (or of the worst
   provider) with time to reset, percent used and a marker where the pace ends
   at the reset, plus a context bar split into messages, tools and other.
-  Collapsed, the band is two lines: the header and one row of bars with short
-  labels (5H, W, F for Fable, Ctx), their bars stretched to fill the line.
-  In a narrow band the bars shrink, then the reset times and bars drop out,
-  and on a phone the switch and Compact show only when expanded.
+  Collapsed, the band is automatic. While every window lasts to its reset
+  and the context is below 80% of its limit (a tight window counts as calm),
+  it is one row of bars with short labels (5H, W, F for Fable, Ctx), their
+  bars stretched to fill the line, and the ▼ toggle. When a window runs out
+  before its reset or hits its limit, or the context passes 80%, the band
+  opens to two lines: the header and the row of bars, with the switch and
+  Compact in view at any width. Data from a host that cannot be read, or a
+  provider error such as an expired sign-in, keeps the header too, for its
+  note. In a narrow band the bars shrink, then the
+  reset times and bars drop out.
   Expanded, it lists every window with a pace note («At this pace lasts to
   reset – about 92% used, resets in 3d», or «At this pace runs out Thu 4:00
   AM – 8h before reset» with a budget line «to last: up to 13% a day») and the
@@ -231,7 +238,7 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Language | English | English, Русский | Language of the plugin UI |
 | Limits in the header | Numbers | Numbers, Numbers and bars, Forecast first, All providers, Off | The limits at the top right of the page. Numbers: the 5-hour and weekly windows as coloured percents with the time to the 5-hour reset; with bars each window also gets a horizontal bar. Forecast first: a window that runs out before its reset goes first, with when. All providers: each provider's worst window by its icon. On a phone every mode but Off is a dot and the worst percent. Off removes them |
 | Sidebar icon | Two rings | Two rings, One ring | The limits button in the sidebar footer: the 5-hour (outside) and weekly (inside) windows of the worst window's provider, or one ring for the worst window with the even-pace tick. There is no Off: More → Customize footer → Remove Usage limits takes the button out of the footer |
-| Band above the composer | on | on, off | The limits and context band above the message field. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
+| Band above the composer | on | on (Auto), off | The limits and context band above the message field. On: one row of bars while all is calm; the headline, the switch and Compact appear when a window runs out or hits its limit, or the context passes 80%. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
 | Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |
 
 Auto-compact rules:

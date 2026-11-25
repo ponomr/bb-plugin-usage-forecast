@@ -35,6 +35,11 @@ listed here.
   ring for the worst window with the even-pace tick. The ring's colours now
   show in the footer (they were grey: the icon renders outside the plugin's
   scoped CSS).
+- The band above the composer is automatic: while every window lasts to its
+  reset and the context is below 80% of its limit, it is one row of bars with
+  the ▼ toggle. A window that runs out before its reset or hits its limit, or
+  a context past 80%, opens it to the headline with the auto-compact switch
+  and Compact, also on a phone. «Band above the composer» on means Auto.
 
 ## 0.4.21 — 2026-11-16
 
