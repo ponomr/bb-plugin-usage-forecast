@@ -39,6 +39,7 @@ import { DEFAULT_LANGUAGE, LANGUAGES } from "./src/shared/language";
 import { DEFAULT_PERCENT_MODE, PERCENT_MODES } from "./src/shared/percent-mode";
 import { DEFAULT_HEADER_SHOW, HEADER_SHOW } from "./src/shared/header-show";
 import { DEFAULT_SIDEBAR_SHOW, SIDEBAR_SHOW } from "./src/shared/sidebar-show";
+import { DEFAULT_FLOAT_STYLE, FLOAT_STYLE } from "./src/shared/float-style";
 
 export const POLL_SCHEDULE = "poll-limits";
 
@@ -60,123 +61,132 @@ export const CONTEXT_EVENT_TYPES: ReadonlySet<string> = new Set([
 /** Shortest gap between two invalidations of one thread from context events. */
 export const CONTEXT_INVALIDATE_MIN_MS = 2_000;
 
+/** 10000 → "10k", 2000000 → "2M". */
+const tokensShort = (n: number) => (n >= 1_000_000 ? `${n / 1_000_000}M` : `${n / 1_000}k`);
+
 export default async function plugin(bb: BbPluginApi) {
+  // bb draws the form in this order and has no groups, so the label's prefix
+  // names the group: Display, Limits, Context. Labels stay English (bb shows
+  // them as given, whatever the plugin's language).
   const settingsHandle = bb.settings.define({
-    autoCompactEnabled: {
-      type: "boolean",
-      label: "Auto-compact",
-      description: "Compact a thread when it goes idle with its context at or above the threshold.",
-      default: false,
-    },
-    summaryClearEnabled: {
-      type: "boolean",
-      label: "Summarise and clear when a provider cannot compact",
-      description:
-        "For a provider without compaction (such as custom ACP agents), Compact and auto-compact ask the agent for a summary, clear the thread's context and send the summary back as the next message. The thread history stays visible. Off: such threads are skipped.",
-      default: false,
-    },
-    contextLimitTokens: {
-      type: "number",
-      label: "Context limit, tokens",
-      description: `The working context size the bar and the auto-compact threshold are measured against when neither a provider limit below nor the provider's own compaction point applies, ${CONTEXT_LIMIT_MIN_TOKENS.toLocaleString("en-US")}-${CONTEXT_LIMIT_MAX_TOKENS.toLocaleString("en-US")}. A smaller model window caps it.`,
-      default: CONTEXT_LIMIT_DEFAULT_TOKENS,
-      experimental_schema: contextLimitSchema,
-    },
-    [PROVIDER_LIMIT_SETTINGS["claude-code"]]: {
-      type: "number",
-      label: "Claude Code context limit, tokens",
-      description: `Working limit for Claude Code threads, ${CONTEXT_LIMIT_MIN_TOKENS.toLocaleString("en-US")}-${CONTEXT_LIMIT_MAX_TOKENS.toLocaleString("en-US")}. 0 (auto) uses the point where Claude Code compacts on its own, as bb reports it, else the context limit above.`,
-      default: PROVIDER_LIMIT_AUTO,
-      experimental_schema: providerLimitSchema,
-    },
-    [PROVIDER_LIMIT_SETTINGS.codex]: {
-      type: "number",
-      label: "Codex context limit, tokens",
-      description: `Working limit for Codex threads, ${CONTEXT_LIMIT_MIN_TOKENS.toLocaleString("en-US")}-${CONTEXT_LIMIT_MAX_TOKENS.toLocaleString("en-US")}. bb does not report where Codex compacts on its own, so 0 (auto) uses the context limit above; set your model_auto_compact_token_limit here to measure against it.`,
-      default: PROVIDER_LIMIT_AUTO,
-      experimental_schema: providerLimitSchema,
-    },
-    autoCompactThresholdPercent: {
-      type: "number",
-      label: "Auto-compact threshold, %",
-      description: `Fill of the thread's context limit that triggers auto-compact, ${THRESHOLD_MIN_PERCENT}-${THRESHOLD_MAX_PERCENT}. When a limit lies above the point where the provider compacts on its own, the plugin acts a little below that point.`,
-      default: THRESHOLD_DEFAULT_PERCENT,
-      experimental_schema: thresholdSchema,
-    },
-    limitNotifyEnabled: {
-      type: "boolean",
-      label: "Limit push notifications",
-      description: "Send a push through the push-notifications plugin when a limit window reaches the percent below, and again when it runs out. One push per window and step until the window resets.",
-      default: true,
-    },
-    limitNotifyPercent: {
-      type: "number",
-      label: "Limit push threshold, %",
-      description: `Usage of a limit window that sends a push, ${LIMIT_NOTIFY_MIN_PERCENT}-${LIMIT_NOTIFY_MAX_PERCENT}.`,
-      default: LIMIT_NOTIFY_DEFAULT_PERCENT,
-      experimental_schema: limitNotifySchema,
-    },
-    pollIntervalMinutes: {
-      type: "number",
-      label: "Limits poll interval, minutes",
-      description: `How often the server asks bb for the provider limits, ${POLL_MIN_MINUTES}-${POLL_MAX_MINUTES}.`,
-      default: POLL_DEFAULT_MINUTES,
-      experimental_schema: pollIntervalSchema,
-    },
     language: {
       type: "select",
-      label: "Language",
-      description: "Language of the plugin UI.",
+      label: "Display: Language",
+      description: "Plugin text language.",
       options: [...LANGUAGES],
       experimental_optionLabels: { en: "English", ru: "Русский" },
       default: DEFAULT_LANGUAGE,
     },
     percentMode: {
       type: "select",
-      label: "Limit percents",
-      description:
-        "What every limit indicator shows: the share of the window left or the share used. Rings, bars, percents, notes, tooltips and limit notifications follow it; the colours do not (little left is red). Context fill, thresholds and the CLI always speak of the share used.",
+      label: "Display: Percents",
+      description: "Limits as the share left or used. Colours stay; context and the CLI always show used.",
       options: [...PERCENT_MODES],
       experimental_optionLabels: { left: "Left", used: "Used" },
       default: DEFAULT_PERCENT_MODE,
     },
     headerShow: {
       type: "select",
-      label: "Limits in the header",
+      label: "Display: Header",
       description:
-        "The limits at the top right of the page; a press opens the limits card. Numbers: the 5-hour and weekly percents with the time to the 5-hour reset. Bars adds a progress bar to each. Forecast: the same while all is calm; a window on course to run out before its reset goes first, with when it runs out. Providers: every provider's worst window by its icon. On a phone every mode but Off shows a dot and the worst percent.",
+        "Limits at the top right; press for details. Forecast first: a window that runs out leads. All providers: each one's worst window. Phone: a dot and the worst percent.",
       options: [...HEADER_SHOW],
       experimental_optionLabels: { numbers: "Numbers", bars: "Numbers and bars", forecast: "Forecast first", providers: "All providers", off: "Off" },
       default: DEFAULT_HEADER_SHOW,
     },
     sidebarShow: {
       type: "select",
-      label: "Sidebar icon",
-      description: "The limits button in the sidebar footer: two rings (the 5-hour window outside, the weekly one inside) or one ring for the worst window with a tick where an even pace would be now. To take the button out of the footer: More (…) → Customize footer → Remove Usage limits.",
+      label: "Display: Sidebar icon",
+      description: "Two rings: 5-hour outside, weekly inside. One ring: the worst window. To remove: More (…) → Customize footer.",
       options: [...SIDEBAR_SHOW],
       experimental_optionLabels: { rings: "Two rings", ring: "One ring" },
       default: DEFAULT_SIDEBAR_SHOW,
     },
-    showFloat: {
-      type: "boolean",
-      label: "Floating limits widget",
-      description:
-        "A small panel at the right edge of the window, one line per provider with its 5-hour and weekly percents. A press folds it into a round badge with two rings and back; drag it up or down, and the place is kept on this device. Off by default.",
-      default: false,
-    },
     showBand: {
       type: "boolean",
-      label: "Band above the composer",
-      description:
-        "The limits and context band above the message field of every thread. On (Auto): while every window lasts to its reset and the context is below 80% of its limit, the band is one row of bars with a ▼ for the details; when a window runs out before its reset or hits its limit, or the context passes 80%, it opens to the headline, the auto-compact switch and Compact. Off: the band and its Compact button are gone; the thread context card, the sidebar ring, pushes and auto-compact work as before.",
+      label: "Display: Band above the composer",
+      description: "Limits and context over the message field; opens by itself when a limit runs short or context passes 80%.",
       default: true,
+    },
+    showFloat: {
+      type: "boolean",
+      label: "Display: Floating widget",
+      description: "A panel at the right edge. Press to fold it into a badge; drag to move.",
+      default: false,
+    },
+    floatStyle: {
+      type: "select",
+      label: "Display: Floating widget style",
+      description: "Lines: name and both percents per provider. Big numbers: the two percents in large type.",
+      options: [...FLOAT_STYLE],
+      experimental_optionLabels: { lines: "Lines", big: "Big numbers" },
+      default: DEFAULT_FLOAT_STYLE,
+    },
+    limitNotifyEnabled: {
+      type: "boolean",
+      label: "Limits: Push notifications",
+      description: "A push when a window reaches the threshold and when it runs out; once per window until its reset.",
+      default: true,
+    },
+    limitNotifyPercent: {
+      type: "number",
+      label: "Limits: Push at, % used",
+      description: `${LIMIT_NOTIFY_MIN_PERCENT}–${LIMIT_NOTIFY_MAX_PERCENT}. Counted as used in both percent modes.`,
+      default: LIMIT_NOTIFY_DEFAULT_PERCENT,
+      experimental_schema: limitNotifySchema,
+    },
+    pollIntervalMinutes: {
+      type: "number",
+      label: "Limits: Check every, min",
+      description: `${POLL_MIN_MINUTES}–${POLL_MAX_MINUTES}.`,
+      default: POLL_DEFAULT_MINUTES,
+      experimental_schema: pollIntervalSchema,
     },
     hiddenProviders: {
       type: "string",
-      label: "Hidden providers",
-      description:
-        "Provider ids to leave out of the band's other providers, the sidebar sign, limit pushes and `bb usage-forecast headroom`, separated by commas or spaces (for example: acp-opencode, codex). A thread's own provider is always shown. `bb usage-forecast status` prints the ids. Limits are still polled.",
+      label: "Limits: Hidden providers",
+      description: "Ids to hide everywhere, pushes included, e.g. acp-opencode. A thread's own provider stays. Ids: bb usage-forecast status.",
       default: "",
+    },
+    contextLimitTokens: {
+      type: "number",
+      label: "Context: Limit, tokens",
+      description: `Working size for the bar and auto-compact, ${tokensShort(CONTEXT_LIMIT_MIN_TOKENS)}–${tokensShort(CONTEXT_LIMIT_MAX_TOKENS)}, when no provider limit applies.`,
+      default: CONTEXT_LIMIT_DEFAULT_TOKENS,
+      experimental_schema: contextLimitSchema,
+    },
+    [PROVIDER_LIMIT_SETTINGS["claude-code"]]: {
+      type: "number",
+      label: "Context: Claude Code limit",
+      description: "0 = where Claude Code compacts itself.",
+      default: PROVIDER_LIMIT_AUTO,
+      experimental_schema: providerLimitSchema,
+    },
+    [PROVIDER_LIMIT_SETTINGS.codex]: {
+      type: "number",
+      label: "Context: Codex limit",
+      description: "0 = the limit above. Best: your model_auto_compact_token_limit.",
+      default: PROVIDER_LIMIT_AUTO,
+      experimental_schema: providerLimitSchema,
+    },
+    autoCompactEnabled: {
+      type: "boolean",
+      label: "Context: Auto-compact",
+      description: "Compact an idle thread at the threshold.",
+      default: false,
+    },
+    autoCompactThresholdPercent: {
+      type: "number",
+      label: "Context: Auto-compact at, %",
+      description: `${THRESHOLD_MIN_PERCENT}–${THRESHOLD_MAX_PERCENT}. Never above the provider's own compaction point.`,
+      default: THRESHOLD_DEFAULT_PERCENT,
+      experimental_schema: thresholdSchema,
+    },
+    summaryClearEnabled: {
+      type: "boolean",
+      label: "Context: Summary and clear",
+      description: "For agents that can't compact: summarise, clear, send the summary back. History stays.",
+      default: false,
     },
   });
   const settings = async () => parseSettings(await settingsHandle.get());

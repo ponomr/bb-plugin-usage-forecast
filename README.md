@@ -140,7 +140,7 @@ The settings.
   card and the header card end with the time of the last poll, a button that
   polls the limits now and a button that opens the plugin's settings.
 - **Rings in the sidebar footer.** Next to bb's own footer buttons, a 26 px
-  icon by the «Sidebar icon» setting. Two rings (the default): the 5-hour
+  icon by the «Display: Sidebar icon» setting. Two rings (the default): the 5-hour
   window outside and the weekly one inside, of the provider of the worst
   window, each filled to its used percent and coloured by its pace state.
   One ring: the worst limit window across every host, with a tick where an
@@ -155,20 +155,23 @@ The settings.
   host the hosts are tabs and the card shows one host at a time, first the
   host of the ring's worst window; an account shared by several hosts is in
   each of their tabs («also laptop»).
-- **Floating widget.** Off by default; the «Floating limits widget» setting
-  turns it on. A small panel, about 120 px wide, at the right edge of the
+- **Floating widget.** Off by default; the «Display: Floating widget» setting
+  turns it on, «Display: Floating widget style» picks Lines or Big numbers.
+  Lines: a small panel, about 120 px wide, at the right edge of the
   window at mid-height, one line per provider with its 5-hour and weekly
   percents in their colours («Claude 5H 41% W 38%»): in a thread its own
   provider first, as in the header. A press folds it into a 44 px round
   badge with two rings (5-hour outside, weekly inside) and a press on the
   badge opens it again. Drag it up or down (or press ↑/↓ while it has
-  focus); the place and the fold are kept per device.
+  focus); the place and the fold are kept per device. Big numbers: per
+  provider its name in small type over the 5-hour and weekly percents at
+  30 px, each with its 5H or W caption; the fold and the drag are the same.
 - **Plan multiplier.** When bb reports a plan multiplier above 1 (the
   host's `plan.multiplier`), the band, the sidebar card and the CLI show it
   after the plan name: «Claude Code · Max 5×». A label that already names a
   multiplier is left as it is. On bb 0.49.0 no provider sent one yet, so the
   plan name shows alone.
-- **Hide providers you do not use.** The «Hidden providers» setting lists
+- **Hide providers you do not use.** The «Limits: Hidden providers» setting lists
   provider ids (`acp-opencode, codex`). A hidden provider drops out of the
   band's other providers, the sidebar ring and its card, limit pushes and
   `bb usage-forecast headroom`; a thread's own provider is always shown.
@@ -232,24 +235,28 @@ Update: `git pull && npm ci && npm run build && bb plugin install "$PWD" --yes`.
 
 Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 
+bb has no groups in the settings form, so the order and the label's prefix
+group them: Display, Limits, Context.
+
 | Setting | Default | Range | Meaning |
 | --- | --- | --- | --- |
-| Context limit, tokens | 150 000 | 10 000–2 000 000 | The global working limit: used when neither a provider limit nor the provider's own compaction point applies; a smaller model window caps it |
-| Claude Code context limit, tokens | 0 (auto) | 0, 10 000–2 000 000 | Working limit for Claude Code threads; auto uses the point where Claude Code compacts on its own, as bb reports it |
-| Codex context limit, tokens | 0 (auto) | 0, 10 000–2 000 000 | Working limit for Codex threads; bb reports no compaction point for Codex, so auto uses the global limit. Set it to your `model_auto_compact_token_limit` to measure against where Codex compacts |
-| Auto-compact | off | — | Compact a thread when it goes idle with its context at or above the threshold |
-| Auto-compact threshold, % | 80 | 50–95 | Fill of the context limit that triggers it |
-| Summarise and clear when a provider cannot compact | off | — | For a provider without compaction (custom ACP agents such as Hermes), Compact and auto-compact ask the agent for a summary, clear the context and send the summary back |
-| Limit push notifications | on | — | Push through the `push-notifications` plugin when a limit window reaches the threshold below, and again when it runs out |
-| Limit push threshold, % | 90 | 50–100 | Usage of a limit window that sends the push |
-| Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
-| Language | English | English, Русский | Language of the plugin UI |
-| Limit percents | Left | Left, Used | What every limit indicator shows: the share of the window left (rings and bars drain) or the share used. Percents, notes, tooltips and limit pushes follow it; the colours do not, so little left is red. Context fill, thresholds and the CLI always speak of the share used |
-| Limits in the header | Numbers | Numbers, Numbers and bars, Forecast first, All providers, Off | The limits at the top right of the page. Numbers: the 5-hour and weekly windows as coloured percents with the time to the 5-hour reset; with bars each window also gets a horizontal bar. Forecast first: a window that runs out before its reset goes first, with when. All providers: each provider's worst window by its icon. On a phone every mode but Off is a dot and the worst percent. Off removes them |
-| Sidebar icon | Two rings | Two rings, One ring | The limits button in the sidebar footer: the 5-hour (outside) and weekly (inside) windows of the worst window's provider, or one ring for the worst window with the even-pace tick. There is no Off: More → Customize footer → Remove Usage limits takes the button out of the footer |
-| Floating limits widget | off | on, off | A small panel at the right edge of the window, one line per provider with its 5-hour and weekly percents; a press folds it into a round badge with two rings; drag it up or down. The place and the fold are kept per device |
-| Band above the composer | on | on (Auto), off | The limits and context band above the message field. On: one row of bars while all is calm; the headline, the switch and Compact appear when a window runs out or hits its limit, or the context passes 80%. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
-| Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |
+| Display: Language | English | English, Русский | Language of the plugin UI |
+| Display: Percents | Left | Left, Used | What every limit indicator shows: the share of the window left (rings and bars drain) or the share used. Percents, notes, tooltips and limit pushes follow it; the colours do not, so little left is red. Context fill, thresholds and the CLI always speak of the share used |
+| Display: Header | Numbers | Numbers, Numbers and bars, Forecast first, All providers, Off | The limits at the top right of the page. Numbers: the 5-hour and weekly windows as coloured percents with the time to the 5-hour reset; with bars each window also gets a horizontal bar. Forecast first: a window that runs out before its reset goes first, with when. All providers: each provider's worst window by its icon. On a phone every mode but Off is a dot and the worst percent. Off removes them |
+| Display: Sidebar icon | Two rings | Two rings, One ring | The limits button in the sidebar footer: the 5-hour (outside) and weekly (inside) windows of the worst window's provider, or one ring for the worst window with the even-pace tick. There is no Off: More → Customize footer → Remove Usage limits takes the button out of the footer |
+| Display: Band above the composer | on | on (Auto), off | The limits and context band above the message field. On: one row of bars while all is calm; the headline, the switch and Compact appear when a window runs out or hits its limit, or the context passes 80%. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
+| Display: Floating widget | off | on, off | A panel at the right edge of the window; a press folds it into a round badge with two rings; drag it up or down. The place and the fold are kept per device |
+| Display: Floating widget style | Lines | Lines, Big numbers | Lines: one line per provider with its 5-hour and weekly percents. Big numbers: per provider a small name over the two percents in large type |
+| Limits: Push notifications | on | — | Push through the `push-notifications` plugin when a limit window reaches the threshold below, and again when it runs out |
+| Limits: Push at, % used | 90 | 50–100 | Share of a limit window used that sends the push, in either percent mode |
+| Limits: Check every, min | 2 | 1–10 | How often the server asks bb for limits |
+| Limits: Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, the header, the floating widget, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |
+| Context: Limit, tokens | 150 000 | 10 000–2 000 000 | The global working limit: used when neither a provider limit nor the provider's own compaction point applies; a smaller model window caps it |
+| Context: Claude Code limit | 0 (auto) | 0, 10 000–2 000 000 | Working limit for Claude Code threads; auto uses the point where Claude Code compacts on its own, as bb reports it |
+| Context: Codex limit | 0 (auto) | 0, 10 000–2 000 000 | Working limit for Codex threads; bb reports no compaction point for Codex, so auto uses the global limit. Set it to your `model_auto_compact_token_limit` to measure against where Codex compacts |
+| Context: Auto-compact | off | — | Compact a thread when it goes idle with its context at or above the threshold |
+| Context: Auto-compact at, % | 80 | 50–95 | Fill of the context limit that triggers it |
+| Context: Summary and clear | off | — | For a provider without compaction (custom ACP agents such as Hermes), Compact and auto-compact ask the agent for a summary, clear the context and send the summary back |
 
 Auto-compact rules:
 
@@ -270,8 +277,7 @@ Auto-compact rules:
 - After a compact, or a failed attempt, a thread waits 10 minutes before the
   next one.
 - A provider whose compact fails as unsupported (custom ACP agents such as
-  Hermes) is skipped for 24 hours. With «Summarise and clear when a provider
-  cannot compact» on, Compact and auto-compact do this instead: ask the agent
+  Hermes) is skipped for 24 hours. With «Context: Summary and clear» on, Compact and auto-compact do this instead: ask the agent
   for a summary that starts with `[context-summary]` (no tools, no file
   changes), wait for that turn (at most 10 minutes), check the answer is a
   summary, clear the thread's context (bb keeps the history visible) and send
@@ -303,7 +309,7 @@ In `status --json` every window also has a `verdict`, computed at the moment
 of the call: `state` (the pace state, `early` or `unknown`), `lasts`,
 `runsOutAt`, `projectedPercent`, `paceDeviationPercent` (used percent minus
 an even spend so far) and `resetsInMs`. Every provider has `planMultiplier`
-(a number above 1, or `null`) and `hidden` (from the «Hidden providers»
+(a number above 1, or `null`) and `hidden` (from the «Limits: Hidden providers»
 setting); the text marks a hidden provider `[hidden]` after its status.
 
 `headroom` ranks provider accounts from the most headroom to the tightest by
@@ -396,12 +402,12 @@ Plugins.
 auto-compact. Threads and providers stay unchanged, and the stored history is
 kept for when the plugin is enabled again.
 
-To hide only the band above the composer, switch off «Band above the
-composer» in the plugin settings.
+To hide only the band above the composer, switch off «Display: Band
+above the composer» in the plugin settings.
 
-To hide only the header limits, set «Limits in the header» to Off.
+To hide only the header limits, set «Display: Header» to Off.
 
-The floating widget shows only while «Floating limits widget» is on.
+The floating widget shows only while «Display: Floating widget» is on.
 
 To hide only the ring, open More in the sidebar footer → Customize footer →
 «Remove Usage limits from footer»; it moves into the More menu. bb has no

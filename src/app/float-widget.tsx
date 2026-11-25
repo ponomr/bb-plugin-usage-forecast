@@ -1,7 +1,8 @@
 // The floating limits widget, by the `showFloat` setting (off by default).
-// F4: a mini panel at the window's right edge, one line per provider with
+// `floatStyle` picks the open panel. Lines (F4): a mini panel at the window's right edge, one line per provider with
 // its 5-hour and weekly percents in their tones («Claude 5H 41% W 38%»). A
-// press folds it into F2, a 44 px round badge with two rings (the 5-hour
+// Big numbers (м1): per provider its short name over the two percents in large
+// type, each with its 5H or W caption below. A press folds either into F2, a 44 px round badge with two rings (the 5-hour
 // window outside, the weekly one inside), and a press on the badge opens
 // the panel again. It sits at mid-height and is dragged up or down; the
 // place and the fold are kept per device. The providers follow the header:
@@ -14,7 +15,7 @@ import type { ProviderLimits } from "../shared/contract";
 import { formatPercent } from "../shared/thresholds";
 import { limitPercent, limitPercentText, providerName, shortWindowLabel } from "./format";
 import { headerProviders, headerView, headerWindows } from "./header-model";
-import { readStored, useFloatShown, useHiddenProviders, useNow, usePathThreadId, useSnapshot, useStrings, useThreadState, writeStored } from "./hooks";
+import { readStored, useFloatShown, useFloatStyle, useHiddenProviders, useNow, usePathThreadId, useSnapshot, useStrings, useThreadState, writeStored } from "./hooks";
 import type { Strings } from "./i18n";
 import { ringWindow, windowView } from "./model";
 import { Rings } from "./ring-icon";
@@ -77,9 +78,33 @@ function FloatLine({ s, provider, now }: { s: Strings; provider: ProviderLimits;
   );
 }
 
+/** м1: the provider's short name over its 5-hour and weekly percents in large type. */
+function FloatBig({ s, provider, now }: { s: Strings; provider: ProviderLimits; now: number }) {
+  const { session, weekly } = headerWindows(provider);
+  return (
+    <span className="flex flex-col items-start" data-provider={provider.providerId}>
+      <span className="text-[10px] leading-3 text-muted-foreground">{briefName(s, provider.providerId)}</span>
+      <span className="flex items-start gap-2.5">
+        {[session, weekly].map((w) =>
+          w === null ? null : (
+            <span key={w.label} className="flex flex-col items-start" data-window={w.label}>
+              <Ink tone={windowView(w, now).tone} className="text-[30px] font-bold leading-8 tabular-nums">
+                {Math.round(limitPercent(s, w.usedPercent))}
+                <span className="ml-px text-[16px] font-semibold opacity-80">%</span>
+              </Ink>
+              <span className="text-[9px] leading-[10px] text-muted-foreground">{shortWindowLabel(s, w.label, w.model)}</span>
+            </span>
+          ),
+        )}
+      </span>
+    </span>
+  );
+}
+
 function FloatWidget() {
   const s = useStrings();
   const now = useNow();
+  const big = useFloatStyle() === "big";
   const hidden = useHiddenProviders();
   const snapshot = useSnapshot().data;
   const threadId = usePathThreadId();
@@ -136,12 +161,15 @@ function FloatWidget() {
       data-bb-plugin-root=""
       data-testid="float-limits"
       data-folded={folded ? "true" : "false"}
+      data-style={big ? "big" : "lines"}
       aria-label={`${summary}. ${folded ? s.floatOpen : s.floatFold}`}
       title={`${summary}\n${folded ? s.floatOpen : s.floatFold}`}
       className={
         folded
           ? "flex size-11 cursor-grab items-center justify-center rounded-full border border-border bg-popover text-popover-foreground shadow-lg"
-          : "flex min-w-[120px] cursor-grab flex-col items-start gap-0.5 rounded-l-lg border border-r-0 border-border bg-popover px-2 py-1.5 text-left text-[11px] leading-tight text-popover-foreground shadow-lg"
+          : big
+            ? "flex cursor-grab flex-col items-start gap-1.5 divide-y divide-border rounded-l-xl border border-r-0 border-border bg-popover px-2.5 py-2 text-left text-popover-foreground shadow-lg [&>*+*]:pt-1.5"
+            : "flex min-w-[120px] cursor-grab flex-col items-start gap-0.5 rounded-l-lg border border-r-0 border-border bg-popover px-2 py-1.5 text-left text-[11px] leading-tight text-popover-foreground shadow-lg"
       }
       style={{
         position: "fixed",
@@ -195,7 +223,9 @@ function FloatWidget() {
       ) : providers.length === 0 ? (
         <span className="text-muted-foreground">—</span>
       ) : (
-        providers.map((p) => <FloatLine key={p.providerId} s={s} provider={p} now={now} />)
+        providers.map((p) =>
+          big ? <FloatBig key={p.providerId} s={s} provider={p} now={now} /> : <FloatLine key={p.providerId} s={s} provider={p} now={now} />,
+        )
       )}
     </button>
   );

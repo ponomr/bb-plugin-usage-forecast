@@ -69,6 +69,25 @@ describe("float widget", () => {
     expect(widget.querySelector("[data-ring=inner]")?.getAttribute("data-arc")).toBe("78");
   });
 
+  it("м1: big numbers, a small name over the two percents with their captions", async () => {
+    render(FloatLimits, {}, backend({ snapshot: two(), thread: threadState({ providerId: "codex" }) }), {
+      settings: { ...on, floatStyle: "big", percentMode: "left" },
+    });
+    const widget = await screen.findByTestId("float-limits");
+    await waitFor(() => expect(widget.querySelectorAll("[data-provider]")).toHaveLength(2));
+    expect(widget.getAttribute("data-style")).toBe("big");
+    expect(Array.from(widget.querySelectorAll("[data-provider]")).map((l) => l.textContent)).toEqual(["Codex95%5H78%W", "Claude59%5H62%W"]);
+    expect(within(widget.querySelector<HTMLElement>("[data-provider=claude-code]")!).getByText("59").getAttribute("data-tone")).toBeTruthy();
+    fireEvent.click(widget);
+    await waitFor(() => expect(widget.querySelector("[data-ring=outer]")?.getAttribute("data-arc")).toBe("95"));
+  });
+
+  it("an unknown style falls back to lines", async () => {
+    render(FloatLimits, {}, backend({ snapshot: two() }), { settings: { ...on, floatStyle: "huge" } });
+    const widget = await screen.findByTestId("float-limits");
+    expect(widget.getAttribute("data-style")).toBe("lines");
+  });
+
   it("F2: a press folds it into a badge with two rings and back, kept per device", async () => {
     render(FloatLimits, {}, backend({ snapshot: two() }), { settings: on });
     const widget = await screen.findByTestId("float-limits");

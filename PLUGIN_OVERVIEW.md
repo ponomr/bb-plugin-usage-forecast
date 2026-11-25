@@ -28,7 +28,7 @@ For a provider that cannot compact (custom ACP agents), an optional setting, off
 
 ## Settings and CLI
 
-Settings: context limits, auto-compact and its threshold, limit pushes and their threshold, the poll interval, the UI language (English or Russian), providers to hide, the composer band and a floating widget.
+Settings: context limits, auto-compact and its threshold, limit pushes and their threshold, the poll interval, the UI language (English or Russian), providers to hide, the composer band and a floating widget (lines or big numbers).
 
 The `bb usage-forecast` command prints the status of every provider and a thread's context, compacts a thread and sets a thread's auto-compact mode. `bb usage-forecast headroom` tells an agent which provider has room left until its reset. Agents in bb threads get the same reference as a skill.
 

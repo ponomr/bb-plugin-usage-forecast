@@ -6,6 +6,18 @@ listed here.
 
 ## 0.4.22 — 2026-11-24
 
+- Floating widget: new setting «Display: Floating widget style» with Lines
+  (as before, the default) and Big numbers, where each provider shows its
+  short name over the 5-hour and weekly percents in large type. The fold
+  into the ring badge and the drag stay the same.
+- Settings page reordered into three groups by label prefix (bb's form has
+  no sections): Display (language, percents, header, sidebar icon, band,
+  floating widget and its style), Limits (pushes, their threshold, poll
+  interval, hidden providers), Context (limits, auto-compact, summary and
+  clear). Labels and descriptions are much shorter; the push threshold now
+  says it counts the share used. Setting keys and saved values are
+  unchanged.
+
 - Limits card (sidebar ring and header): one line per window with bar,
   percent and the time to reset («4d 17h»; the local time is its tooltip).
   The plan moved into the provider name's tooltip; the pace ticks on the
