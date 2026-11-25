@@ -155,7 +155,7 @@ export function render<P extends object>(
   options: {
     threadContextKind?: "banner" | "card";
     settings?: Record<string, string | number | boolean>;
-    providers?: Parameters<typeof renderSlot>[2]["providers"];
+    providers?: NonNullable<Parameters<typeof renderSlot>[2]>["providers"];
   } = {},
 ) {
   const log =
