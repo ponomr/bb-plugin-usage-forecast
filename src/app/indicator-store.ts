@@ -4,19 +4,41 @@
 // snapshot and the settings and writes them here; the icon subscribes.
 
 import { useEffect, useSyncExternalStore } from "react";
-import { en } from "./i18n";
-import { indicatorTitle, indicatorView, type WorstWindow } from "./indicator";
+import { useSettings } from "@get-bb/plugin-sdk/app";
+import type { LimitWindow } from "../shared/contract";
+import { formatPercent } from "../shared/thresholds";
+import { parseSidebarShow, type SidebarShow } from "../shared/sidebar-show";
+import { providerName, windowLabel } from "./format";
+import { headerView } from "./header-model";
+import { en, type Strings } from "./i18n";
+import { indicatorTitle, indicatorView, providerStaleAt, staleNote, type WorstWindow } from "./indicator";
+import { windowView } from "./model";
+import type { RingWindow } from "./ring-icon";
 import { createStore } from "./store";
 import { useHiddenProviders, useNow, useSnapshot, useStrings } from "./hooks";
 
 export interface IndicatorState {
   worst: WorstWindow | null;
   title: string;
+  /** The `sidebarShow` setting; two rings when absent. */
+  style?: SidebarShow;
+  /** C1: the 5-hour (outer) and weekly (inner) windows of the worst window's provider. */
+  outer?: RingWindow | null;
+  inner?: RingWindow | null;
 }
 
-/** Everything the ring draws; an equal state does not notify. */
+/** Everything the icon draws; an equal state does not notify. */
 function drawn(s: IndicatorState): string {
-  return JSON.stringify([s.title, s.worst?.usedPercent ?? null, s.worst?.tone ?? null, s.worst?.staleAt ?? null]);
+  const ring = (w: RingWindow | null | undefined) => (w == null ? null : [w.usedPercent, w.tone]);
+  return JSON.stringify([
+    s.title,
+    s.style ?? null,
+    s.worst?.usedPercent ?? null,
+    s.worst?.tone ?? null,
+    s.worst?.even === undefined || s.worst.even === null ? null : Math.round(s.worst.even),
+    ring(s.outer),
+    ring(s.inner),
+  ]);
 }
 
 const store = createStore<IndicatorState>({ worst: null, title: en.indicatorLabel }, (a, b) => drawn(a) === drawn(b));
@@ -28,14 +50,41 @@ export function useIndicatorState(): IndicatorState {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
 }
 
+function ringWindow(w: LimitWindow | null, now: number): RingWindow | null {
+  return w === null ? null : { usedPercent: w.usedPercent, tone: windowView(w, now).tone };
+}
+
+/** C1's title: the provider, then each ring, e.g. "Claude Code · 5 Hour: 29%, tight · Weekly: 41%". */
+function ringsTitle(s: Strings, host: string | null, provider: string, windows: (LimitWindow | null)[], now: number, stale: number | null): string {
+  const parts = windows.flatMap((w) => {
+    if (w === null) return [];
+    const pace = windowView(w, now).pace;
+    return [`${windowLabel(s, w.label, w.model)}: ${formatPercent(w.usedPercent)}${pace === null ? "" : `, ${s.paceStateName[pace]}`}`];
+  });
+  const head = host === null ? providerName(s, provider) : `${host} · ${providerName(s, provider)}`;
+  return `${head} · ${parts.join(" · ")}${staleNote(s, stale, now)}`;
+}
+
 /** The app overlay that feeds the store; it renders nothing. */
 export function IndicatorFeeder() {
   const s = useStrings();
   const now = useNow();
   const hidden = useHiddenProviders();
+  const style = parseSidebarShow(useSettings().values?.sidebarShow);
   const snapshot = useSnapshot().data;
   const worst = snapshot === undefined ? null : indicatorView(snapshot, now, hidden).worst;
-  const title = snapshot === undefined ? s.indicatorLabel : indicatorTitle(s, worst, now);
-  useEffect(() => setIndicatorState({ worst, title }));
+  let title = snapshot === undefined ? s.indicatorLabel : indicatorTitle(s, worst, now);
+  let outer: RingWindow | null = null;
+  let inner: RingWindow | null = null;
+  if (style === "rings" && snapshot !== undefined) {
+    const view = headerView(s, snapshot, undefined, now, hidden);
+    if (view !== null) {
+      outer = ringWindow(view.session, now);
+      inner = ringWindow(view.weekly, now);
+      const id = view.provider.providerId;
+      title = ringsTitle(s, worst?.hostName ?? null, id, [view.session, view.weekly], now, providerStaleAt(snapshot, id));
+    }
+  }
+  useEffect(() => setIndicatorState({ worst, title, style, outer, inner }));
   return null;
 }

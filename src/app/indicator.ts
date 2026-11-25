@@ -24,6 +24,8 @@ export interface WorstWindow {
   /** The shown pace state; null for a window without a current pace. */
   state: PaceState | null;
   tone: Tone;
+  /** The even-pace point of the window now, 0–100, or null. */
+  even: number | null;
   /** P4: when the window's data comes from a host that cannot be read now, the time it was measured; else null. */
   staleAt: number | null;
 }
@@ -112,6 +114,7 @@ export function indicatorView(snapshot: LimitsSnapshot | undefined, now: number,
           resetsAt: window.resetsAt,
           state: view.pace,
           tone: view.tone,
+          even: view.even,
           staleAt: staleAt.get(provider) ?? null,
         };
         if (worst === null || compareWorst(candidate, worst) < 0) worst = candidate;

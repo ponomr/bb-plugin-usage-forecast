@@ -245,6 +245,11 @@ Chrome against the web app, bb 0.49.0):
   registration cannot depend on a setting. A registered footer item cannot
   be removed at run time: with its icon hidden the host's 32×32 button stays
   focusable.
+- The host wraps the icon in a 16 px `inline-flex size-4` span inside a
+  28×28 button with `overflow-hidden` and no padding (checked 2026-11-24, bb
+  0.50.1). The icon draws at 26 px by negative margins when its button is
+  that large. The plugin's scoped CSS does not reach it either, so its tone
+  colours are inline styles.
 - The host lets the user take any footer item out of the row: More →
   Customize footer → «Remove <label> from footer» moves it into the More menu
   (UI preference `sidebar.hiddenFooterItems`, key
