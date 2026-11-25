@@ -52,17 +52,18 @@ describe("SidebarCard", () => {
       snapshot: snapshot([], { hosts: [host("server", [shared("laptop")], { primary: true }), host("laptop", [shared("server")])] }),
     });
     render(SidebarCard, props, b);
-    await waitFor(() => expect(screen.getByTestId("also-on").getAttribute("title")).toBe("also laptop"));
+    await waitFor(() => expect(screen.getByTestId("provider-name").getAttribute("title")).toBe("also laptop"));
     expect(card().querySelectorAll('[data-provider="claude-code"]')).toHaveLength(1);
     fireEvent.click(screen.getByRole("tab", { name: "laptop" }));
-    expect(screen.getByTestId("also-on").getAttribute("title")).toBe("also server");
+    expect(screen.getByTestId("provider-name").getAttribute("title")).toBe("also server");
     expect(card().querySelectorAll('[data-provider="claude-code"]')).toHaveLength(1);
   });
 
-  it("shows the plan with its multiplier", async () => {
+  it("puts the plan with its multiplier into the name's tooltip, not on the card", async () => {
     const b = backend({ snapshot: snapshot([provider("claude-code", [win("Current session", 30)], { planLabel: "Max", planMultiplier: 20 })]) });
     render(SidebarCard, props, b);
-    await waitFor(() => expect(within(card()).getByText("Max 20×")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("provider-name").getAttribute("title")).toBe("Max 20×"));
+    expect(card().textContent).not.toContain("Max 20×");
   });
 
   it("without any ok provider says there is no data", async () => {
@@ -84,11 +85,41 @@ describe("SidebarCard", () => {
     expect(screen.queryByTestId("window-runs-out")).toBeNull();
   });
 
-  it("P3: the card shows the exact reset time on the window's line", async () => {
+  it("counts down to the reset on the window's line, the local time in its tooltip", async () => {
     render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [win("Weekly limit", 40)])]) }));
     await waitFor(() => expect(screen.getByTestId("window-reset").className).toContain("whitespace-nowrap"));
-    expect(screen.getByTestId("window-reset").className).toContain("w-24");
-    expect(screen.getByTestId("window-reset").textContent).toMatch(/\d{1,2}:\d{2}/);
+    const reset = screen.getByTestId("window-reset");
+    expect(reset.textContent).toMatch(/^(\d+d)?\s?(\d+h)?\s?(\d+m)?$/);
+    expect(reset.textContent).not.toMatch(/:/);
+    expect(reset.firstElementChild!.getAttribute("title")).toMatch(/\d{1,2}:\d{2}/);
+  });
+
+  it("draws no pace ticks on the bars", async () => {
+    render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [win("Current session", 40)])]) }));
+    await waitFor(() => expect(card().querySelector('[data-window="Current session"]')).not.toBeNull());
+    expect(card().querySelector("[data-even], [data-marker]")).toBeNull();
+  });
+
+  it("shows a dash for a window that has not started, in both modes", async () => {
+    const idle = win("Current session", 0, { resetsAt: null });
+    for (const percentMode of ["left", "used"]) {
+      render(SidebarCard, props, backend({ snapshot: snapshot([provider("claude-code", [idle])]) }), { settings: { percentMode } });
+      await waitFor(() => expect(screen.getByTestId("window-not-started").textContent).toBe("—"));
+      expect(card().querySelector('[data-window="Current session"]')!.textContent).not.toContain("%");
+      expect(screen.getByTestId("window-reset").textContent).toBe("");
+      cleanup();
+    }
+  });
+
+  it("shows only the data's age before the buttons, the sentence in its tooltip", async () => {
+    render(SidebarCard, props, backend());
+    await waitFor(() => expect(screen.getByTestId("card-age").getAttribute("title")).toMatch(/^Updated /));
+    expect(screen.getByTestId("card-age").textContent).not.toContain("Updated");
+  });
+
+  it("shows the share left in left mode", async () => {
+    render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [win("Current session", 15)])]) }), { settings: { percentMode: "left" } });
+    await waitFor(() => expect(card().querySelector('[data-window="Current session"]')!.textContent).toContain("85%"));
   });
 
   it("spells out a window that runs out before its reset", async () => {
@@ -125,70 +156,16 @@ describe("hidden providers (UF-11)", () => {
   });
 });
 
-describe("SidebarCard, tokens (UF-12 R9)", () => {
-  const pair = (work: number) => ({ work, all: work * 10 });
-  const tokens = async () => ({
-    thread: null,
-    providers: [{ providerId: "codex", today: pair(310_000), month: pair(4_200_000) }],
-    backfillDone: true,
-  });
-
-  it("gives a provider with sums today and month, and a provider without none", async () => {
+describe("SidebarCard, tokens", () => {
+  it("are not on the card (к1); the band and the CLI keep them", async () => {
     const b = backend({
-      snapshot: snapshot([provider("codex", [win("Weekly limit", 40)]), provider("claude-code", [win("Current session", 70)])]),
-      tokens,
+      snapshot: snapshot([provider("codex", [win("Weekly limit", 40)])]),
+      tokens: async () => ({ thread: null, providers: [{ providerId: "codex", today: { work: 310_000, all: 0 }, month: { work: 4_200_000, all: 0 } }], backfillDone: true }),
     });
     render(SidebarCard, props, b);
-    await waitFor(() => expect(screen.getByTestId("provider-tokens").textContent).toBe("310k · 4.2M"));
-    expect(screen.getByTestId("provider-tokens").getAttribute("title")).toBe("today 310k · month 4.2M");
-    expect(card().querySelector('[data-provider="codex"] [data-testid="provider-tokens"]')).not.toBeNull();
-    expect(card().querySelector('[data-provider="claude-code"] [data-testid="provider-tokens"]')).toBeNull();
-    expect(callsTo(b, "tokens")[0]!.input).toMatchObject({ threadId: null });
-  });
-
-  it("speaks Russian", async () => {
-    render(SidebarCard, props, backend({ snapshot: snapshot([provider("codex", [win("Weekly limit", 40)])]), tokens }), { settings: { language: "ru" } });
-    await waitFor(() => expect(screen.getByTestId("provider-tokens").getAttribute("title")).toBe("сегодня 310 тыс. · месяц 4,2 млн"));
-  });
-
-  it("shows a provider listed under two hosts with its sums in each tab", async () => {
-    const b = backend({
-      snapshot: snapshot([], {
-        hosts: [
-          host("server", [provider("codex", [win("Weekly limit", 40)])], { primary: true }),
-          host("laptop", [provider("codex", [win("Weekly limit", 60)])]),
-        ],
-      }),
-      tokens,
-    });
-    render(SidebarCard, props, b);
-    await waitFor(() => expect(screen.getAllByTestId("provider-tokens")).toHaveLength(1));
-    fireEvent.click(screen.getByRole("tab", { name: "server" }));
-    expect(card().querySelector('[data-host="server"] [data-testid="provider-tokens"]')).not.toBeNull();
-    fireEvent.click(screen.getByRole("tab", { name: "laptop" }));
-    expect(card().querySelector('[data-host="laptop"] [data-testid="provider-tokens"]')).not.toBeNull();
-  });
-
-  it("leaves a hidden provider out with its sums", async () => {
-    const b = backend({
-      snapshot: snapshot([provider("codex", [win("Weekly limit", 40)]), provider("claude-code", [win("Current session", 70)])]),
-      tokens,
-    });
-    render(SidebarCard, props, b, { settings: { hiddenProviders: "codex" } });
-    await waitFor(() => expect(callsTo(b, "tokens").length).toBeGreaterThan(0));
-    await waitFor(() => expect(card().querySelector('[data-provider="claude-code"]')).not.toBeNull());
-    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
-    expect(card().querySelector('[data-provider="codex"]')).toBeNull();
-    expect(screen.queryByTestId("provider-tokens")).toBeNull();
-  });
-
-  it("a failed query adds nothing and no error", async () => {
-    const b = backend({ snapshot: snapshot([provider("codex", [win("Weekly limit", 40)])]), tokens: async () => Promise.reject(new Error("tokens failed")) });
-    render(SidebarCard, props, b);
-    await waitFor(() => expect(callsTo(b, "tokens").length).toBeGreaterThan(0));
     await waitFor(() => expect(card().querySelector('[data-provider="codex"]')).not.toBeNull());
     await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
-    expect(screen.queryByTestId("provider-tokens")).toBeNull();
-    expect(card().textContent).not.toContain("tokens failed");
+    expect(card().textContent).not.toContain("4.2M");
+    expect(callsTo(b, "tokens")).toHaveLength(0);
   });
 });

@@ -2,7 +2,7 @@
 // a button that polls them now and one that opens the plugin's settings.
 
 import type { ReactNode } from "react";
-import { formatAgo } from "./format";
+import { formatAgo, formatSpan } from "./format";
 import { useOpenSettings, useRefreshLimits, useStrings } from "./hooks";
 import { Toned } from "./ui";
 import { cn } from "../../lib/utils";
@@ -43,16 +43,37 @@ function IconButton({ label, onClick, disabled, children }: { label: string; onC
   );
 }
 
-/** `polledAt`: the shown host's last poll, null before the first. `children` go at the row's end. */
-export function CardActions({ polledAt, now, onNavigate, children }: { polledAt: number | null; now: number; onNavigate?: () => void; children?: ReactNode }) {
+/**
+ * `polledAt`: the shown host's last poll, null before the first. `children` go at the row's end.
+ * `short`: only the data's age ("2m") before the buttons, the full sentence in its tooltip.
+ */
+export function CardActions({
+  polledAt,
+  now,
+  onNavigate,
+  short = false,
+  children,
+}: {
+  polledAt: number | null;
+  now: number;
+  onNavigate?: () => void;
+  short?: boolean;
+  children?: ReactNode;
+}) {
   const s = useStrings();
   const { refresh, pending, error } = useRefreshLimits();
   const openSettings = useOpenSettings();
+  const full = pending ? s.refreshing : polledAt === null ? s.notPolledYet : s.updated(formatAgo(s, polledAt, now));
+  const text = short && !pending && polledAt !== null ? formatSpan(s, Math.max(0, now - polledAt)) : full;
   return (
     <div className="flex flex-col gap-0.5" data-testid="card-actions">
       <div className="flex items-center gap-1">
-        <span className="min-w-0 flex-1 truncate text-muted-foreground">
-          {pending ? s.refreshing : polledAt === null ? s.notPolledYet : s.updated(formatAgo(s, polledAt, now))}
+        <span
+          className={cn("min-w-0 flex-1 truncate text-muted-foreground", short && "text-right tabular-nums")}
+          title={short ? full : undefined}
+          data-testid="card-age"
+        >
+          {text}
         </span>
         <IconButton label={s.refreshLimits} onClick={refresh} disabled={pending}>
           <RefreshIcon spinning={pending} />

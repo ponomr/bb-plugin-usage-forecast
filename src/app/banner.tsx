@@ -161,9 +161,9 @@ const ITEM_CLASS = "flex min-w-0 flex-auto items-center gap-1.5";
 const BAR_FIT = "hidden min-w-3 flex-1 @sm:flex";
 
 /** A window's bar: the part left or used, the forecast tick and the even-pace tick, mirrored with it. */
-export function WindowBar({ view, className }: { view: WindowView; className?: string }) {
+export function WindowBar({ view, ticks = true, className }: { view: WindowView; ticks?: boolean; className?: string }) {
   const s = useStrings();
-  const at = (p: number | null) => (p === null ? null : limitPercent(s, p));
+  const at = (p: number | null) => (p === null || !ticks ? null : limitPercent(s, p));
   return <Bar percent={limitPercent(s, view.window.usedPercent)} tone={view.tone} marker={at(view.marker)} even={at(view.even)} className={className} />;
 }
 
