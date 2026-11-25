@@ -309,6 +309,20 @@ export function headline(s: Strings, views: readonly WindowView[], now: number):
   return lead === undefined ? null : { text: s.onTrack(resetName(s, lead.window.resetsAt!, now)), tone: lead.tone };
 }
 
+/**
+ * C2: whether the band shows more than its one calm line: a window of the
+ * band's provider runs out before its reset or is used up, or the context is
+ * near its compaction point (red, 80 % of the working limit and up).
+ */
+export function bandAlert(view: BannerView, contextToneNow: Tone | null, now: number): boolean {
+  if (contextToneNow === "red") return true;
+  if (view.kind !== "limits") return false;
+  return view.primary.windows.some((w) => {
+    const status = windowView(w, now).status;
+    return status === "out" || status === "hit";
+  });
+}
+
 // --- Context -----------------------------------------------------------------
 
 export type SegmentKey = "messages" | "tools" | "other" | "used";

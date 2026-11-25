@@ -150,7 +150,8 @@ export default async function plugin(bb: BbPluginApi) {
     showBand: {
       type: "boolean",
       label: "Band above the composer",
-      description: "Show the limits and context band above the message field of every thread. Off: the band and its Compact button are gone; the thread context card, the sidebar ring, pushes and auto-compact work as before.",
+      description:
+        "The limits and context band above the message field of every thread. On (Auto): while every window lasts to its reset and the context is below 80% of its limit, the band is one row of bars with a ▼ for the details; when a window runs out before its reset or hits its limit, or the context passes 80%, it opens to the headline, the auto-compact switch and Compact. Off: the band and its Compact button are gone; the thread context card, the sidebar ring, pushes and auto-compact work as before.",
       default: true,
     },
     hiddenProviders: {

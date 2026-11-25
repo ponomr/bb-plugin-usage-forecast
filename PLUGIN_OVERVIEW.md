@@ -1,6 +1,6 @@
 ## What you get
 
-A band above the composer of every thread. Collapsed, it is two lines: a headline («On track…», «At this pace you'll run out before the … reset.») with an auto-compact switch and a Compact button, and one row of short bars: one per limit window of the thread's provider (5H, W) and one for the context window (Ctx).
+A band above the composer of every thread. While all is calm it is one row of short bars: one per limit window of the thread's provider (5H, W) and one for the context window (Ctx). When a window will run out before its reset or the context passes 80%, a headline («At this pace you'll run out before the … reset.») with an auto-compact switch and a Compact button joins it.
 
 Each limit bar shows the time to reset, the percent used, a tick where the current pace ends at the reset and a line where an even pace would be now. Expanded, the band lists every window with a pace note («At this pace lasts to reset – about 92% used, resets in 3d», or the time the limit runs out and the daily budget that would last), the context breakdown into messages, tools and other, one line per other provider and the latest compacts.
 
