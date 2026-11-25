@@ -26,6 +26,11 @@ listed here.
   a host that cannot be read) is grey instead of coloured by its percent;
   only a used-up limit is red. With no data the ring is dashed and the
   header shows «—»; stale data says in the tooltip when it was measured.
+- Sidebar icon, 26 px and thinner, by the new setting «Sidebar icon»: two
+  rings (default: the 5-hour window outside, the weekly one inside) or one
+  ring for the worst window with the even-pace tick. The ring's colours now
+  show in the footer (they were grey: the icon renders outside the plugin's
+  scoped CSS).
 
 ## 0.4.21 — 2026-11-16
 

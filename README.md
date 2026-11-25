@@ -127,9 +127,12 @@ The settings.
 - **Refresh and settings in every card.** The expanded band, the sidebar
   card and the header card end with the time of the last poll, a button that
   polls the limits now and a button that opens the plugin's settings.
-- **Ring in the sidebar footer.** A small ring next to bb's own footer
-  buttons shows the worst limit window across every host: filled to its used
-  percent and coloured by its pace state. The worst window is the one with
+- **Rings in the sidebar footer.** Next to bb's own footer buttons, a 26 px
+  icon by the «Sidebar icon» setting. Two rings (the default): the 5-hour
+  window outside and the weekly one inside, of the provider of the worst
+  window, each filled to its used percent and coloured by its pace state.
+  One ring: the worst limit window across every host, with a tick where an
+  even pace would be now. The worst window is the one with
   the worst state (a window without a state counts as calm), then the higher
   percent, then the nearer reset; its tooltip names it, for example «laptop ·
   Claude Code · 5 Hour: 92%, critical». Pressing the ring opens a compact card
@@ -222,6 +225,7 @@ Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
 | Limits poll interval, minutes | 2 | 1–10 | How often the server asks bb for limits |
 | Language | English | English, Русский | Language of the plugin UI |
 | Limits in the header | Numbers | Numbers, Numbers and bars, Off | The 5-hour and weekly windows at the top right of the page as coloured percents with the time to the 5-hour reset; with bars each window also gets a horizontal bar (not on a phone). Off removes them |
+| Sidebar icon | Two rings | Two rings, One ring | The limits button in the sidebar footer: the 5-hour (outside) and weekly (inside) windows of the worst window's provider, or one ring for the worst window with the even-pace tick. There is no Off: More → Customize footer → Remove Usage limits takes the button out of the footer |
 | Band above the composer | on | on, off | The limits and context band above the message field. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
 | Hidden providers | empty | provider ids, separated by commas or spaces | Providers left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom`; a thread's own provider stays. Case does not matter; an unknown id is ignored. `bb usage-forecast status` prints the ids |
 

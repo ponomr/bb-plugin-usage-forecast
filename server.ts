@@ -37,6 +37,7 @@ import { TokenCounter } from "./src/server/token-counter";
 import { parseSettings, type ThreadsSdk } from "./src/server/threads";
 import { DEFAULT_LANGUAGE, LANGUAGES } from "./src/shared/language";
 import { DEFAULT_HEADER_SHOW, HEADER_SHOW } from "./src/shared/header-show";
+import { DEFAULT_SIDEBAR_SHOW, SIDEBAR_SHOW } from "./src/shared/sidebar-show";
 
 export const POLL_SCHEDULE = "poll-limits";
 
@@ -136,6 +137,14 @@ export default async function plugin(bb: BbPluginApi) {
       options: [...HEADER_SHOW],
       experimental_optionLabels: { numbers: "Numbers", bars: "Numbers and bars", off: "Off" },
       default: DEFAULT_HEADER_SHOW,
+    },
+    sidebarShow: {
+      type: "select",
+      label: "Sidebar icon",
+      description: "The limits button in the sidebar footer: two rings (the 5-hour window outside, the weekly one inside) or one ring for the worst window with a tick where an even pace would be now. To take the button out of the footer: More (…) → Customize footer → Remove Usage limits.",
+      options: [...SIDEBAR_SHOW],
+      experimental_optionLabels: { rings: "Two rings", ring: "One ring" },
+      default: DEFAULT_SIDEBAR_SHOW,
     },
     showBand: {
       type: "boolean",
