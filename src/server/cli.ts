@@ -374,7 +374,7 @@ export function createCli(
   const json = { json: { type: "boolean", description: "Print JSON" } } as const;
   return defineCli({
     name: "usage-forecast",
-    summary: "Provider usage limits with forecasts, thread context and auto-compact",
+    summary: "Ultimate Usage Widgets: provider limits with forecasts, thread context and auto-compact",
     description:
       "Limits come from bb (system.usageLimits) and are polled on the server. Auto-compact runs when a thread goes idle with its context at or above the threshold.",
     commands: {

@@ -4,85 +4,87 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
-## 0.4.22 — 2026-11-24
+## 0.4.22 — 2026-11-25
 
-- Floating widget: new setting «Floating widget style» with Big
-  numbers (the default), where each provider shows its short name over the
-  5-hour and weekly percents in large type, and Lines (the earlier look).
-  A choice saved before stays. The fold
-  into the ring badge and the drag stay the same.
-- Limits card: new setting «Limits card style» with Rows (the
-  compact card, the default) and Big numbers, where each window is only its
-  percent in large type over its label. Host tabs, the provider name with
-  its tooltip and the refresh and settings buttons stay. It applies to the
-  card from the sidebar icon and from the header.
-- Settings page reordered into three groups (bb's form has no sections or
-  headings, so only the first setting of a group names it, «DISPLAY ·
-  Language»): Display (language, percents, header, sidebar icon, band,
-  floating widget and its style), Limits (pushes, their threshold, poll
-  interval, hidden providers), Context (limits, auto-compact, summary and
-  clear). A new section «How it looks» below the form draws the header
-  limits, sidebar icon, band, floating widget and limits card live, in the
-  chosen styles. Labels and descriptions are much shorter; the push threshold now
-  says it counts the share used. Setting keys and saved values are
-  unchanged.
+The plugin is now called **Ultimate Usage Widgets**. Its id stays
+`usage-forecast`: the install command, the `bb usage-forecast` CLI, the
+agent skill, the settings keys and the stored history do not change.
 
-- Limits card (sidebar ring and header): one line per window with bar,
-  percent and the time to reset («4d 17h»; the local time is its tooltip).
-  The plan moved into the provider name's tooltip; the pace ticks on the
-  bars, the token sums and the «Updated …» line left the card (the data's
-  age stays next to the refresh button, tokens stay in the band and the
-  CLI). A window not started since its reset shows «—».
-- Limits in the page header: the 5-hour and weekly windows of the open
-  thread's provider at the top right, next to the header's buttons: a pill
-  with each window's percent in its colour and the time to the 5-hour reset,
-  optionally with horizontal bars (new setting «Limits in the header»:
-  Numbers, Numbers and bars, Forecast first, All providers, Off). Forecast
-  first shows the numbers while all is calm and puts a window on course to
-  run out first, with «out 14:20» or «short by 1d 6h». All providers shows
-  each provider's worst window by bb's provider icon (a short label such as
-  «CX» when bb has none). A press opens the limits card. On a phone every
-  mode but Off shows a dot in the worst window's colour and its percent.
-- Every expanded card (band, sidebar card, header card) ends with the last
-  poll time, a refresh button and a settings button (a cog).
-- Tooltips on the band's buttons: the ▼/▲ and ▸/▾ toggles say «Show
-  details» or «Hide details», and «Hide» names the provider it hides.
-- Shorter UI texts in both languages.
-- One set of display rules everywhere. Percents are always the share used;
-  the «Limits show» and «Reset shows» settings and the press on a percent or
-  a reset time are gone (stored values stay in the settings and are no
-  longer read). A reset is a countdown in the band's and the header's rows
-  and the local time in the cards. Every limit bar gets a thin line where an
-  even pace would be now. A window without a forecast (early, unknown or on
-  a host that cannot be read) is grey instead of coloured by its percent;
-  only a used-up limit is red. With no data the ring is dashed and the
-  header shows «—»; stale data says in the tooltip when it was measured.
-- Sidebar icon, 26 px and thinner, by the new setting «Sidebar icon»: two
-  rings (default: the 5-hour window outside, the weekly one inside) or one
-  ring for the worst window with the even-pace tick. The ring's colours now
-  show in the footer (they were grey: the icon renders outside the plugin's
-  scoped CSS).
-- The band above the composer is automatic: while every window lasts to its
-  reset and the context is below 80% of its limit, it is one row of bars with
-  the ▼ toggle. A window that runs out before its reset or hits its limit, or
-  a context past 80%, opens it to the headline with the auto-compact switch
-  and Compact, also on a phone. «Band above the composer» on means Auto.
-- Floating limits widget, off by default (new setting «Floating limits
-  widget»): a small panel at the right edge of the window, one line per
-  provider with its 5-hour and weekly percents («Claude 5H 41% W 38%»). A
-  press folds it into a 44 px round badge with two rings and back; it is
-  dragged up or down, and the place and the fold are kept per device.
-- New setting «Limit percents» (`percentMode`): every limit indicator shows
-  the share of the window left (the new default) or the share used. Rings and
-  bars drain as a window is used, their forecast and even-pace ticks follow;
-  percents, pace notes, tooltips and limit pushes say «left». **Changes the
-  default:** until now everything showed the share used; set it to Used to
-  keep that. The colours still follow the pace, so little left is red. Context
-  fill, thresholds and the CLI keep the share used.
-- Internal clean-up with no change in behaviour: the header and the floating
-  widget share one hook for the open thread and one pair of storage helpers,
-  the setting parsers share `oneOf`, and exports used only inside their file
-  are no longer exported.
+### What's new
+
+- **Limits in the page header.** At the top right of every page, next to
+  bb's own buttons: the 5-hour and weekly windows of the open thread's
+  provider as coloured percents with the time to the 5-hour reset
+  («5H 4h 41m 97%  W 61%»). Setting «Header»: Numbers (default), Numbers
+  and bars, Forecast first (a window on course to run out goes first, with
+  «out 14:20» or «short by 1d 6h»), All providers (each provider's worst
+  window by its icon), Off. On a phone it is a dot in the worst window's
+  colour and its percent. A press opens the limits card.
+- **Sidebar icon.** A 26 px icon in the sidebar footer, setting «Sidebar
+  icon»: Two rings (default; 5-hour outside, weekly inside) or One ring (the
+  worst window, with a tick where an even pace would be now). Its colours
+  now show (they were grey).
+- **Floating widget.** Off by default; turn on «Floating widget». A panel at
+  the right edge of the window. «Floating widget style»: Big numbers
+  (default; per provider its name over the 5-hour and weekly percents in
+  large type) or Lines (one line per provider, «Claude 5H 41% W 38%»). A
+  press folds it into a round badge with two rings; drag it up or down. Its
+  place and fold are kept per device. It hides on the plugin's own settings
+  page.
+- **Automatic band above the composer.** While every window lasts to its
+  reset and the context is below 80% of its limit, the band is one row of
+  bars. A window that runs out before its reset or hits its limit, or a
+  context past 80%, opens it to the headline with the auto-compact switch
+  and Compact, also on a phone.
+- **Left or used, in one switch.** New setting «Percents»: every limit ring,
+  bar, percent, note, tooltip and limit push shows the share **left** (the
+  new default; rings and bars drain) or the share **used**. Colours follow
+  the pace either way, so little left is red. Context fill, thresholds and
+  the CLI always speak of the share used.
+- **A cleaner limits card** (from the sidebar icon and the header): one line
+  per window with bar, percent and the time to reset; the local reset time,
+  the plan and the window's note are tooltips. New setting «Limits card
+  style»: Rows (default) or Big numbers (each window's percent in large type
+  over its label).
+- **Refresh and settings in every card.** The expanded band, the sidebar card
+  and the header card end with the time of the last poll, a refresh button
+  and a cog that opens the settings. Buttons and icons got tooltips.
+- **One set of display rules.** Every limit bar has a thin line where an even
+  pace would be now. A window without a forecast (too early, unknown, or on a
+  host that cannot be read) is grey; only a used-up limit is red. With no
+  data the ring is dashed and the header shows «—»; stale data says when it
+  was measured.
+- **Settings, reorganised.** Three groups in this order: Display, Limits,
+  Context. bb's form has no headings, so the first setting of each group
+  names it («DISPLAY · Language»). Labels and descriptions are much shorter.
+  A new section «How it looks» below the form draws the header limits, the
+  sidebar icon, the band, the floating widget and the limits card live, in
+  the styles you pick.
+- Shorter UI texts in English and Russian.
+
+### What changes on update without your action
+
+- Percents show the share **left** instead of used. Set «Percents» to Used to
+  keep the old view.
+- The page header shows the limits. Set «Header» to Off to remove them.
+- The sidebar icon shows two rings instead of one. Set «Sidebar icon» to One
+  ring for the old look.
+- The band stays collapsed to one row of bars while all is calm.
+- The limits card no longer shows the plan, the pace ticks, token sums or the
+  «Updated …» line; tokens stay in the expanded band and in `bb usage-forecast
+  tokens`.
+- The settings «Limits show» and «Reset shows» and the press on a percent or
+  a reset time are gone. Their stored values stay and are no longer read. A
+  reset reads as the time left («4d 17h»); its tooltip gives the local time.
+- Settings, history, per-thread overrides and the CLI keep working as
+  before. The floating widget stays off until you turn it on.
+
+### Under the hood
+
+- The ponytail audit's clean-up: the header and the floating widget share
+  one hook for the open thread and one pair of storage helpers, the setting
+  parsers share `oneOf`, and file-local helpers are no longer exported. No
+  change in behaviour.
 
 ## 0.4.21 — 2026-11-16
 

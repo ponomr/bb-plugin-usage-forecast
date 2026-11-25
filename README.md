@@ -1,40 +1,59 @@
-# Usage Forecast for BB
+# Ultimate Usage Widgets for BB
 
-A [BB](https://getbb.app) plugin that shows how much of each agent provider's
-usage limits is spent, forecasts where each window ends up at its reset, shows
-how full the current thread's context window is and can compact a thread
-before it overflows.
+A [BB](https://getbb.app) plugin that shows each agent provider's usage limits
+wherever you look in bb (the page header, the sidebar footer, a band above the
+composer and an optional floating widget), forecasts whether each window lasts
+to its reset, shows how full the current thread's context window is and can
+compact a thread before it overflows.
 
 > [!NOTE]
-> Version 0.4.3, tested with bb 0.49.0 and Plugin SDK 0.6.132. Limits appear
-> only for providers that report them to bb (Claude Code and Codex today).
+> Version 0.4.22, tested with bb 0.50.1 (works from 0.49.0) and Plugin SDK
+> 0.6.132. Limits appear only for providers that report them to bb (Claude
+> Code and Codex today). Until 0.4.22 the plugin was called Usage Forecast;
+> its id, the `bb usage-forecast` CLI, the settings and the history stay the
+> same.
 
 ## Screenshots
 
-The collapsed band above the composer when a limit needs attention: the
-headline with the forecast, the auto-compact switch, the Compact button and
-one bar per limit window plus the context bar. While all is calm the band is
-only the row of bars. The ring in the sidebar footer (bottom left) shows the busiest
-limit window.
+A thread with every widget on: the limits in the page header (Numbers and
+bars), the band above the composer, the floating widget (Big numbers) at the
+right edge and the two rings in the sidebar footer.
 
-![The collapsed Usage Forecast band above the composer and the ring in the sidebar footer](docs/screenshots/band.png)
+![Ultimate Usage Widgets: the header limits, the band above the composer, the floating widget and the sidebar rings](docs/screenshots/overview.png)
+
+The band above the composer. While all is calm it is one row of bars; here
+the context has passed 80%, so the headline, the auto-compact switch and
+Compact are in view.
+
+![The band above the composer with the headline, the auto-compact switch, the Compact button and one bar per window](docs/screenshots/band.png)
 
 The expanded band: every window of the thread's provider with its pace note,
-the context breakdown, one line per other provider and the token totals.
+the context breakdown, the other providers, the token totals and the refresh
+and settings buttons.
 
-![The expanded Usage Forecast band with limit windows and the context breakdown](docs/screenshots/expanded.png)
+![The expanded band with limit windows, the context breakdown and token totals](docs/screenshots/expanded.png)
 
-The card behind the sidebar ring: every provider's windows, one tab per host.
+The header limits and the limits card a press on them opens: one tab per
+host, one line per window with bar, percent and the time to reset.
 
-![The sidebar card with limit windows per provider and a tab per host](docs/screenshots/sidebar-card.png)
+![The limits in the page header and the limits card below them](docs/screenshots/header.png)
+
+The same card from the rings in the sidebar footer.
+
+![The limits card above the sidebar footer rings](docs/screenshots/sidebar-card.png)
+
+The floating widget in its Big numbers style.
+
+![The floating widget with each provider's 5-hour and weekly percents in large type](docs/screenshots/float.png)
 
 The plugin's section of the thread context card.
 
 ![The thread context card section with the context breakdown and the Compact button](docs/screenshots/context-card.png)
 
-The settings.
+The settings in three groups, with «How it looks» below drawing every widget
+in the chosen styles.
 
-![The Usage Forecast settings](docs/screenshots/settings.png)
+![The Ultimate Usage Widgets settings with the How it looks section](docs/screenshots/settings.png)
 
 ## What it does
 
@@ -66,10 +85,9 @@ The settings.
   both opening on tap. The expanded part scrolls inside about half the screen
   height, so the header with its collapse button stays in view on a phone;
   there is a Collapse button at its bottom too. The expanded or collapsed state
-  is kept per device. Every percent is the share used. A reset reads as a
-  countdown in the rows of the band and the header («3d», «resets in 3d»)
-  and as the local time in the cards («Thu 19:59», «19:59» today); the
-  tooltip gives the other one. Every limit bar has a thin line where an even
+  is kept per device. Percents are the share left or used, by the «Percents»
+  setting. A reset reads as the time left («3d», «resets in 3d»); its tooltip
+  gives the local time. Every limit bar has a thin line where an even
   pace would be now, next to the grey forecast tick.
 - **Forecast to the reset.** From the current pace of the window, and from
   the pace of past windows of the same kind once the server has seen enough of
@@ -142,7 +160,7 @@ The settings.
 - **Rings in the sidebar footer.** Next to bb's own footer buttons, a 26 px
   icon by the «Sidebar icon» setting. Two rings (the default): the 5-hour
   window outside and the weekly one inside, of the provider of the worst
-  window, each filled to its used percent and coloured by its pace state.
+  window, each filled to its percent (left or used) and coloured by its pace state.
   One ring: the worst limit window across every host, with a tick where an
   even pace would be now. The worst window is the one with
   the worst state (a window without a state counts as calm), then the higher
@@ -154,7 +172,9 @@ The settings.
   («runs out at 3:39 PM»). With more than one
   host the hosts are tabs and the card shows one host at a time, first the
   host of the ring's worst window; an account shared by several hosts is in
-  each of their tabs («also laptop»).
+  each of their tabs («also laptop»). «Limits card style» Big numbers shows
+  each window only as its percent in large type over its label. The plan and
+  the window's pace note are tooltips.
 - **Floating widget.** Off by default; the «Floating widget» setting
   turns it on, «Floating widget style» picks Big numbers (the default) or Lines.
   Lines: a small panel, about 120 px wide, at the right edge of the
@@ -166,14 +186,17 @@ The settings.
   focus); the place and the fold are kept per device. Big numbers: per
   provider its name in small type over the 5-hour and weekly percents at
   30 px, each with its 5H or W caption; the fold and the drag are the same.
+  The widget hides on the plugin's own settings page, where «How it looks»
+  draws it.
 - **Plan multiplier.** When bb reports a plan multiplier above 1 (the
-  host's `plan.multiplier`), the band, the sidebar card and the CLI show it
-  after the plan name: «Claude Code · Max 5×». A label that already names a
+  host's `plan.multiplier`), the band, the tooltip of the provider name in
+  the limits card and the CLI show it after the plan name: «Claude Code · Max 5×». A label that already names a
   multiplier is left as it is. On bb 0.49.0 no provider sent one yet, so the
   plan name shows alone.
 - **Hide providers you do not use.** The «Hidden providers» setting lists
   provider ids (`acp-opencode, codex`). A hidden provider drops out of the
-  band's other providers, the sidebar ring and its card, limit pushes and
+  band's other providers, the sidebar ring and its card, the header, the
+  floating widget, limit pushes and
   `bb usage-forecast headroom`; a thread's own provider is always shown.
   Each other provider in the expanded band has a Hide button that adds it
   to the setting; to show it again, remove the id in the settings. Limits
@@ -193,8 +216,7 @@ The settings.
   and month. The expanded band has one line below the limit windows,
   «Tokens: thread 86k · today 310k · month 4.2M», where today and month are
   the thread's provider across all its BB threads; the tooltip gives the full
-  sums with cache reads. The sidebar card adds today's and the month's sum
-  («310k · 4.2M») to the heading of each provider that has any. The main number leaves cache reads out (they
+  sums with cache reads. The main number leaves cache reads out (they
   dominate long threads); the number in brackets is the provider's
   `totalTokens`. Only BB threads are counted: use of the same account outside
   BB is not, and Hermes ACP agents write no token events. After the first
@@ -233,7 +255,7 @@ Update: `git pull && npm ci && npm run build && bb plugin install "$PWD" --yes`.
 
 ## Settings
 
-Settings → Plugins → Usage Forecast, or `bb plugin config usage-forecast`.
+Settings → Plugins → Ultimate Usage Widgets, or `bb plugin config usage-forecast`.
 
 bb has no groups or headings in the settings form, so the settings keep
 their order and the first one of each group carries its name: DISPLAY,
@@ -411,7 +433,7 @@ above the composer» in the plugin settings.
 
 To hide only the header limits, set «Header» to Off.
 
-The floating widget shows only while «Floating widget» is on.
+The floating widget shows only while «Floating widget» is on (off by default).
 
 To hide only the ring, open More in the sidebar footer → Customize footer →
 «Remove Usage limits from footer»; it moves into the More menu. bb has no
