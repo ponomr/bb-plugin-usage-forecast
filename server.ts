@@ -147,6 +147,13 @@ export default async function plugin(bb: BbPluginApi) {
       experimental_optionLabels: { rings: "Two rings", ring: "One ring" },
       default: DEFAULT_SIDEBAR_SHOW,
     },
+    showFloat: {
+      type: "boolean",
+      label: "Floating limits widget",
+      description:
+        "A small panel at the right edge of the window, one line per provider with its 5-hour and weekly percents. A press folds it into a round badge with two rings and back; drag it up or down, and the place is kept on this device. Off by default.",
+      default: false,
+    },
     showBand: {
       type: "boolean",
       label: "Band above the composer",
