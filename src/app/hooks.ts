@@ -243,14 +243,14 @@ export function useExpanded(): [boolean, (expanded: boolean) => void] {
   return [expanded, update];
 }
 
-/** The open thread from the app path; bb's router changes the path without an event, so it is reread after page changes too. */
-export function usePathThreadId(): string | null {
-  const [threadId, setThreadId] = useState(() => threadIdOfPath(window.location.pathname));
+/** The app path; bb's router changes it without an event, so it is reread after page changes too. */
+export function usePathname(): string {
+  const [path, setPath] = useState(() => window.location.pathname);
   useEffect(() => {
     let frame = 0;
     const update = () => {
       frame = 0;
-      setThreadId(threadIdOfPath(window.location.pathname));
+      setPath(window.location.pathname);
     };
     const observer = new MutationObserver(() => {
       if (frame === 0) frame = requestAnimationFrame(update);
@@ -263,7 +263,12 @@ export function usePathThreadId(): string | null {
       cancelAnimationFrame(frame);
     };
   }, []);
-  return threadId;
+  return path;
+}
+
+/** The open thread from the app path. */
+export function usePathThreadId(): string | null {
+  return threadIdOfPath(usePathname());
 }
 
 /** Re-renders every minute so "resets in 2h" and "5m ago" stay current. */

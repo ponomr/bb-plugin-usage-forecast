@@ -46,6 +46,20 @@ describe("float widget", () => {
     expect(screen.queryByTestId("float-limits")).toBeNull();
   });
 
+  it("stays off the plugin's settings page, which draws its preview", async () => {
+    window.history.replaceState(null, "", "/settings/plugins/usage-forecast");
+    render(FloatLimits, {}, backend({ snapshot: two() }), { settings: on });
+    await act(async () => {});
+    expect(screen.queryByTestId("float-limits")).toBeNull();
+  });
+
+  it("sits at the right edge: no right border, left corners round", async () => {
+    render(FloatLimits, {}, backend({ snapshot: two() }), { settings: on });
+    const cls = (await screen.findByTestId("float-limits")).className;
+    expect(cls).toContain("border-r-0");
+    expect(cls).toContain("rounded-l-lg");
+  });
+
   it("F4: one line per provider, the thread's own first, percents in their tones", async () => {
     render(FloatLimits, {}, backend({ snapshot: two(), thread: threadState({ providerId: "codex" }) }), { settings: on });
     const widget = await screen.findByTestId("float-limits");
