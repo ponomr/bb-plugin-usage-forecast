@@ -26,7 +26,7 @@ export interface ClosedWindow {
   peakUsedPercent: number;
 }
 
-export interface Projection {
+interface Projection {
   /** Percent of the limit used at the reset at this pace. */
   projectedPercent: number;
   /** When the limit runs out at this pace, or null when it lasts to the reset. */
@@ -49,7 +49,7 @@ export interface WindowForecast {
   warning: boolean;
 }
 
-export interface ForecastInput {
+interface ForecastInput {
   usedPercent: number;
   /** Epoch ms of the reset, or null when the host gives none. */
   resetsAt: number | null;
@@ -63,9 +63,9 @@ export interface ForecastInput {
 /** The learned pace uses the most recent windows only (the mod's FINALS_KEPT). */
 export const LEARNED_WINDOWS_USED = 8;
 /** `current` is withheld until this share of the window has passed. */
-export const MIN_ELAPSED_FRACTION = 0.05;
+const MIN_ELAPSED_FRACTION = 0.05;
 /** Two resets closer than this are one window seen twice (the mod's SAME_WINDOW_MS). */
-export const SAME_WINDOW_MS = 10 * 60_000;
+const SAME_WINDOW_MS = 10 * 60_000;
 
 export function median(values: readonly number[]): number | null {
   if (values.length === 0) return null;

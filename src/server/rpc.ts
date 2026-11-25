@@ -9,7 +9,7 @@ import { readHosts, toSnapshot, type Poller } from "./poller";
 import type { Storage } from "./storage";
 import { readThreadState, type ThreadReaderDeps } from "./threads";
 
-export interface ServiceDeps extends ThreadReaderDeps {
+interface ServiceDeps extends ThreadReaderDeps {
   storage: Storage;
   poller: Poller;
   compactor: AutoCompactor;
@@ -52,7 +52,7 @@ export function createService(deps: ServiceDeps): Service {
 }
 
 /** Reads the plugin's settings and writes the `hiddenProviders` setting, through the settings handle. */
-export interface HiddenWriter {
+interface HiddenWriter {
   read: () => Promise<Record<string, unknown>>;
   write: (values: { hiddenProviders: string }) => Promise<Record<string, unknown>>;
 }

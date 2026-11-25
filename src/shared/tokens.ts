@@ -14,7 +14,7 @@ import { DAY_MS, HOUR_MS } from "./windows";
 /** Hourly buckets and thread entries older than this are dropped. */
 export const TOKEN_RETENTION_MS = 40 * DAY_MS;
 /** Byte bound for each stored token value; the host's limit is 256 KB. */
-export const TOKEN_VALUE_BYTES = 200 * 1024;
+const TOKEN_VALUE_BYTES = 200 * 1024;
 
 /** `work` leaves cache reads out; `all` is the provider's `totalTokens`. */
 export interface TokenPair {
@@ -39,7 +39,7 @@ export interface ThreadEntry {
   seq: number;
 }
 
-export interface BackfillState {
+interface BackfillState {
   done: boolean;
   threadsRead: number;
   threadsFailed: number;
@@ -95,16 +95,16 @@ export function tokenEventFromRow(row: unknown): TokenEvent | null {
   return totals === null ? null : { seq: r.seq, at: r.createdAt, ...totals };
 }
 
-export const hourStart = (ms: number) => Math.floor(ms / HOUR_MS) * HOUR_MS;
+const hourStart = (ms: number) => Math.floor(ms / HOUR_MS) * HOUR_MS;
 
-export interface ThreadRef {
+interface ThreadRef {
   threadId: string;
   providerId: string;
   /** Epoch ms the thread was created; null when unknown. */
   createdAt: number | null;
 }
 
-export interface ApplyResult {
+interface ApplyResult {
   state: TokenState;
   /** True when a bucket grew. */
   counted: boolean;

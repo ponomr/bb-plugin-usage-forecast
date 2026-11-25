@@ -60,7 +60,7 @@ export type BannerView =
   | { kind: "limits"; primary: ProviderLimits; others: ProviderLimits[]; staleSince: number | null };
 
 /** One line of reasons, e.g. "Claude Code: sign-in expired · Codex: not installed". */
-export function reasonsLine(s: Strings, providers: readonly ProviderLimits[]): string {
+function reasonsLine(s: Strings, providers: readonly ProviderLimits[]): string {
   return providers
     .map((p) => `${providerName(s, p.providerId)}: ${statusText(s, p.status, p.message) ?? s.noWindows}`)
     .join(" · ");
@@ -147,7 +147,7 @@ export function bannerView(
  * in the window to judge; it never warns. `idle`: no forecast (unknown
  * duration or no reset time).
  */
-export type WindowStatus = "hit" | "out" | "ok" | "early" | "idle";
+type WindowStatus = "hit" | "out" | "ok" | "early" | "idle";
 
 export interface WindowView {
   window: LimitWindow;

@@ -6,9 +6,9 @@
 /** The first line the agent is asked to write; an answer without it is not a summary. */
 export const SUMMARY_MARKER = "[context-summary]";
 /** The marker must open the answer; a little leading text (a greeting, a blank line) is tolerated. */
-export const SUMMARY_MARKER_WITHIN_CHARS = 200;
+const SUMMARY_MARKER_WITHIN_CHARS = 200;
 /** A shorter body is not a usable summary. */
-export const SUMMARY_MIN_CHARS = 100;
+const SUMMARY_MIN_CHARS = 100;
 /** A longer body is cut; the full answer stays in the thread history. */
 export const SUMMARY_MAX_CHARS = 40_000;
 export const SUMMARY_CUT_NOTE = "\n\n[The summary was cut here; the full text is in the thread history above.]";

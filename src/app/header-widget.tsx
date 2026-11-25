@@ -156,7 +156,7 @@ function gauge(s: Strings, w: LimitWindow, now: number, withReset: boolean): Gau
  * else the windows that run out first, earliest first, each with its
  * forecast in place of the reset, and the others without a reset.
  */
-export function forecastGauges(gauges: readonly Gauge[]): Gauge[] {
+function forecastGauges(gauges: readonly Gauge[]): Gauge[] {
   if (gauges.every((g) => g.outAt === null)) return [...gauges];
   const out = gauges.filter((g) => g.outAt !== null).sort((a, b) => a.outAt! - b.outAt!);
   const rest = gauges.filter((g) => g.outAt === null).map((g) => ({ ...g, reset: null }));
@@ -166,7 +166,7 @@ export function forecastGauges(gauges: readonly Gauge[]): Gauge[] {
 type ShownStyle = Exclude<HeaderShow, "off" | "providers">;
 
 /** One window as the band's collapsed row has it: label, reset, bar (with `bars`), coloured percent, and with `forecast` the run-out. */
-export function HeaderGauge({ g, style }: { g: Gauge; style: ShownStyle }) {
+function HeaderGauge({ g, style }: { g: Gauge; style: ShownStyle }) {
   const forecast = style === "forecast" ? g.forecast : null;
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap" title={g.title} data-gauge={g.key} data-tone={g.view.tone}>

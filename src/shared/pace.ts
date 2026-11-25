@@ -25,9 +25,9 @@ export const PACE_STATES = ["calm", "tight", "short", "critical", "hit"] as cons
 export type PaceState = (typeof PACE_STATES)[number];
 
 /** A projection at or above this percent, as shown, is tight. */
-export const TIGHT_PERCENT = 85;
+const TIGHT_PERCENT = 85;
 /** A run-out within this share of the window's duration from now is critical. */
-export const CRITICAL_WINDOW_FRACTION = 0.1;
+const CRITICAL_WINDOW_FRACTION = 0.1;
 /** How long every reading must be calmer before the state calms down. */
 export const CALM_HOLD_MS = 10 * 60_000;
 
@@ -55,7 +55,7 @@ export function paceStateTone(state: PaceState): Tone {
   }
 }
 
-export interface PaceInput {
+interface PaceInput {
   usedPercent: number;
   durationMs: number | null;
   /** A forecast stored before `main` and `early` existed reads as `mainProjection` says. */

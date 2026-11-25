@@ -36,13 +36,13 @@ export interface IndicatorProvider {
   alsoOn: string[];
 }
 
-export interface IndicatorGroup {
+interface IndicatorGroup {
   hostId: string | null;
   hostName: string;
   providers: IndicatorProvider[];
 }
 
-export interface IndicatorView {
+interface IndicatorView {
   worst: WorstWindow | null;
   groups: IndicatorGroup[];
   /** True when more than one host is known: the card shows one host at a time, picked by tabs. */

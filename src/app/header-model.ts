@@ -9,7 +9,7 @@ import type { Strings } from "./i18n";
 import { compareWorst, indicatorView } from "./indicator";
 import { bannerView, isWeekly, windowView } from "./model";
 
-export interface HeaderView {
+interface HeaderView {
   provider: ProviderLimits;
   /** The 5-hour window, or null when the provider has none. */
   session: LimitWindow | null;

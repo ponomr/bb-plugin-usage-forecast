@@ -20,10 +20,10 @@ import { parseHiddenProviders } from "../shared/hidden-providers";
 import { localPeriodStarts } from "../shared/tokens";
 import { normalizeOverride, usageForecastContract, type CompactResult, type ThreadOverride } from "../shared/contract";
 
-export const SNAPSHOT_REFETCH_MS = 60_000;
-export const THREAD_ACTIVE_REFETCH_MS = 30_000;
-export const THREAD_IDLE_REFETCH_MS = 60_000;
-export const TOKENS_REFETCH_MS = 5 * 60_000;
+const SNAPSHOT_REFETCH_MS = 60_000;
+const THREAD_ACTIVE_REFETCH_MS = 30_000;
+const THREAD_IDLE_REFETCH_MS = 60_000;
+const TOKENS_REFETCH_MS = 5 * 60_000;
 
 function useInterval(callback: () => void, ms: number | null) {
   const saved = useRef(callback);
@@ -257,7 +257,7 @@ export function useNow(): number {
   return now;
 }
 
-export interface RefreshState {
+interface RefreshState {
   refresh(): void;
   pending: boolean;
   error: string | null;

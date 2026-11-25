@@ -10,11 +10,11 @@ import { emptyTokenState, type HourEntry, type ThreadEntry, type TokenState, thr
 /** Upper bound for any serialized value, in bytes. */
 export const MAX_VALUE_BYTES = 200 * 1024;
 export const MAX_CLOSED_WINDOWS = 30;
-export const MAX_LOG_ENTRIES = 100;
+const MAX_LOG_ENTRIES = 100;
 /** An unsupported mark expires so a provider that gains compact, or a misread error, recovers on its own. */
 export const UNSUPPORTED_TTL_MS = 24 * 60 * 60_000;
 /** Remembered compaction points (one per provider and window size). */
-export const MAX_COMPACT_POINTS = 20;
+const MAX_COMPACT_POINTS = 20;
 
 /** Hosts kept in the host index; the ones polled longest ago are dropped first. */
 export const MAX_HOSTS = 20;
@@ -42,14 +42,14 @@ export const keys = {
 } as const;
 
 /** The last compaction point bb reported for one provider and window size. */
-export interface CompactPoint {
+interface CompactPoint {
   tokens: number;
   /** Epoch ms of the last read that reported it. */
   seenAt: number;
 }
 
 /** Remembered limit notifications (one per host, provider and window label). */
-export const MAX_NOTIFIED = 200;
+const MAX_NOTIFIED = 200;
 
 /** The last push sent for one limit window: its period and how far it went. */
 export interface Notified {
@@ -58,7 +58,7 @@ export interface Notified {
   at: number;
 }
 
-export const compactPointKey = (providerId: string, windowTokens: number) => `${providerId}|${windowTokens}`;
+const compactPointKey = (providerId: string, windowTokens: number) => `${providerId}|${windowTokens}`;
 
 /** A window of the latest answer plus what the poller needs to close it later. */
 export interface StoredWindow {
@@ -144,7 +144,7 @@ function isThreadEntry(value: unknown): value is ThreadEntry {
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** `tokens:hours` and `tokens:threads` read back into one state; parts in another shape read as empty. */
-export function parseTokenState(hoursValue: unknown, threadsStored: unknown): TokenState {
+function parseTokenState(hoursValue: unknown, threadsStored: unknown): TokenState {
   const state = emptyTokenState();
   if (isRecord(hoursValue)) {
     for (const [providerId, list] of Object.entries(hoursValue)) {

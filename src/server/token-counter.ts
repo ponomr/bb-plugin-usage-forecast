@@ -15,9 +15,9 @@ const LIST_PAGE = 200;
 /** Pause between threads of the first collection. */
 export const BACKFILL_PAUSE_MS = 50;
 /** During the first collection the app is told at most this often. */
-export const BACKFILL_INVALIDATE_MS = 10_000;
+const BACKFILL_INVALIDATE_MS = 10_000;
 
-export interface TokenCounterDeps {
+interface TokenCounterDeps {
   threads: Pick<ThreadsSdk, "get" | "list" | "events">;
   storage: Pick<Storage, "tokenState" | "setTokenHours" | "setTokenThreads">;
   /** Called after a write that grew a bucket (throttled during the first collection). */
@@ -40,7 +40,7 @@ export interface TokenThreadRow extends TokenPair {
 }
 
 /** The error's class name, never its message: messages can quote thread text. */
-export function errorClass(cause: unknown): string {
+function errorClass(cause: unknown): string {
   if (cause instanceof Error) return cause.name || "Error";
   return typeof cause;
 }

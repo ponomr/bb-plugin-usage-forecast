@@ -172,7 +172,7 @@ function OverrideControl({ state }: { state: ThreadState }) {
   );
 }
 
-export function autoCompactLine(s: Strings, state: ThreadState, now: number): string {
+function autoCompactLine(s: Strings, state: ThreadState, now: number): string {
   const a = state.autoCompact;
   const forThread = a.source === "thread";
   if (!a.enabled) return s.autoOff(forThread);

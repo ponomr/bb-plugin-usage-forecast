@@ -155,7 +155,7 @@ export function formatStatus(s: LimitsSnapshot, now: number, hidden: readonly st
  * The snapshot for `status --json`: every window with its verdict at `now`
  * and every provider with `hidden` from the setting, added at print time.
  */
-export function statusJson(s: LimitsSnapshot, now: number, hidden: readonly string[] = []) {
+function statusJson(s: LimitsSnapshot, now: number, hidden: readonly string[] = []) {
   return {
     ...s,
     hosts: s.hosts.map((h) => ({
@@ -192,7 +192,7 @@ function formatWorst(e: HeadroomEntry, now: number): string {
   return `${head}, on pace for ${formatPercent(w.projectedPercent)} ${at}`;
 }
 
-export function formatHeadroom(r: HeadroomReport, s: LimitsSnapshot, now: number): string {
+function formatHeadroom(r: HeadroomReport, s: LimitsSnapshot, now: number): string {
   if (r.polledAt === null) return "Headroom: not polled yet.";
   const lines = [`Headroom, polled ${formatTime(r.polledAt)} (${formatDuration(now - r.polledAt)} ago)`];
   if (r.stale) lines.push(`Stale: data is ${formatDuration(r.ageMs ?? 0)} old; run with --refresh to poll now.`);
@@ -306,10 +306,10 @@ function parseThreadId(value: string): string {
 // --- Tokens ------------------------------------------------------------------
 
 /** Threads listed by `tokens`, most recently updated first. */
-export const TOKENS_RECENT_THREADS = 10;
+const TOKENS_RECENT_THREADS = 10;
 
 /** What `tokens` reads: the counter, and the process's time zone. */
-export interface CliTokens {
+interface CliTokens {
   counter: Pick<TokenCounter, "view" | "recentThreads" | "backfillState">;
   /** IANA name of the time zone the day and month starts are in. */
   timeZone?: () => string;
@@ -317,7 +317,7 @@ export interface CliTokens {
   periods?: (now: number) => { dayStart: number; monthStart: number };
 }
 
-export interface TokensReport {
+interface TokensReport {
   timeZone: string;
   dayStart: number;
   monthStart: number;
@@ -326,7 +326,7 @@ export interface TokensReport {
   backfill: { done: boolean; threadsRead: number; threadsFailed: number };
 }
 
-export async function tokensReport(tokens: CliTokens, now: number): Promise<TokensReport> {
+async function tokensReport(tokens: CliTokens, now: number): Promise<TokensReport> {
   const { dayStart, monthStart } = (tokens.periods ?? localPeriodStarts)(now);
   const [view, threads, backfill] = await Promise.all([
     tokens.counter.view(null, dayStart, monthStart),
@@ -345,7 +345,7 @@ export async function tokensReport(tokens: CliTokens, now: number): Promise<Toke
 
 const pairText = (p: TokenPair) => `${formatTokenCount(p.work, "en")} (${formatTokenCount(p.all, "en")})`;
 
-export function formatTokensReport(r: TokensReport): string {
+function formatTokensReport(r: TokensReport): string {
   const collecting = r.backfill.done
     ? []
     : [`First collection of past threads is running: ${r.backfill.threadsRead} read, ${r.backfill.threadsFailed} failed.`];

@@ -17,7 +17,7 @@ import type { RingWindow } from "./ring-icon";
 import { createStore } from "./store";
 import { useHiddenProviders, useNow, useSnapshot, useStrings } from "./hooks";
 
-export interface IndicatorState {
+interface IndicatorState {
   worst: WorstWindow | null;
   title: string;
   /** The `sidebarShow` setting; two rings when absent. */

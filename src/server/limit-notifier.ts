@@ -34,7 +34,7 @@ export interface PushMessage {
   body: string;
 }
 
-export interface LimitNotifierDeps {
+interface LimitNotifierDeps {
   storage: Storage;
   settings: () => Promise<PluginSettings>;
   /** Sends one push; resolves to the channels that received it. */

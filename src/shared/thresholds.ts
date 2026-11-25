@@ -7,10 +7,10 @@
 /** `muted`: a limit window with no forecast to judge it by (P1); it is not coloured. */
 export type Tone = "muted" | "normal" | "amber" | "red";
 
-export const CONTEXT_AMBER_PERCENT = 50;
-export const CONTEXT_RED_PERCENT = 80;
+const CONTEXT_AMBER_PERCENT = 50;
+const CONTEXT_RED_PERCENT = 80;
 export const LIMIT_AMBER_PERCENT = 75;
-export const FORECAST_RED_PERCENT = 100;
+const FORECAST_RED_PERCENT = 100;
 
 // Percent values are judged as shown, that is rounded, so 49.6 % reads and
 // colours as 50 %.

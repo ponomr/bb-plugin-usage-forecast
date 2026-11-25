@@ -44,11 +44,11 @@ import {
 } from "./storage";
 
 export const TICK_CRON = "* * * * *";
-export const BACKOFF_MINUTES = [5, 15] as const;
+const BACKOFF_MINUTES = [5, 15] as const;
 /** Ticks fire on minute boundaries; a poll that ran a little late still counts as on time. */
 const TICK_SLACK_MS = 5_000;
 /** A host that has not answered by then counts as failed, so it cannot hold up the others. */
-export const HOST_TIMEOUT_MS = 30_000;
+const HOST_TIMEOUT_MS = 30_000;
 /** Backoff key of the single call made while the hosts are unknown. Host ids are never empty. */
 const LEGACY_KEY = "";
 
@@ -122,7 +122,7 @@ export interface HostInfo {
 }
 
 /** One host's stored limits as the snapshot, the CLI and the notifier see them. */
-export interface StoredHost {
+interface StoredHost {
   /** Null while the hosts are unknown: the record of the default host. */
   hostId: string | null;
   name: string | null;
@@ -137,7 +137,7 @@ export interface HostRecord extends StoredHost {
   answered: boolean;
 }
 
-export interface PollResult {
+interface PollResult {
   /** The default host's record. */
   latest: StoredLatest;
   /** Errors of the hosts polled now, each named by its host when there are several; or null. */
@@ -153,7 +153,7 @@ interface RunResult extends PollResult {
   healthy: boolean;
 }
 
-export interface PollerDeps {
+interface PollerDeps {
   usageLimits: (args: { hostId?: string; refresh: boolean }) => Promise<unknown>;
   /** `hosts.list`. Without it the poller makes only the call without a host. */
   hosts?: () => Promise<readonly HostInfo[]>;
