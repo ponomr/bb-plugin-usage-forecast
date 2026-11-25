@@ -390,6 +390,18 @@ function TokensLine({ threadId, providerId }: { threadId: string; providerId: st
 }
 
 /** The band, unless the `showBand` setting is off. */
+/** The calm band of the worst provider without a thread, for the settings page preview. */
+export function BandPreview() {
+  const snapshot = useSnapshot();
+  const now = useNow();
+  const view = bannerView(useStrings(), snapshot.data, snapshot.error?.message ?? null, undefined, now, useHiddenProviders());
+  return (
+    <div className="@container rounded-lg border border-border bg-card px-3 py-1.5 text-xs" data-testid="band-preview">
+      <CollapsedRow provider={view.kind === "limits" ? view.primary : null} state={undefined} now={now} />
+    </div>
+  );
+}
+
 export function Banner() {
   return useBandShown() ? <Band /> : null;
 }

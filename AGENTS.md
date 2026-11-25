@@ -21,7 +21,7 @@ auto-compact without open clients.
   (through the `push-notifications` plugin), the token counter with its first
   collection (`token-counter.ts`), CLI.
 - `src/app/` — composer band (design after `claude-code-usage-quota-mod`),
-  context card section, settings section, the sidebar-footer ring
+  context card section, settings section with its live preview (`preview-section.tsx`), the sidebar-footer ring
   (`indicator.ts` model, `ring-icon.tsx`, `indicator-store.ts` with its
   overlay feeder, the `store.ts` helper behind the module stores,
   `sidebar-card.tsx`), the page-header limits (`header-model.ts` model,

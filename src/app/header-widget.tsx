@@ -263,7 +263,7 @@ export function HeaderLimits() {
   return createPortal(<HeaderPill style={style} />, host);
 }
 
-function HeaderPill({ style }: { style: Exclude<HeaderShow, "off"> }) {
+export function HeaderPill({ style }: { style: Exclude<HeaderShow, "off"> }) {
   const s = useStrings();
   const threadId = usePathThreadId();
   const now = useNow();

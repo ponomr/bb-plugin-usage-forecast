@@ -193,6 +193,16 @@ export interface Strings {
   pollError(message: string): string;
   providerUsageNote: string;
 
+  // Preview section: what each display setting shows, live.
+  previewNote: string;
+  previewHeader: string;
+  previewSidebar: string;
+  previewBand: string;
+  previewFloat: string;
+  previewCard: string;
+  /** After a part's name when its setting turns it off. */
+  previewOff: string;
+
   /** Push title when a limit window crosses the notify threshold or runs out. */
   pushTitle(provider: string, window: string, percent: string, left: boolean): string;
   pushReachedTitle(provider: string, window: string): string;
@@ -375,6 +385,14 @@ export const en: Strings = {
   pollError: (m) => `Poll error: ${m}`,
   providerUsageNote: "The built-in «Provider usage» plugin can stay on.",
 
+  previewNote: "Live, by the settings above.",
+  previewHeader: "Header",
+  previewSidebar: "Sidebar icon",
+  previewBand: "Band above the composer",
+  previewFloat: "Floating widget",
+  previewCard: "Limits card",
+  previewOff: "off",
+
   pushTitle: (provider, window, percent, left) =>
     left ? `${provider}: ${window} limit, ${percent} left` : `${provider}: ${window} limit at ${percent}`,
   pushReachedTitle: (provider, window) => `${provider}: ${window} limit reached`,
@@ -555,6 +573,14 @@ export const ru: Strings = {
   openSettings: "Настройки плагина",
   pollError: (m) => `Ошибка опроса: ${m}`,
   providerUsageNote: "Встроенный плагин «Provider usage» можно не выключать.",
+
+  previewNote: "Вживую, по настройкам выше.",
+  previewHeader: "Шапка",
+  previewSidebar: "Значок в сайдбаре",
+  previewBand: "Полоса над чатом",
+  previewFloat: "Плавающий виджет",
+  previewCard: "Карточка лимитов",
+  previewOff: "выкл.",
 
   pushTitle: (provider, window, percent, left) =>
     left ? `${provider}: лимит «${window}» — осталось ${percent}` : `${provider}: лимит «${window}» — ${percent}`,
