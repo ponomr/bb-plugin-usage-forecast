@@ -156,7 +156,7 @@ The settings.
   host of the ring's worst window; an account shared by several hosts is in
   each of their tabs («also laptop»).
 - **Floating widget.** Off by default; the «Display: Floating widget» setting
-  turns it on, «Display: Floating widget style» picks Lines or Big numbers.
+  turns it on, «Display: Floating widget style» picks Big numbers (the default) or Lines.
   Lines: a small panel, about 120 px wide, at the right edge of the
   window at mid-height, one line per provider with its 5-hour and weekly
   percents in their colours («Claude 5H 41% W 38%»): in a thread its own
@@ -246,7 +246,7 @@ group them: Display, Limits, Context.
 | Display: Sidebar icon | Two rings | Two rings, One ring | The limits button in the sidebar footer: the 5-hour (outside) and weekly (inside) windows of the worst window's provider, or one ring for the worst window with the even-pace tick. There is no Off: More → Customize footer → Remove Usage limits takes the button out of the footer |
 | Display: Band above the composer | on | on (Auto), off | The limits and context band above the message field. On: one row of bars while all is calm; the headline, the switch and Compact appear when a window runs out or hits its limit, or the context passes 80%. Off: the band and its Compact button are gone; the context card, the sidebar ring, pushes and auto-compact work as before |
 | Display: Floating widget | off | on, off | A panel at the right edge of the window; a press folds it into a round badge with two rings; drag it up or down. The place and the fold are kept per device |
-| Display: Floating widget style | Lines | Lines, Big numbers | Lines: one line per provider with its 5-hour and weekly percents. Big numbers: per provider a small name over the two percents in large type |
+| Display: Floating widget style | Big numbers | Big numbers, Lines | Big numbers: per provider a small name over the two percents in large type. Lines: one line per provider with its 5-hour and weekly percents |
 | Display: Limits card style | Rows | Rows, Big numbers | The card the sidebar icon and the header limits open. Rows: one line per window with bar, percent and the time to reset. Big numbers: each window's percent in large type over its label; host tabs, provider names and the refresh and settings buttons stay |
 | Limits: Push notifications | on | — | Push through the `push-notifications` plugin when a limit window reaches the threshold below, and again when it runs out |
 | Limits: Push at, % used | 90 | 50–100 | Share of a limit window used that sends the push, in either percent mode |

@@ -61,7 +61,7 @@ export function useFloatShown(): boolean {
   return useSettings().values?.showFloat === true;
 }
 
-/** The `floatStyle` setting; lines until the settings load. */
+/** The `floatStyle` setting; big numbers until the settings load. */
 export function useFloatStyle(): FloatStyle {
   return parseFloatStyle(useSettings().values?.floatStyle);
 }

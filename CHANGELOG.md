@@ -6,9 +6,10 @@ listed here.
 
 ## 0.4.22 — 2026-11-24
 
-- Floating widget: new setting «Display: Floating widget style» with Lines
-  (as before, the default) and Big numbers, where each provider shows its
-  short name over the 5-hour and weekly percents in large type. The fold
+- Floating widget: new setting «Display: Floating widget style» with Big
+  numbers (the default), where each provider shows its short name over the
+  5-hour and weekly percents in large type, and Lines (the earlier look).
+  A choice saved before stays. The fold
   into the ring badge and the drag stay the same.
 - Limits card: new setting «Display: Limits card style» with Rows (the
   compact card, the default) and Big numbers, where each window is only its
