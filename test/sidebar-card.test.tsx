@@ -40,6 +40,37 @@ describe("SidebarCard", () => {
     expect(within(card().querySelector('[data-host="server"]')!).getByText("Codex")).toBeTruthy();
   });
 
+  it("big numbers: percents only, tabs and actions stay, left or used", async () => {
+    const b = () =>
+      backend({
+        snapshot: snapshot([], {
+          hosts: [
+            host("server", [provider("codex", [win("Current session", 30), win("Weekly limit", 40)])], { primary: true }),
+            host("laptop", [provider("claude-code", [win("Current session", 70), win("Weekly limit", 0, { resetsAt: null })])]),
+          ],
+        }),
+      });
+    render(SidebarCard, props, b(), { settings: { cardStyle: "big", percentMode: "left" } });
+    await waitFor(() => expect(card().querySelector("[data-style=big]")).not.toBeNull());
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
+    const claude = card().querySelector<HTMLElement>("[data-provider=claude-code] ul")!;
+    expect(Array.from(claude.querySelectorAll("[data-window]")).map((w) => w.textContent)).toEqual(["30%5H", "—W"]);
+    expect(card().querySelector("[data-testid=window-reset]")).toBeNull();
+    expect(card().querySelector("[data-provider] [aria-hidden]")).toBeNull();
+    expect(screen.getByTestId("card-age")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "server" }));
+    expect(Array.from(card().querySelectorAll("[data-provider=codex] [data-window]")).map((w) => w.textContent)).toEqual(["70%5H", "60%W"]);
+    cleanup();
+    render(SidebarCard, props, b(), { settings: { cardStyle: "big", percentMode: "used" } });
+    await waitFor(() => expect(card().querySelector("[data-style=big]")).not.toBeNull());
+    expect(card().querySelector("[data-provider=claude-code] [data-window]")!.textContent).toBe("70%5H");
+  });
+
+  it("rows by default", async () => {
+    render(SidebarCard, props, backend());
+    await waitFor(() => expect(card().querySelector("[data-style=rows]")).not.toBeNull());
+  });
+
   it("with one host has no tabs", async () => {
     render(SidebarCard, props, backend());
     await waitFor(() => expect(card().querySelector("[data-provider]")).not.toBeNull());

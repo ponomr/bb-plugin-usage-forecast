@@ -40,6 +40,7 @@ import { DEFAULT_PERCENT_MODE, PERCENT_MODES } from "./src/shared/percent-mode";
 import { DEFAULT_HEADER_SHOW, HEADER_SHOW } from "./src/shared/header-show";
 import { DEFAULT_SIDEBAR_SHOW, SIDEBAR_SHOW } from "./src/shared/sidebar-show";
 import { DEFAULT_FLOAT_STYLE, FLOAT_STYLE } from "./src/shared/float-style";
+import { CARD_STYLE, DEFAULT_CARD_STYLE } from "./src/shared/card-style";
 
 export const POLL_SCHEDULE = "poll-limits";
 
@@ -121,6 +122,14 @@ export default async function plugin(bb: BbPluginApi) {
       options: [...FLOAT_STYLE],
       experimental_optionLabels: { lines: "Lines", big: "Big numbers" },
       default: DEFAULT_FLOAT_STYLE,
+    },
+    cardStyle: {
+      type: "select",
+      label: "Display: Limits card style",
+      description: "The card from the sidebar icon and the header. Rows: bar, percent, reset. Big numbers: percents only.",
+      options: [...CARD_STYLE],
+      experimental_optionLabels: { rows: "Rows", big: "Big numbers" },
+      default: DEFAULT_CARD_STYLE,
     },
     limitNotifyEnabled: {
       type: "boolean",

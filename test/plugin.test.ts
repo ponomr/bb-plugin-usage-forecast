@@ -53,13 +53,13 @@ describe("plugin wiring", () => {
     await plugin(bb);
     const defs = define.mock.calls[0]![0] as Record<string, { label: string; description: string }>;
     expect(Object.keys(defs)).toEqual([
-      "language", "percentMode", "headerShow", "sidebarShow", "showBand", "showFloat", "floatStyle",
+      "language", "percentMode", "headerShow", "sidebarShow", "showBand", "showFloat", "floatStyle", "cardStyle",
       "limitNotifyEnabled", "limitNotifyPercent", "pollIntervalMinutes", "hiddenProviders",
       "contextLimitTokens", "claudeCodeContextLimitTokens", "codexContextLimitTokens",
       "autoCompactEnabled", "autoCompactThresholdPercent", "summaryClearEnabled",
     ]);
     expect(Object.values(defs).map((d) => d.label.split(":")[0])).toEqual([
-      ...Array(7).fill("Display"), ...Array(4).fill("Limits"), ...Array(6).fill("Context"),
+      ...Array(8).fill("Display"), ...Array(4).fill("Limits"), ...Array(6).fill("Context"),
     ]);
     for (const d of Object.values(defs)) expect(d.description.length).toBeLessThanOrEqual(170);
     expect(defs.contextLimitTokens!.description).toContain("10k–2M");

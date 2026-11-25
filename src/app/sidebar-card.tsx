@@ -3,7 +3,8 @@
 // of the ring's worst window. Compact (к1): one line per window (label, bar,
 // percent, time to reset); the forecast is the bar's colour, its words are the
 // row's tooltip, and only a window that runs out before its reset names the
-// time. The plan and the other hosts of an account are the name's tooltip;
+// time. Big numbers (`cardStyle`): each window's percent in large type over
+// its short label, the note and pace in its tooltip. The plan and the other hosts of an account are the name's tooltip;
 // token sums live in the band and the CLI.
 
 import { useState } from "react";
@@ -11,14 +12,14 @@ import type { ExperimentalSidebarFooterDisclosureProps } from "@get-bb/plugin-sd
 import type { LimitWindow } from "../shared/contract";
 import { planText } from "../shared/plan";
 import { ResetTime, WindowBar, WindowPercent } from "./banner";
-import { formatClock, formatRunOut, providerName, shortWindowLabel, windowLabel } from "./format";
-import { errorText, useHiddenProviders, useNow, useSnapshot, useStrings } from "./hooks";
+import { formatClock, formatRunOut, limitPercent, providerName, shortWindowLabel, windowLabel } from "./format";
+import { errorText, useCardStyle, useHiddenProviders, useNow, useSnapshot, useStrings } from "./hooks";
 import type { Strings } from "./i18n";
 import { indicatorView, type IndicatorProvider } from "./indicator";
 import { hostStale, paceDetails, windowNote, windowView } from "./model";
 import { cn } from "../../lib/utils";
 import { CardActions } from "./card-actions";
-import { Toned } from "./ui";
+import { Ink, Toned } from "./ui";
 
 function runOutParts(s: Strings, at: number, now: number): [string, string | null] {
   const { time, weekday } = formatRunOut(s, at, now);
@@ -60,6 +61,31 @@ function WindowRow({ window: w, now }: { window: LimitWindow; now: number }) {
   );
 }
 
+/** Big numbers: the window's percent in large type over its short label. */
+function WindowBig({ window: w, now }: { window: LimitWindow; now: number }) {
+  const s = useStrings();
+  const v = windowView(w, now);
+  const note = windowNote(s, v, now);
+  const details = paceDetails(s, w);
+  const notStarted = w.resetsAt === null && w.usedPercent === 0;
+  const label = Object.hasOwn(s.shortWindow, w.label) ? shortWindowLabel(s, w.label, w.model) : windowLabel(s, w.label, w.model);
+  return (
+    <li className="flex flex-col items-start" data-window={w.label} title={details === undefined ? note : `${note}\n${details}`}>
+      {notStarted ? (
+        <span className="text-[30px] font-bold leading-8 text-muted-foreground" data-testid="window-not-started">
+          —
+        </span>
+      ) : (
+        <Ink tone={v.tone} className="text-[30px] font-bold leading-8 tabular-nums">
+          {Math.round(limitPercent(s, w.usedPercent))}
+          <span className="ml-px text-base font-semibold opacity-80">%</span>
+        </Ink>
+      )}
+      <span className="max-w-16 truncate text-[10px] leading-3 text-muted-foreground">{label}</span>
+    </li>
+  );
+}
+
 function ProviderSection({ entry, now }: { entry: IndicatorProvider; now: number }) {
   const s = useStrings();
   const { provider, alsoOn } = entry;
@@ -67,6 +93,7 @@ function ProviderSection({ entry, now }: { entry: IndicatorProvider; now: number
   const name = providerName(s, provider.providerId);
   const also = alsoOn.length === 0 ? undefined : s.alsoOn(alsoOn.join(", "));
   const extra = [plan, also].filter((x) => x != null).join(" · ") || undefined;
+  const big = useCardStyle() === "big";
   return (
     <section className="flex flex-col gap-0.5" data-provider={provider.providerId}>
       <span
@@ -77,10 +104,14 @@ function ProviderSection({ entry, now }: { entry: IndicatorProvider; now: number
       >
         {name}
       </span>
-      <ul className="flex flex-col">
-        {provider.windows.map((w) => (
-          <WindowRow key={`${w.label}:${w.model ?? ""}`} window={w} now={now} />
-        ))}
+      <ul className={big ? "flex flex-wrap gap-x-4 gap-y-1" : "flex flex-col"} data-style={big ? "big" : "rows"}>
+        {provider.windows.map((w) =>
+          big ? (
+            <WindowBig key={`${w.label}:${w.model ?? ""}`} window={w} now={now} />
+          ) : (
+            <WindowRow key={`${w.label}:${w.model ?? ""}`} window={w} now={now} />
+          ),
+        )}
       </ul>
     </section>
   );
