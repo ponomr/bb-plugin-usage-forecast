@@ -15,7 +15,7 @@ import type { ProviderLimits } from "../shared/contract";
 import { formatPercent } from "../shared/thresholds";
 import { limitPercent, limitPercentText, providerName, shortWindowLabel } from "./format";
 import { headerProviders, headerView, headerWindows } from "./header-model";
-import { readStored, useFloatShown, useFloatStyle, useHiddenProviders, useNow, usePathThreadId, useSnapshot, useStrings, useThreadState, writeStored } from "./hooks";
+import { pluginSettingsPath, readStored, useFloatShown, useFloatStyle, useHiddenProviders, useNow, usePathname, usePathThreadId, useSnapshot, useStrings, useThreadState, writeStored } from "./hooks";
 import type { Strings } from "./i18n";
 import { ringWindow, windowView } from "./model";
 import { Rings } from "./ring-icon";
@@ -28,9 +28,15 @@ const EDGE_PX = 8;
 /** The default place: the widget's middle at mid-height. */
 const DEFAULT_TOP = 0.5;
 
-/** The app overlay; renders the widget into the page body, or nothing while `showFloat` is off. */
+/**
+ * The app overlay; renders the widget into the page body, or nothing while
+ * `showFloat` is off. The plugin's settings page draws a preview of it
+ * instead, which the real widget would cover.
+ */
 export function FloatLimits() {
-  if (!useFloatShown()) return null;
+  const shown = useFloatShown();
+  const onSettings = usePathname() === pluginSettingsPath(experimental_usePluginId());
+  if (!shown || onSettings) return null;
   return createPortal(<FloatWidget />, document.body);
 }
 
@@ -102,9 +108,12 @@ function FloatBig({ s, provider, now }: { s: Strings; provider: ProviderLimits; 
 }
 
 const PANEL_BIG =
-  "flex flex-col items-start gap-1.5 divide-y divide-border rounded-l-xl border border-r-0 border-border bg-popover px-2.5 py-2 text-left text-popover-foreground shadow-lg [&>*+*]:pt-1.5";
+  "flex flex-col items-start gap-1.5 divide-y divide-border border border-border bg-popover px-2.5 py-2 text-left text-popover-foreground shadow-lg [&>*+*]:pt-1.5";
 const PANEL_LINES =
-  "flex min-w-[120px] flex-col items-start gap-0.5 rounded-l-lg border border-r-0 border-border bg-popover px-2 py-1.5 text-left text-[11px] leading-tight text-popover-foreground shadow-lg";
+  "flex min-w-[120px] flex-col items-start gap-0.5 border border-border bg-popover px-2 py-1.5 text-left text-[11px] leading-tight text-popover-foreground shadow-lg";
+/** At the window's right edge the panel has no right border and only its left corners round. */
+const EDGE_BIG = "rounded-l-xl border-r-0";
+const EDGE_LINES = "rounded-l-lg border-r-0";
 
 function PanelRows({ s, providers, big, now }: { s: Strings; providers: readonly ProviderLimits[]; big: boolean; now: number }) {
   if (providers.length === 0) return <span className="text-muted-foreground">—</span>;
@@ -124,7 +133,7 @@ export function FloatPreview() {
   const big = useFloatStyle() === "big";
   const providers = headerProviders(s, useSnapshot().data, undefined, now, useHiddenProviders());
   return (
-    <div className={`${big ? PANEL_BIG : PANEL_LINES} w-fit`} data-testid="float-preview" data-style={big ? "big" : "lines"}>
+    <div className={`${big ? `${PANEL_BIG} rounded-xl` : `${PANEL_LINES} rounded-lg`} w-fit`} data-testid="float-preview" data-style={big ? "big" : "lines"}>
       <PanelRows s={s} providers={providers} big={big} now={now} />
     </div>
   );
@@ -196,7 +205,7 @@ function FloatWidget() {
       className={
         folded
           ? "flex size-11 cursor-grab items-center justify-center rounded-full border border-border bg-popover text-popover-foreground shadow-lg"
-          : `${big ? PANEL_BIG : PANEL_LINES} cursor-grab`
+          : `${big ? `${PANEL_BIG} ${EDGE_BIG}` : `${PANEL_LINES} ${EDGE_LINES}`} cursor-grab`
       }
       style={{
         position: "fixed",

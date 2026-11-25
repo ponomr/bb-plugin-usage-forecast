@@ -133,7 +133,11 @@ describe("preview section", () => {
     ]);
     expect(root.querySelector("[data-testid=limits-card]")).toBeTruthy();
     await waitFor(() => expect(root.querySelector("[data-testid=float-preview] [data-provider=claude-code]")).toBeTruthy());
-    expect(root.querySelector("[data-testid=float-preview]")!.getAttribute("data-style")).toBe("big");
+    const panel = root.querySelector("[data-testid=float-preview]")!;
+    expect(panel.getAttribute("data-style")).toBe("big");
+    // In place, not at the window edge: a full border and four round corners.
+    expect(panel.className).toContain("rounded-xl");
+    expect(panel.className).not.toContain("border-r-0");
   });
 
   it("follows the chosen styles", async () => {
