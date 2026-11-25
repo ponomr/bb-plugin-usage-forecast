@@ -1,7 +1,7 @@
 {
   "name": "bb-plugin-usage-forecast",
   "version": "0.4.22",
-  "description": "Provider usage limits with a reset forecast, the thread context-window fill and auto-compact.",
+  "description": "Usage limits of every provider with a forecast to the reset: in the page header, the sidebar, above the composer and in a floating widget; the thread context fill, Compact and auto-compact.",
   "private": true,
   "type": "module",
   "license": "MIT",
@@ -20,8 +20,8 @@
     "build": "bb plugin build"
   },
   "bb": {
-    "name": "Usage Forecast",
-    "description": "Provider usage limits with a reset forecast, the thread context-window fill and auto-compact.",
+    "name": "Ultimate Usage Widgets",
+    "description": "Usage limits of every provider with a forecast to the reset: in the page header, the sidebar, above the composer and in a floating widget; the thread context fill, Compact and auto-compact.",
     "branding": {
       "icon": "./assets/usage-forecast.svg"
     },

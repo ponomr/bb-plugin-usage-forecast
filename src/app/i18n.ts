@@ -337,13 +337,13 @@ export const en: Strings = {
   viaSummary: " (summary and clear)",
 
   summaryRequest:
-    "The usage-forecast plugin is about to clear this thread's context to free the context window. " +
+    "The Ultimate Usage Widgets plugin (usage-forecast) is about to clear this thread's context to free the context window. " +
     "Write a summary of the conversation so far that lets you continue the work after the clear: the goal, " +
     "decisions made, the current state, open questions, next steps, and the exact names you will need " +
     "(files, commands, identifiers, values). Do not call tools and do not change files. " +
     `Start your answer with the line ${SUMMARY_MARKER}.`,
   summaryRestore: (summary) =>
-    "The usage-forecast plugin cleared this thread's context to free the context window. Below is the summary " +
+    "The Ultimate Usage Widgets plugin (usage-forecast) cleared this thread's context to free the context window. Below is the summary " +
     "you wrote just before the clear; treat it as the conversation so far and continue from it. " +
     "Do not start any work now: reply with one short line that you have it.\n\n" +
     `${SUMMARY_MARKER}\n${summary}`,
@@ -525,13 +525,13 @@ export const ru: Strings = {
   viaSummary: " (пересказ и очистка)",
 
   summaryRequest:
-    "Плагин usage-forecast сейчас очистит контекст этого треда, чтобы освободить окно контекста. " +
+    "Плагин Ultimate Usage Widgets (usage-forecast) сейчас очистит контекст этого треда, чтобы освободить окно контекста. " +
     "Напиши пересказ разговора, по которому ты продолжишь работу после очистки: цель, принятые решения, " +
     "текущее состояние, открытые вопросы, следующие шаги и точные названия, которые понадобятся " +
     "(файлы, команды, идентификаторы, значения). Не вызывай инструменты и не меняй файлы. " +
     `Начни ответ со строки ${SUMMARY_MARKER}.`,
   summaryRestore: (summary) =>
-    "Плагин usage-forecast очистил контекст этого треда, чтобы освободить окно контекста. Ниже пересказ, " +
+    "Плагин Ultimate Usage Widgets (usage-forecast) очистил контекст этого треда, чтобы освободить окно контекста. Ниже пересказ, " +
     "который ты написал перед очисткой; считай его разговором до этого места и продолжай с него. " +
     "Сейчас не начинай работу: ответь одной короткой строкой, что пересказ получен.\n\n" +
     `${SUMMARY_MARKER}\n${summary}`,

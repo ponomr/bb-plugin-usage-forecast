@@ -1,9 +1,9 @@
 ---
 name: usage-forecast
-description: Read provider usage limits and their reset forecasts, check a thread's context fill, compact a thread, or set per-thread auto-compact with the Usage Forecast plugin's `bb usage-forecast` CLI. Use when asked how much of a Claude Code or Codex limit is left, which provider has headroom, when a window resets, whether a thread needs compacting, why auto-compact did or did not run, or how many tokens BB threads used today or this month.
+description: Read provider usage limits and their reset forecasts, check a thread's context fill, compact a thread, or set per-thread auto-compact with the Ultimate Usage Widgets plugin's `bb usage-forecast` CLI (plugin id `usage-forecast`, formerly named Usage Forecast). Use when asked how much of a Claude Code or Codex limit is left, which provider has headroom, when a window resets, whether a thread needs compacting, why auto-compact did or did not run, or how many tokens BB threads used today or this month.
 ---
 
-# Usage Forecast
+# Ultimate Usage Widgets (`usage-forecast`)
 
 The plugin polls `system.usageLimits` on the bb server and keeps a history of
 each limit window, so forecasts work while no client is open. A window is
@@ -98,7 +98,8 @@ The current thread id is in `bb status` or `$BB_THREAD_ID`.
 ## Settings
 
 `bb plugin config usage-forecast` shows them; change them in Settings → Plugins →
-Usage Forecast.
+Ultimate Usage Widgets. The page groups them as Display, Limits and Context, and
+its section «How it looks» draws every widget in the chosen styles.
 
 | Setting | Default | Range |
 | --- | --- | --- |
@@ -115,9 +116,11 @@ Usage Forecast.
 | `percentMode` | `left` | `left`, `used` (what the UI's limit rings, bars, percents, notes and pushes show; the CLI and its JSON always give the share used) |
 | `headerShow` | `numbers` | `numbers`, `bars`, `forecast`, `providers`, `off` (the limits at the top right of the page header: `numbers` the 5-hour and weekly windows as coloured percents with the 5-hour reset; `bars` adds horizontal bars; `forecast` puts a window that runs out before its reset first, with its run-out; `providers` each provider's worst window by its icon; on a phone every mode but `off` is a dot and the worst percent; a press opens the limits card) |
 | `sidebarShow` | `rings` | `rings`, `ring` (the sidebar footer icon: two rings for the 5-hour and weekly windows, or one ring for the worst window with the even-pace tick) |
-| `showFloat` | `false` | — (a floating panel at the window's right edge, one line per provider; folds into a round badge with two rings, dragged up or down) |
+| `showFloat` | `false` | — (a floating panel at the window's right edge; folds into a round badge with two rings, dragged up or down; hidden on the plugin's settings page) |
+| `floatStyle` | `big` | `big`, `lines` (the floating widget: per provider its name over the 5-hour and weekly percents in large type, or one line per provider) |
+| `cardStyle` | `rows` | `rows`, `big` (the limits card opened from the sidebar icon and the header: one line per window with bar, percent and time to reset, or each window's percent in large type) |
 | `showBand` | `true` | — (the band above the composer; on is Auto: one row of bars while all is calm, the headline and Compact when a window runs out or the context passes 80%; off removes the band and its Compact button, everything else works as before) |
-| `hiddenProviders` | empty | provider ids separated by commas or spaces; left out of the band's other providers, the sidebar ring and card, limit pushes and `headroom` |
+| `hiddenProviders` | empty | provider ids separated by commas or spaces; left out of the band's other providers, the sidebar icon and card, the header, the floating widget, limit pushes and `headroom` |
 
 The thread's working limit is, in order: the thread's own limit, the provider
 setting, the point where the provider compacts on its own (Claude Code reports
@@ -163,6 +166,8 @@ asks for it.
   never reads provider credentials.
 - Errors: `bb plugin list` (schedule row) and `bb plugin logs usage-forecast`.
 - No limits in the page header: the `headerShow` setting is `off`.
+- No floating widget: `showFloat` is off (the default), or the plugin's own
+  settings page is open.
 - No band above the composer: the `showBand` setting is off. The sidebar
   ring is hidden in bb itself (More → Customize footer), not by a setting.
 - To stop everything: `bb plugin disable usage-forecast`. Threads, providers and

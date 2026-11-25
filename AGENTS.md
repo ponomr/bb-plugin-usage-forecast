@@ -1,8 +1,11 @@
 # bb-plugin-usage-forecast — Standalone Context
 
-BB plugin that shows every provider's usage limits with a forecast to the
-window reset, the thread's context-window fill, a Compact button and an
-optional auto-compact. A server part polls limits on a schedule and runs
+BB plugin, shown to users as «Ultimate Usage Widgets» (`bb.name`; until
+0.4.22 «Usage Forecast»), that shows every provider's usage limits with a
+forecast to the window reset in the page header, the sidebar footer, a band
+above the composer and a floating widget, the thread's context-window fill,
+a Compact button and an optional auto-compact. The plugin id, the package,
+the repository, the CLI and the skill keep the name `usage-forecast`. A server part polls limits on a schedule and runs
 auto-compact without open clients.
 
 ## Layout
@@ -289,9 +292,12 @@ the web app, bb 0.50.1):
   marketplace's long description (`overview/usage-forecast.md` there) is a
   copy of `PLUGIN_OVERVIEW.md`, at most 4000 characters; after changing it,
   open a marketplace PR with the new copy (get-bb/marketplace#973 for
-  0.4.19). Its screenshots are copies of `docs/screenshots/` (taken on
-  0.4.20: band with the sidebar ring, expanded band, sidebar card, context
-  card, settings).
+  0.4.19). Its screenshots are copies of `docs/screenshots/` (the
+  marketplace still has the 0.4.20 set; 0.4.22 re-shot overview, band,
+  expanded band, header card, sidebar card, floating widget and settings with
+  host names shown as Server and Laptop; the context card is from 0.4.20).
+  Its `displayName` and `description` are set in the marketplace entry, not
+  read from `package.json`.
 - Checks: the command above; GitHub Actions (`.github/workflows/ci.yml`) runs
   it on every PR and on `main`, with the bb CLI from npm (`bb-app`).
 - Release: bump `version` in `package.json` and `package-lock.json` and add
