@@ -118,9 +118,9 @@ export default async function plugin(bb: BbPluginApi) {
     floatStyle: {
       type: "select",
       label: "Display: Floating widget style",
-      description: "Lines: name and both percents per provider. Big numbers: the two percents in large type.",
+      description: "Big numbers: the two percents in large type. Lines: name and both percents per provider.",
       options: [...FLOAT_STYLE],
-      experimental_optionLabels: { lines: "Lines", big: "Big numbers" },
+      experimental_optionLabels: { big: "Big numbers", lines: "Lines" },
       default: DEFAULT_FLOAT_STYLE,
     },
     cardStyle: {

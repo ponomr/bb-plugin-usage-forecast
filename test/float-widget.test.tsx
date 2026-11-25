@@ -15,7 +15,7 @@ const two = () =>
     provider("claude-code", [win("Current session", 41), weekly(38)]),
     provider("codex", [win("Current session", 5), weekly(22)]),
   ]);
-const on = { showFloat: true };
+const on = { showFloat: true, floatStyle: "lines" };
 
 beforeEach(() => window.history.replaceState(null, "", `/projects/p1/threads/${T}`));
 afterEach(() => {
@@ -82,10 +82,12 @@ describe("float widget", () => {
     await waitFor(() => expect(widget.querySelector("[data-ring=outer]")?.getAttribute("data-arc")).toBe("95"));
   });
 
-  it("an unknown style falls back to lines", async () => {
+  it("big numbers by default and for an unknown style", async () => {
+    render(FloatLimits, {}, backend({ snapshot: two() }), { settings: { showFloat: true } });
+    expect((await screen.findByTestId("float-limits")).getAttribute("data-style")).toBe("big");
+    cleanup();
     render(FloatLimits, {}, backend({ snapshot: two() }), { settings: { ...on, floatStyle: "huge" } });
-    const widget = await screen.findByTestId("float-limits");
-    expect(widget.getAttribute("data-style")).toBe("lines");
+    expect((await screen.findByTestId("float-limits")).getAttribute("data-style")).toBe("big");
   });
 
   it("F2: a press folds it into a badge with two rings and back, kept per device", async () => {
