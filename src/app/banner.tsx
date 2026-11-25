@@ -56,6 +56,7 @@ import {
 import { formatTokenCount, type TokenPair } from "../shared/tokens";
 import { RecentCompacts } from "./settings-section";
 import { CardActions } from "./card-actions";
+import { headerProviders } from "./header-model";
 import { Bar, Ink, SegmentBar, Switch, Toned } from "./ui";
 import { Button } from "../../components/ui/button";
 import { cn } from "../../lib/utils";
@@ -390,14 +391,13 @@ function TokensLine({ threadId, providerId }: { threadId: string; providerId: st
 }
 
 /** The band, unless the `showBand` setting is off. */
-/** The calm band of the worst provider without a thread, for the settings page preview. */
+/** The calm band without a thread, for the settings page preview: the header's first provider. */
 export function BandPreview() {
-  const snapshot = useSnapshot();
   const now = useNow();
-  const view = bannerView(useStrings(), snapshot.data, snapshot.error?.message ?? null, undefined, now, useHiddenProviders());
+  const provider = headerProviders(useStrings(), useSnapshot().data, undefined, now, useHiddenProviders())[0] ?? null;
   return (
     <div className="@container rounded-lg border border-border bg-card px-3 py-1.5 text-xs" data-testid="band-preview">
-      <CollapsedRow provider={view.kind === "limits" ? view.primary : null} state={undefined} now={now} />
+      <CollapsedRow provider={provider} state={undefined} now={now} />
     </div>
   );
 }

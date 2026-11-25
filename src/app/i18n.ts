@@ -194,7 +194,6 @@ export interface Strings {
   providerUsageNote: string;
 
   // Preview section: what each display setting shows, live.
-  previewNote: string;
   previewHeader: string;
   previewSidebar: string;
   previewBand: string;
@@ -385,7 +384,6 @@ export const en: Strings = {
   pollError: (m) => `Poll error: ${m}`,
   providerUsageNote: "The built-in «Provider usage» plugin can stay on.",
 
-  previewNote: "Live, by the settings above.",
   previewHeader: "Header",
   previewSidebar: "Sidebar icon",
   previewBand: "Band above the composer",
@@ -574,7 +572,6 @@ export const ru: Strings = {
   pollError: (m) => `Ошибка опроса: ${m}`,
   providerUsageNote: "Встроенный плагин «Provider usage» можно не выключать.",
 
-  previewNote: "Вживую, по настройкам выше.",
   previewHeader: "Шапка",
   previewSidebar: "Значок в сайдбаре",
   previewBand: "Полоса над чатом",
