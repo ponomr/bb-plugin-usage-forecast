@@ -9,6 +9,7 @@ import { FloatLimits } from "./src/app/float-widget";
 import { HeaderLimits } from "./src/app/header-widget";
 import { IndicatorFeeder } from "./src/app/indicator-store";
 import { RING_ICON, RingIcon } from "./src/app/ring-icon";
+import { PreviewSection } from "./src/app/preview-section";
 import { SettingsSection } from "./src/app/settings-section";
 import { SidebarCard } from "./src/app/sidebar-card";
 
@@ -32,6 +33,12 @@ export default definePluginApp((app) => {
     title: "Status",
     description: "Limits polling, providers and recent compacts.",
     component: SettingsSection,
+  });
+  app.slots.settingsSection({
+    id: "preview",
+    title: "How it looks",
+    description: "Header, sidebar icon, band, floating widget and limits card, live.",
+    component: PreviewSection,
   });
   // The footer icon renders outside the plugin slot; this overlay feeds it.
   app.experimental_icons.register({ name: RING_ICON, component: RingIcon });

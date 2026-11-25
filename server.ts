@@ -66,13 +66,13 @@ export const CONTEXT_INVALIDATE_MIN_MS = 2_000;
 const tokensShort = (n: number) => (n >= 1_000_000 ? `${n / 1_000_000}M` : `${n / 1_000}k`);
 
 export default async function plugin(bb: BbPluginApi) {
-  // bb draws the form in this order and has no groups, so the label's prefix
-  // names the group: Display, Limits, Context. Labels stay English (bb shows
-  // them as given, whatever the plugin's language).
+  // bb draws the form in this order and has no groups or headings, so the
+  // first label of each group names it: DISPLAY, LIMITS, CONTEXT. Labels stay
+  // English (bb shows them as given, whatever the plugin's language).
   const settingsHandle = bb.settings.define({
     language: {
       type: "select",
-      label: "Display: Language",
+      label: "DISPLAY · Language",
       description: "Plugin text language.",
       options: [...LANGUAGES],
       experimental_optionLabels: { en: "English", ru: "Русский" },
@@ -80,7 +80,7 @@ export default async function plugin(bb: BbPluginApi) {
     },
     percentMode: {
       type: "select",
-      label: "Display: Percents",
+      label: "Percents",
       description: "Limits as the share left or used. Colours stay; context and the CLI always show used.",
       options: [...PERCENT_MODES],
       experimental_optionLabels: { left: "Left", used: "Used" },
@@ -88,7 +88,7 @@ export default async function plugin(bb: BbPluginApi) {
     },
     headerShow: {
       type: "select",
-      label: "Display: Header",
+      label: "Header",
       description:
         "Limits at the top right; press for details. Forecast first: a window that runs out leads. All providers: each one's worst window. Phone: a dot and the worst percent.",
       options: [...HEADER_SHOW],
@@ -97,7 +97,7 @@ export default async function plugin(bb: BbPluginApi) {
     },
     sidebarShow: {
       type: "select",
-      label: "Display: Sidebar icon",
+      label: "Sidebar icon",
       description: "Two rings: 5-hour outside, weekly inside. One ring: the worst window. To remove: More (…) → Customize footer.",
       options: [...SIDEBAR_SHOW],
       experimental_optionLabels: { rings: "Two rings", ring: "One ring" },
@@ -105,19 +105,19 @@ export default async function plugin(bb: BbPluginApi) {
     },
     showBand: {
       type: "boolean",
-      label: "Display: Band above the composer",
+      label: "Band above the composer",
       description: "Limits and context over the message field; opens by itself when a limit runs short or context passes 80%.",
       default: true,
     },
     showFloat: {
       type: "boolean",
-      label: "Display: Floating widget",
+      label: "Floating widget",
       description: "A panel at the right edge. Press to fold it into a badge; drag to move.",
       default: false,
     },
     floatStyle: {
       type: "select",
-      label: "Display: Floating widget style",
+      label: "Floating widget style",
       description: "Big numbers: the two percents in large type. Lines: name and both percents per provider.",
       options: [...FLOAT_STYLE],
       experimental_optionLabels: { big: "Big numbers", lines: "Lines" },
@@ -125,7 +125,7 @@ export default async function plugin(bb: BbPluginApi) {
     },
     cardStyle: {
       type: "select",
-      label: "Display: Limits card style",
+      label: "Limits card style",
       description: "The card from the sidebar icon and the header. Rows: bar, percent, reset. Big numbers: percents only.",
       options: [...CARD_STYLE],
       experimental_optionLabels: { rows: "Rows", big: "Big numbers" },
@@ -133,67 +133,67 @@ export default async function plugin(bb: BbPluginApi) {
     },
     limitNotifyEnabled: {
       type: "boolean",
-      label: "Limits: Push notifications",
+      label: "LIMITS · Push notifications",
       description: "A push when a window reaches the threshold and when it runs out; once per window until its reset.",
       default: true,
     },
     limitNotifyPercent: {
       type: "number",
-      label: "Limits: Push at, % used",
+      label: "Push at, % used",
       description: `${LIMIT_NOTIFY_MIN_PERCENT}–${LIMIT_NOTIFY_MAX_PERCENT}. Counted as used in both percent modes.`,
       default: LIMIT_NOTIFY_DEFAULT_PERCENT,
       experimental_schema: limitNotifySchema,
     },
     pollIntervalMinutes: {
       type: "number",
-      label: "Limits: Check every, min",
+      label: "Check every, min",
       description: `${POLL_MIN_MINUTES}–${POLL_MAX_MINUTES}.`,
       default: POLL_DEFAULT_MINUTES,
       experimental_schema: pollIntervalSchema,
     },
     hiddenProviders: {
       type: "string",
-      label: "Limits: Hidden providers",
+      label: "Hidden providers",
       description: "Ids to hide everywhere, pushes included, e.g. acp-opencode. A thread's own provider stays. Ids: bb usage-forecast status.",
       default: "",
     },
     contextLimitTokens: {
       type: "number",
-      label: "Context: Limit, tokens",
+      label: "CONTEXT · Limit, tokens",
       description: `Working size for the bar and auto-compact, ${tokensShort(CONTEXT_LIMIT_MIN_TOKENS)}–${tokensShort(CONTEXT_LIMIT_MAX_TOKENS)}, when no provider limit applies.`,
       default: CONTEXT_LIMIT_DEFAULT_TOKENS,
       experimental_schema: contextLimitSchema,
     },
     [PROVIDER_LIMIT_SETTINGS["claude-code"]]: {
       type: "number",
-      label: "Context: Claude Code limit",
+      label: "Claude Code context limit",
       description: "0 = where Claude Code compacts itself.",
       default: PROVIDER_LIMIT_AUTO,
       experimental_schema: providerLimitSchema,
     },
     [PROVIDER_LIMIT_SETTINGS.codex]: {
       type: "number",
-      label: "Context: Codex limit",
+      label: "Codex context limit",
       description: "0 = the limit above. Best: your model_auto_compact_token_limit.",
       default: PROVIDER_LIMIT_AUTO,
       experimental_schema: providerLimitSchema,
     },
     autoCompactEnabled: {
       type: "boolean",
-      label: "Context: Auto-compact",
+      label: "Auto-compact",
       description: "Compact an idle thread at the threshold.",
       default: false,
     },
     autoCompactThresholdPercent: {
       type: "number",
-      label: "Context: Auto-compact at, %",
+      label: "Auto-compact at, %",
       description: `${THRESHOLD_MIN_PERCENT}–${THRESHOLD_MAX_PERCENT}. Never above the provider's own compaction point.`,
       default: THRESHOLD_DEFAULT_PERCENT,
       experimental_schema: thresholdSchema,
     },
     summaryClearEnabled: {
       type: "boolean",
-      label: "Context: Summary and clear",
+      label: "Summary and clear",
       description: "For agents that can't compact: summarise, clear, send the summary back. History stays.",
       default: false,
     },

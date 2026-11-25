@@ -47,7 +47,7 @@ async function load(settings: Record<string, boolean | number> = {}, limits: () 
 describe("plugin wiring", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("defines the settings grouped by order and label prefix", async () => {
+  it("defines the settings grouped by order, the group named on its first label only", async () => {
     const { bb } = createFakePluginHost({ pluginId: "usage-forecast", sdk: { subscribe: (() => () => undefined) as never } });
     const define = vi.spyOn(bb.settings, "define");
     await plugin(bb);
@@ -58,9 +58,11 @@ describe("plugin wiring", () => {
       "contextLimitTokens", "claudeCodeContextLimitTokens", "codexContextLimitTokens",
       "autoCompactEnabled", "autoCompactThresholdPercent", "summaryClearEnabled",
     ]);
-    expect(Object.values(defs).map((d) => d.label.split(":")[0])).toEqual([
-      ...Array(8).fill("Display"), ...Array(4).fill("Limits"), ...Array(6).fill("Context"),
+    const group = (label: string) => /^([A-Z]+) · /.exec(label)?.[1] ?? null;
+    expect(Object.values(defs).map((d) => group(d.label))).toEqual([
+      "DISPLAY", ...Array(7).fill(null), "LIMITS", ...Array(3).fill(null), "CONTEXT", ...Array(5).fill(null),
     ]);
+    for (const d of Object.values(defs)) expect(d.label).not.toMatch(/^(Display|Limits|Context):/);
     for (const d of Object.values(defs)) expect(d.description.length).toBeLessThanOrEqual(170);
     expect(defs.contextLimitTokens!.description).toContain("10k–2M");
   });

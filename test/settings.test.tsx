@@ -17,14 +17,16 @@ import {
 } from "../src/app/format";
 import { parseLang } from "../src/shared/language";
 import { HOUR_MS } from "../src/shared/windows";
-import { backend, callsTo, entry, provider, render, snapshot } from "./app-fixtures";
+import { backend, callsTo, entry, provider, render, snapshot, win } from "./app-fixtures";
 
 let Section: React.ComponentType<object>;
+let Preview: React.ComponentType<object>;
 
 beforeAll(async () => {
   const app = await loadPluginApp(() => import("../app"));
-  expect(app.settingsSections).toHaveLength(1);
+  expect(app.settingsSections.map((x) => x.id)).toEqual(["status", "preview"]);
   Section = app.settingsSections[0]!.component as React.ComponentType<object>;
+  Preview = app.settingsSections[1]!.component as React.ComponentType<object>;
 });
 
 afterEach(cleanup);
@@ -111,5 +113,31 @@ describe("formatters", () => {
     expect(parseLang("ru")).toBe("ru");
     expect(parseLang("de")).toBe("en");
     expect(parseLang(undefined)).toBe("en");
+  });
+});
+
+describe("preview section", () => {
+  const limits = () => snapshot([provider("claude-code", [win("Current session", 41), win("Weekly limit", 38)])]);
+  const parts = (root: HTMLElement) =>
+    Array.from(root.querySelectorAll<HTMLElement>("[data-part]")).map((p) => p.firstElementChild!.textContent);
+
+  it("draws every display part live, marking the ones turned off", async () => {
+    render(Preview, {}, backend({ snapshot: limits() }), { settings: { showBand: false, showFloat: false, headerShow: "off" } });
+    const root = await screen.findByTestId("usage-preview");
+    await waitFor(() => expect(root.querySelector("[data-testid=header-limits]")).toBeTruthy());
+    expect(parts(root)).toEqual(["Header · off", "Sidebar icon", "Band above the composer · off", "Floating widget · off", "Limits card"]);
+    expect(root.querySelector("[data-testid=header-limits]")!.getAttribute("data-style")).toBe("numbers");
+    expect(root.querySelector("[data-testid=band-preview] [data-testid=collapsed-row]")).toBeTruthy();
+    expect(root.querySelector("[data-testid=limits-card]")).toBeTruthy();
+    await waitFor(() => expect(root.querySelector("[data-testid=float-preview] [data-provider=claude-code]")).toBeTruthy());
+    expect(root.querySelector("[data-testid=float-preview]")!.getAttribute("data-style")).toBe("big");
+  });
+
+  it("follows the chosen styles", async () => {
+    render(Preview, {}, backend({ snapshot: limits() }), { settings: { headerShow: "bars", floatStyle: "lines", showFloat: true } });
+    const root = await screen.findByTestId("usage-preview");
+    await waitFor(() => expect(root.querySelector("[data-testid=header-limits]")?.getAttribute("data-style")).toBe("bars"));
+    expect(root.querySelector("[data-testid=float-preview]")!.getAttribute("data-style")).toBe("lines");
+    expect(parts(root)).toContain("Floating widget");
   });
 });
