@@ -6,6 +6,12 @@ listed here.
 
 ## 0.4.22 — 2026-11-24
 
+- Limits card (sidebar ring and header): one line per window with bar,
+  percent and the time to reset («4d 17h»; the local time is its tooltip).
+  The plan moved into the provider name's tooltip; the pace ticks on the
+  bars, the token sums and the «Updated …» line left the card (the data's
+  age stays next to the refresh button, tokens stay in the band and the
+  CLI). A window not started since its reset shows «—».
 - Limits in the page header: the 5-hour and weekly windows of the open
   thread's provider at the top right, next to the header's buttons: a pill
   with each window's percent in its colour and the time to the 5-hour reset,

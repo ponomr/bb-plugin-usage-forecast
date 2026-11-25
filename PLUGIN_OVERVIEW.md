@@ -4,7 +4,7 @@ A band above the composer of every thread. While all is calm it is one row of sh
 
 Each limit bar shows the time to reset, the percent left or used, a tick where the current pace ends at the reset and a line where an even pace would be now. Expanded, the band lists every window with a pace note («At this pace lasts to reset – about 8% left, resets in 3d», or the time the limit runs out and the daily budget that would last), the context breakdown into messages, tools and other, one line per other provider and the latest compacts.
 
-A ring in the sidebar footer shows the worst limit window across every provider, filled to its percent and coloured by its pace. Pressing it opens a compact card with every provider's windows, one line each, the plan name and the tokens used today and this month.
+A ring in the sidebar footer shows the worst limit window across every provider, filled to its percent and coloured by its pace. Pressing it opens a compact card with every provider's windows, one line each: bar, percent and time to reset.
 
 On the desktop, the thread context card gets a section with the fill in tokens, the breakdown, the Compact button and the thread's auto-compact mode.
 
