@@ -31,7 +31,7 @@ import { parseLang, type Lang } from "../shared/language";
 import { parseHiddenProviders } from "../shared/hidden-providers";
 import type { Storage } from "./storage";
 
-export type LimitProvider = keyof typeof PROVIDER_LIMIT_SETTINGS;
+type LimitProvider = keyof typeof PROVIDER_LIMIT_SETTINGS;
 
 export interface PluginSettings {
   autoCompactEnabled: boolean;
@@ -64,7 +64,7 @@ function parseProviderLimit(value: unknown): number {
 
 const LIMIT_PROVIDERS = Object.keys(PROVIDER_LIMIT_SETTINGS) as LimitProvider[];
 
-export function isLimitProvider(providerId: string | null): providerId is LimitProvider {
+function isLimitProvider(providerId: string | null): providerId is LimitProvider {
   return providerId !== null && Object.hasOwn(PROVIDER_LIMIT_SETTINGS, providerId);
 }
 
@@ -102,7 +102,7 @@ export function parseSettings(raw: Record<string, unknown> | null | undefined): 
 }
 
 /** The chosen working limit before the window caps it. */
-export interface ContextLimit {
+interface ContextLimit {
   tokens: number;
   source: Exclude<ContextLimitSource, "window">;
 }
@@ -263,7 +263,7 @@ export async function measureThread(
 // When the limit is that point itself, the cap sits above the highest
 // threshold (95 %) and never applies; it matters for a thread or
 // per-provider limit above the provider's point.
-export const PROVIDER_MARGIN_PERCENT = 2;
+const PROVIDER_MARGIN_PERCENT = 2;
 
 /** Where the provider compacts on its own, as a percent of its window. */
 export function providerCompactsAtPercent(context: ThreadContext | null): number | null {
@@ -288,7 +288,7 @@ export function effectiveThresholdTokens(thresholdPercent: number, context: Thre
 
 const IDLE_STATUSES = new Set(["idle", "error"]);
 
-export interface ThreadInfo {
+interface ThreadInfo {
   providerId: string | null;
   /** True while the agent is answering or the thread is starting or stopping. */
   active: boolean;

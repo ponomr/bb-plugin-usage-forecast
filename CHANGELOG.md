@@ -45,6 +45,10 @@ listed here.
   provider with its 5-hour and weekly percents («Claude 5H 41% W 38%»). A
   press folds it into a 44 px round badge with two rings and back; it is
   dragged up or down, and the place and the fold are kept per device.
+- Internal clean-up with no change in behaviour: the header and the floating
+  widget share one hook for the open thread and one pair of storage helpers,
+  the setting parsers share `oneOf`, and exports used only inside their file
+  are no longer exported.
 
 ## 0.4.21 — 2026-11-16
 

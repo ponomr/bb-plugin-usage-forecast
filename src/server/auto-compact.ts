@@ -46,7 +46,7 @@ export function isUnsupportedError(cause: unknown): boolean {
   return /not supported|unsupported|does not support/i.test(text);
 }
 
-export interface AutoCompactDeps {
+interface AutoCompactDeps {
   threads: ThreadsSdk;
   storage: Storage;
   settings: () => Promise<PluginSettings>;

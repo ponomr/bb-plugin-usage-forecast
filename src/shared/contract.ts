@@ -68,9 +68,9 @@ export const windowForecastSchema = z.object({
   warning: z.boolean(),
 });
 
-export const costSchema = z.object({ usedUsdCents: z.number(), limitUsdCents: z.number() });
+const costSchema = z.object({ usedUsdCents: z.number(), limitUsdCents: z.number() });
 
-export const limitWindowSchema = z.object({
+const limitWindowSchema = z.object({
   label: z.string(),
   usedPercent: z.number(),
   /** Epoch ms, or null when the host gives no reset time. */
@@ -92,7 +92,7 @@ export type LimitWindow = z.infer<typeof limitWindowSchema>;
 export const PROVIDER_STATUSES = ["ok", "not_installed", "unauthenticated", "expired", "error"] as const;
 export type ProviderStatus = (typeof PROVIDER_STATUSES)[number];
 
-export const providerLimitsSchema = z.object({
+const providerLimitsSchema = z.object({
   providerId: z.string(),
   /** Status of the latest poll. */
   status: z.enum(PROVIDER_STATUSES),
@@ -120,7 +120,7 @@ export const providerLimitsSchema = z.object({
 export type ProviderLimits = z.infer<typeof providerLimitsSchema>;
 
 /** One host's limits. */
-export const hostLimitsSchema = z.object({
+const hostLimitsSchema = z.object({
   /** Null on an install where the plugin does not know the hosts yet: the record of the default host. */
   hostId: z.string().nullable(),
   name: z.string().nullable(),
@@ -138,17 +138,17 @@ export type HostLimits = z.infer<typeof hostLimitsSchema>;
 
 // --- Auto-compact log --------------------------------------------------------
 
-export const COMPACT_RESULTS = ["compacted", "failed", "unsupported", "cancelled"] as const;
+const COMPACT_RESULTS = ["compacted", "failed", "unsupported", "cancelled"] as const;
 /**
  * How the context was made smaller: `compact` is the provider's own
  * `/compact`; `summary` is the fallback for a provider that cannot compact:
  * the agent writes a summary, the plugin clears the context and sends the
  * summary back.
  */
-export const COMPACT_METHODS = ["compact", "summary"] as const;
+const COMPACT_METHODS = ["compact", "summary"] as const;
 export type CompactMethod = (typeof COMPACT_METHODS)[number];
 
-export const compactLogEntrySchema = z.object({
+const compactLogEntrySchema = z.object({
   threadId: z.string(),
   providerId: z.string().nullable(),
   at: z.number(),
@@ -212,10 +212,10 @@ export const contextCategorySchema = z.object({
  * provider's own compaction point as bb reports it), `settings` (the global
  * limit). `window` replaces any of them when the model window is smaller.
  */
-export const CONTEXT_LIMIT_SOURCES = ["settings", "thread", "window", "provider", "reported"] as const;
+const CONTEXT_LIMIT_SOURCES = ["settings", "thread", "window", "provider", "reported"] as const;
 export type ContextLimitSource = (typeof CONTEXT_LIMIT_SOURCES)[number];
 
-export const threadContextSchema = z.object({
+const threadContextSchema = z.object({
   usedTokens: z.number(),
   /** The model's context window. */
   windowTokens: z.number(),
@@ -237,7 +237,7 @@ export const threadContextSchema = z.object({
 });
 export type ThreadContext = z.infer<typeof threadContextSchema>;
 
-export const threadStateSchema = z.object({
+const threadStateSchema = z.object({
   threadId: z.string(),
   providerId: z.string().nullable(),
   /** The host the thread runs on, or null when it could not be resolved. */
@@ -274,7 +274,7 @@ export const threadStateSchema = z.object({
 });
 export type ThreadState = z.infer<typeof threadStateSchema>;
 
-export const compactResultSchema = z.object({
+const compactResultSchema = z.object({
   ok: z.boolean(),
   message: z.string().nullable(),
   entry: compactLogEntrySchema.nullable(),
@@ -284,13 +284,13 @@ export type CompactResult = z.infer<typeof compactResultSchema>;
 // --- Hidden providers --------------------------------------------------------
 
 /** The provider the band's Hide button adds to the `hiddenProviders` setting; one id, no separators. */
-export const hideProviderInputSchema = z
+const hideProviderInputSchema = z
   .object({ providerId: z.string().trim().min(1).max(128).regex(/^[^\s,]+$/, "One provider id") })
   .strict();
 export type HideProviderInput = z.infer<typeof hideProviderInputSchema>;
 
 /** The parsed `hiddenProviders` setting after the write. */
-export const hiddenProvidersSchema = z.object({ hiddenProviders: z.array(z.string()) });
+const hiddenProvidersSchema = z.object({ hiddenProviders: z.array(z.string()) });
 export type HiddenProviders = z.infer<typeof hiddenProvidersSchema>;
 
 // --- Token totals ------------------------------------------------------------
@@ -298,14 +298,14 @@ export type HiddenProviders = z.infer<typeof hiddenProvidersSchema>;
 /** Epoch ms of a local period start, computed by the caller's clock. */
 const periodStartSchema = z.number().int().nonnegative();
 
-export const tokensInputSchema = z
+const tokensInputSchema = z
   .object({ threadId: threadIdSchema.nullable().optional(), dayStart: periodStartSchema, monthStart: periodStartSchema })
   .strict();
 export type TokensInput = z.infer<typeof tokensInputSchema>;
 
 const tokenPairSchema = z.object({ work: z.number(), all: z.number() });
 
-export const tokensSchema = z.object({
+const tokensSchema = z.object({
   /** The thread's own totals; null when the counter has not seen it. */
   thread: tokenPairSchema.nullable(),
   /** Providers with buckets this month, sorted by id. */

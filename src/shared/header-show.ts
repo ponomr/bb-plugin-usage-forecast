@@ -5,11 +5,11 @@
 // 40rem (a phone) every mode but `off` shows a dot and the worst percent.
 // Values from 0.4.22 builds before this one ("rings") read as the default.
 
+import { oneOf } from "./language";
+
 export const HEADER_SHOW = ["numbers", "bars", "forecast", "providers", "off"] as const;
 export type HeaderShow = (typeof HEADER_SHOW)[number];
 export const DEFAULT_HEADER_SHOW: HeaderShow = "numbers";
 
 /** A stored setting value, or the default for anything unknown. */
-export function parseHeaderShow(value: unknown): HeaderShow {
-  return (HEADER_SHOW as readonly unknown[]).includes(value) ? (value as HeaderShow) : DEFAULT_HEADER_SHOW;
-}
+export const parseHeaderShow = (value: unknown): HeaderShow => oneOf(HEADER_SHOW, value, DEFAULT_HEADER_SHOW);

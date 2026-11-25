@@ -7,7 +7,7 @@
 
 import type { HostLimits, ProviderLimits } from "./contract";
 
-export interface AccountBlock {
+interface AccountBlock {
   /** The member whose answer is printed: the newest one, the primary host on a tie. */
   provider: ProviderLimits;
   /** Every host of the account, in snapshot order (primary first). */
@@ -15,7 +15,7 @@ export interface AccountBlock {
 }
 
 /** One provider account: the indices of its hosts in the given list, ascending. */
-export interface AccountGroup {
+interface AccountGroup {
   providerId: string;
   members: number[];
 }

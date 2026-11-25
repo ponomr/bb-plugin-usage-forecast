@@ -18,7 +18,7 @@ export interface RingWindow {
 }
 
 /** The drawn size in the footer's 28 px button; the host's 16 px wrapper is left by negative margins. */
-export const FOOTER_RING_PX = 26;
+const FOOTER_RING_PX = 26;
 
 const VIEW = 26;
 const C = VIEW / 2;

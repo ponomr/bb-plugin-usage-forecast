@@ -11,6 +11,7 @@ import { DAY_MS } from "../shared/windows";
 import { isHidden } from "../shared/hidden-providers";
 import { formatClock, formatResetIn, formatRunOut, formatSpan, formatTime, providerName, statusText } from "./format";
 import type { Strings } from "./i18n";
+import type { RingWindow } from "./ring-icon";
 
 // --- Which provider --------------------------------------------------------
 
@@ -59,7 +60,7 @@ export type BannerView =
   | { kind: "limits"; primary: ProviderLimits; others: ProviderLimits[]; staleSince: number | null };
 
 /** One line of reasons, e.g. "Claude Code: sign-in expired · Codex: not installed". */
-export function reasonsLine(s: Strings, providers: readonly ProviderLimits[]): string {
+function reasonsLine(s: Strings, providers: readonly ProviderLimits[]): string {
   return providers
     .map((p) => `${providerName(s, p.providerId)}: ${statusText(s, p.status, p.message) ?? s.noWindows}`)
     .join(" · ");
@@ -146,7 +147,7 @@ export function bannerView(
  * in the window to judge; it never warns. `idle`: no forecast (unknown
  * duration or no reset time).
  */
-export type WindowStatus = "hit" | "out" | "ok" | "early" | "idle";
+type WindowStatus = "hit" | "out" | "ok" | "early" | "idle";
 
 export interface WindowView {
   window: LimitWindow;
@@ -379,4 +380,9 @@ export function contextView(ctx: ThreadContext): ContextView {
     segments: grouped.length > 0 ? grouped : [{ key: "used", tokens: ctx.usedTokens }],
     bufferTokens: shownBuffer,
   };
+}
+
+/** A window as a ring: its percent in its tone. */
+export function ringWindow(w: LimitWindow | null, now: number): RingWindow | null {
+  return w === null ? null : { usedPercent: w.usedPercent, tone: windowView(w, now).tone };
 }

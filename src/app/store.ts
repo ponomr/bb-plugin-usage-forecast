@@ -1,6 +1,6 @@
 // A value outside React with change listeners, for `useSyncExternalStore`.
 
-export interface Store<T> {
+interface Store<T> {
   get(): T;
   /** Notifies only when the value is not `same` as the current one. */
   set(next: T): void;

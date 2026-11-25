@@ -23,9 +23,9 @@ import { LIMIT_AMBER_PERCENT } from "./thresholds";
 /** Data polled longer ago than this is marked stale. */
 export const STALE_AFTER_MS = 30 * 60_000;
 
-export type WindowState = PaceState | "early" | "unknown";
+type WindowState = PaceState | "early" | "unknown";
 
-export interface WindowVerdict {
+interface WindowVerdict {
   state: WindowState;
   /** True for calm and tight, false for short, critical and hit, null for early and unknown. */
   lasts: boolean | null;
@@ -78,8 +78,8 @@ export function windowVerdict(w: LimitWindow, now: number): WindowVerdict {
 
 // --- Providers ---------------------------------------------------------------
 
-export const PROVIDER_VERDICTS = ["headroom", "tight", "short", "critical", "hit", "unknown"] as const;
-export type ProviderVerdict = (typeof PROVIDER_VERDICTS)[number];
+const PROVIDER_VERDICTS = ["headroom", "tight", "short", "critical", "hit", "unknown"] as const;
+type ProviderVerdict = (typeof PROVIDER_VERDICTS)[number];
 
 export type WorstWindow = Pick<LimitWindow, "label" | "model" | "usedPercent" | "resetsAt"> & WindowVerdict;
 
@@ -113,7 +113,7 @@ export interface HeadroomReport {
   hidden: string[];
 }
 
-export interface HeadroomOptions {
+interface HeadroomOptions {
   /** Only accounts on this host. */
   hostId?: string;
   /** Provider ids to leave out (parsed `hiddenProviders`). */

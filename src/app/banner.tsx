@@ -369,7 +369,7 @@ const fullPair = (p: TokenPair) => `${formatTokens(p.work)} (${formatTokens(p.al
  * "month" are the thread's provider across its BB threads. No line without
  * data, and none while the query loads or after it failed.
  */
-export function TokensLine({ threadId, providerId }: { threadId: string; providerId: string | null }) {
+function TokensLine({ threadId, providerId }: { threadId: string; providerId: string | null }) {
   const s = useStrings();
   const data = useTokens(threadId).data;
   if (data === undefined) return null;

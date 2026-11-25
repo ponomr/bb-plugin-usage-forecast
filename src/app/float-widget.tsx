@@ -10,17 +10,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { experimental_usePluginId } from "@get-bb/plugin-sdk/app";
-import type { LimitWindow, ProviderLimits } from "../shared/contract";
+import type { ProviderLimits } from "../shared/contract";
 import { formatPercent } from "../shared/thresholds";
 import { providerName, shortWindowLabel } from "./format";
-import { headerProviders, headerView, headerWindows, threadIdOfPath } from "./header-model";
-import { useFloatShown, useHiddenProviders, useNow, useSnapshot, useStrings, useThreadState } from "./hooks";
+import { headerProviders, headerView, headerWindows } from "./header-model";
+import { readStored, useFloatShown, useHiddenProviders, useNow, usePathThreadId, useSnapshot, useStrings, useThreadState, writeStored } from "./hooks";
 import type { Strings } from "./i18n";
-import { windowView } from "./model";
-import { Rings, type RingWindow } from "./ring-icon";
+import { ringWindow, windowView } from "./model";
+import { Rings } from "./ring-icon";
 import { Ink } from "./ui";
 
-const PLUGIN = "usage-forecast";
 /** A move shorter than this is a press, not a drag. */
 const DRAG_PX = 4;
 /** The widget keeps this far from the top and bottom of the window. */
@@ -32,37 +31,6 @@ const DEFAULT_TOP = 0.5;
 export function FloatLimits() {
   if (!useFloatShown()) return null;
   return createPortal(<FloatWidget />, document.body);
-}
-
-/** The open thread from the app path; bb's router changes the path without an event, so it is read once a second too. */
-function usePathThreadId(): string | null {
-  const [threadId, setThreadId] = useState(() => threadIdOfPath(window.location.pathname));
-  useEffect(() => {
-    const update = () => setThreadId(threadIdOfPath(window.location.pathname));
-    window.addEventListener("popstate", update);
-    const timer = window.setInterval(update, 1000);
-    return () => {
-      window.removeEventListener("popstate", update);
-      window.clearInterval(timer);
-    };
-  }, []);
-  return threadId;
-}
-
-function readStored(key: string): string | null {
-  try {
-    return globalThis.localStorage?.getItem(key) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function writeStored(key: string, value: string) {
-  try {
-    globalThis.localStorage?.setItem(key, value);
-  } catch {
-    // Storage can be unavailable (private mode); the state still works in memory.
-  }
 }
 
 /** The stored place: the widget's middle as a share of the window height, 0–1. */
@@ -77,10 +45,6 @@ export function floatTopPx(share: number, viewport: number, height: number): num
   const min = EDGE_PX + half;
   const max = Math.max(min, viewport - EDGE_PX - half);
   return Math.round(Math.max(min, Math.min(max, share * viewport)));
-}
-
-function ringWindow(w: LimitWindow | null, now: number): RingWindow | null {
-  return w === null ? null : { usedPercent: w.usedPercent, tone: windowView(w, now).tone };
 }
 
 function briefName(s: Strings, providerId: string): string {
@@ -168,7 +132,7 @@ function FloatWidget() {
     <button
       ref={root}
       type="button"
-      data-bb-plugin={PLUGIN}
+      data-bb-plugin={pluginId}
       data-bb-plugin-root=""
       data-testid="float-limits"
       data-folded={folded ? "true" : "false"}
