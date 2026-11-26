@@ -34,7 +34,7 @@ identified by provider and label (`claude-code` / `Current session`).
   `1. codex (Plus): headroom – Weekly limit 57%, on pace for 69% at reset in 1d 6h`.
   The verdict is the state of the account's tightest window: `headroom` (every
   window calm), `tight`, `short`, `critical`, `hit` (with `available again in
-  <span>`) or `unknown` (not signed in, error, no current window). A window
+  <span>`) or `unknown` (no usage access, error, no current window). A window
   early in its period or without a forecast counts by its used percent (tight
   from 75 %); a window whose reset has passed does not count. `--host` or
   `--thread` keeps the accounts of one host. Data polled more than 30 minutes
@@ -161,9 +161,13 @@ asks for it.
 
 ## Troubleshooting
 
-- No numbers for a provider: `status` shows `not installed`, `not signed in`,
-  `session expired` or the error. Sign in to the provider in bb; the plugin
-  never reads provider credentials.
+- No numbers for a provider: `status` shows `not installed`, `no usage access`,
+  `session expired` or the error. `no usage access` means bb found no sign-in
+  that can read plan usage: Claude Code signed in only with a
+  `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` runs, but that token
+  lacks the `user:profile` scope bb needs for limits. Sign in with
+  `claude /login` on that host to get them back. The plugin never reads
+  provider credentials.
 - Errors: `bb plugin list` (schedule row) and `bb plugin logs usage-forecast`.
 - No limits in the page header: the `headerShow` setting is `off`.
 - No floating widget: `showFloat` is off (the default), or the plugin's own

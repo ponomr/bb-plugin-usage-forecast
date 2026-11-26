@@ -249,7 +249,7 @@ describe("hidden providers (UF-11)", () => {
 
   it("marks hidden providers in status and its JSON (AE3, R10)", async () => {
     const status = (await cli(s, {}, ["acp-opencode"]).run("status")).stdout;
-    expect(status).toContain("  acp-opencode: not signed in [hidden]");
+    expect(status).toContain("  acp-opencode: no usage access [hidden]");
     expect(status).toContain("  codex (Plus): ok\n");
     const out = JSON.parse((await cli(s, {}, ["acp-opencode"]).run("status", "--json")).stdout);
     expect(out.hosts[0].providers.map((p: { providerId: string; hidden: boolean }) => [p.providerId, p.hidden])).toEqual([

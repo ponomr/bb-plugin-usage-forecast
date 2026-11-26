@@ -259,7 +259,7 @@ export const en: Strings = {
   provider: "Provider",
   status: {
     not_installed: "not installed",
-    unauthenticated: "not signed in",
+    unauthenticated: "no usage access",
     expired: "sign-in expired",
     error: "error",
   },
@@ -447,7 +447,7 @@ export const ru: Strings = {
   provider: "Провайдер",
   status: {
     not_installed: "не установлен",
-    unauthenticated: "не выполнен вход",
+    unauthenticated: "нет доступа к лимитам",
     expired: "вход истёк",
     error: "ошибка",
   },

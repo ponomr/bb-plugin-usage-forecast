@@ -84,6 +84,12 @@ Usage limits:
   | codex | Current session | five-hour | 5 h |
   | codex | Weekly limit | weekly | 7 d |
 
+- `unauthenticated` comes from bb's Claude Code probe when the account is
+  not signed in or the SDK reports `rate_limits_available: false`. A Claude
+  Code signed in only by `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token`)
+  gets it: that token lacks the `user:profile` scope (the profile endpoint
+  answered 403 «scope requirement any_of(user:profile, user:office)»,
+  checked 2026-11-26). The plugin shows it as «no usage access».
 - Every window has `resetsAt` (ISO) and an integer `usedPercent`; none had
   `cost`. The response also carries undocumented `plan: {id, multiplier}` and
   `accountKey`.

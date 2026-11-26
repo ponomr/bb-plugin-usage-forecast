@@ -4,6 +4,13 @@ Every release is a `vX.Y.Z` tag on the merge commit. Versions before 0.3.0 were
 developed under the name `usage-limits` in a private repository and are not
 listed here.
 
+## Unreleased
+
+- A provider without usage access now reads «no usage access» instead of
+  «not signed in». bb reports the same state for a Claude Code signed in only
+  with a `claude setup-token` token: Claude works, but the token cannot read
+  plan limits.
+
 ## 0.4.22 — 2026-11-25
 
 The plugin is now called **Ultimate Usage Widgets**. Its id stays
