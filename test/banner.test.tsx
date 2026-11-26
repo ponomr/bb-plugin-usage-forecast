@@ -140,7 +140,7 @@ describe("band, collapsed", () => {
       provider("codex", [], { status: "error", message: "timeout" }),
     ]);
     render(Banner, {}, backend({ snapshot: s }));
-    expect(await screen.findByText("Claude Code: not signed in · Codex: error: timeout")).toBeTruthy();
+    expect(await screen.findByText("Claude Code: no usage access · Codex: error: timeout")).toBeTruthy();
   });
 
   it("draws the context bar and colours its fill: 85% red, 60% amber", async () => {

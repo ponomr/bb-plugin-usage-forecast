@@ -31,7 +31,7 @@ import type { TokenCounter, TokenThreadRow, TokenView } from "./token-counter";
 const STATUS_WORDS: Record<ProviderLimits["status"], string> = {
   ok: "ok",
   not_installed: "not installed",
-  unauthenticated: "not signed in",
+  unauthenticated: "no usage access",
   expired: "session expired",
   error: "error",
 };
